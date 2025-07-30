@@ -3,10 +3,16 @@
 
 # 目錄結構
 /
-├── backend-django/      # Django 後端服務
-├── backend-flask/       # Flask 後端服務
-├── ml-service/          # 機器學習服務
-└── README.md            # 本說明文件
+├── frontend/              # React 前端
+│   └── README.md
+├── backend-django/        # Django 主系統（帳號、題庫、熟悉度）
+│   └── README.md
+├── ml-service/            # Flask 微服務（GPT 題目產生、模型處理）
+│   └── README.md
+├── docker-compose.yml     # 整合啟動所有服務
+├── .gitignore
+├── README.md              # 專案說明與分工紀錄
+└── .code-workspace        # VS Code 工作區（選擇性）
 
 # 技術棧(暫定)
 Django 4.x
