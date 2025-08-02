@@ -43,7 +43,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "myapps.Authorization",  # 加入使用者models
+    "myapps.Ecpay",  # 加入綠界金流models
+    "myapps.Toipc",  # 加入題目models
 ]
+
+AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
