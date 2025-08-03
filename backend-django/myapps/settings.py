@@ -49,12 +49,14 @@ INSTALLED_APPS = [
     "myapps.Toipc",  # 加入題目models
     "rest_framework",  # 加入 Django REST framework
     "rest_framework.authtoken",  # 加入 JWT 認證
+    "corsheaders",  # 加入 CORS 支援
 ]
 
 AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
 
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # CORS 中介軟體，必須放在最前面
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -148,7 +150,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication'
     ],
     "DEFAULT_PERMISSION_CLASSES":[
-        'rest_framework.permissions.IsAuthenticated'
+        'rest_framework.permissions.AllowAny'  # 改為 AllowAny，讓各個視圖自己決定權限
     ]
 }
 
@@ -156,3 +158,17 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),  # 設定存取令牌的有效期為1天
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # 設定刷新令牌的有效期為7天
 }
+
+# CORS 設置 - 允許跨域請求
+CORS_ALLOW_ALL_ORIGINS = True  # 開發環境使用，生產環境應該設定特定的 origins
+CORS_ALLOW_CREDENTIALS = True
+
+# CSRF 設置 - 對 API 端點豁免 CSRF 檢查
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
+
+# 對 API 路徑豁免 CSRF
+CSRF_EXEMPT_URLS = [
+    r'^/api/',
+    r'^/login',
+    r'^/register',
+]

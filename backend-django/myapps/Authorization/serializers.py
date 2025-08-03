@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import User, AuthToken
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,3 +38,23 @@ class RegisterInputSerializer(serializers.Serializer):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("Email 信箱重複註冊")
         return value
+    
+class UserTokenSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # 存進資料庫
+        request = self.context['request']
+        ip = request.META.get('REMOTE_ADDR')
+
+        AuthToken.objects.create(
+            user=self.user,
+            jwt_token=data['access'],
+            refresh_token=data['refresh'],
+            ip_address=ip,
+            expired_at=self.token['exp']
+        )
+        data['user_id'] = self.user.id
+        data['username'] = self.user.username
+        data['email'] = self.user.email
+        data['is_paid'] = self.user.is_paid
+        return data
