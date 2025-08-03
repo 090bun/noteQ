@@ -7,8 +7,8 @@ from django.db import models
 # user_id: 使用者ID
 # note_id: 題目ID
 class UserFavorite(models.Model):
-    user_id = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    note_id = models.ForeignKey("Toipc.Note", on_delete=models.CASCADE)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    note = models.ForeignKey("Toipc.Note", on_delete=models.CASCADE)
 
     class Meta:
         db_table = "UserFavorite"
@@ -35,8 +35,8 @@ class Topic(models.Model):
 # familiarity: 熟悉度
 # created_at: 建立時間
 class Score(models.Model):
-    topic_id = models.ForeignKey("Toipc.Topic", on_delete=models.CASCADE)
-    user_id = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    topic = models.ForeignKey("Toipc.Topic", on_delete=models.CASCADE)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     familiarity = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -53,11 +53,11 @@ class Score(models.Model):
 # updated_at: 更新時間
 # deleted_at: 刪除時間
 class Note(models.Model):
-    topic_id = models.ForeignKey("Toipc.Topic", on_delete=models.CASCADE)
-    user_id = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    chat_id = models.ForeignKey("Toipc.Chat", on_delete=models.CASCADE)
+    topic = models.ForeignKey("Toipc.Topic", on_delete=models.CASCADE)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    chat = models.ForeignKey("Toipc.Chat", on_delete=models.CASCADE)
     retake = models.BooleanField(default=False)
-    retake_score_id = models.ForeignKey("Toipc.Score", on_delete=models.CASCADE, null=True, blank=True)
+    retake_score = models.ForeignKey("Toipc.Score", on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -94,10 +94,10 @@ class AiPrompt(models.Model):
 # prompt_id: 關聯的 AI 提示id
 # created_at: 建立時間
 class AiInteraction(models.Model):
-    user_id = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     feedback = models.TextField()
     feedback_score = models.IntegerField(default=0)
-    prompt_id = models.ForeignKey("Toipc.AiPrompt",on_delete=models.CASCADE)
+    prompt = models.ForeignKey("Toipc.AiPrompt",on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = "AiInteraction"

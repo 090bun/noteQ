@@ -13,7 +13,7 @@ from django.db import models
 # payment_method: 付款方式choices: 'credit_card' (信用卡), 'bank_transfer' (銀行轉帳
 
 class Order(models.Model):
-    user_id = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=32, choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -34,9 +34,9 @@ class Order(models.Model):
 # end_date: 訂閱結束日期
 # created_at: 建立時間
 class UserSubscription(models.Model):
-    user_id = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    order_id = models.ForeignKey("Ecpay.Order", on_delete=models.CASCADE)
-    plan_id = models.ForeignKey("Ecpay.PaymentPlan", on_delete=models.CASCADE)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    order = models.ForeignKey("Ecpay.Order", on_delete=models.CASCADE)
+    plan = models.ForeignKey("Ecpay.PaymentPlan", on_delete=models.CASCADE)
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -74,7 +74,7 @@ class PaymentPlan(models.Model):
 # raw_post_data: 原始 POST 資料
 # created_at: 建立時間
 class EcpayLogs(models.Model):
-    order_id = models.ForeignKey("Ecpay.Order", on_delete=models.CASCADE)
+    order = models.ForeignKey("Ecpay.Order", on_delete=models.CASCADE)
     status_code = models.IntegerField()
     status_message = models.CharField(max_length=256)
     trade_no = models.CharField(max_length=64)
