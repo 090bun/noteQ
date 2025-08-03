@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 # Create your views here.
 
 class UserViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]  # 允許未認證的使用者
+    # permission_classes = [AllowAny]  # 允許未認證的使用者
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
