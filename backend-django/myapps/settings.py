@@ -14,6 +14,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,9 +44,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",  # 加入 Django REST framework
     "myapps.Authorization",  # 加入使用者models
-    "myapps.Ecpay",  # 加入綠界金流models
-    "myapps.Toipc",  # 加入題目models
 ]
 
 AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
@@ -136,3 +136,20 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+REST_FRAMEWORK = {
+    "DEFAULT_FILTER_BACKENDS":[
+        'django_filters.rest_framework.DjangoFilterBackend'
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES":[
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    ],
+    "DEFAULT_PERMISSION_CLASSES":[
+        'rest_framework.permissions.IsAuthenticated'
+    ]
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),  # 設定存取令牌的有效期為1天
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # 設定刷新令牌的有效期為7天
+}
