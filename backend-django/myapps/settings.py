@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     "myapps.Ecpay",  # 加入綠界金流models
     "myapps.Toipc",  # 加入題目models
     "rest_framework",  # 加入 Django REST framework
-    "myapps.Authorization",  # 加入使用者models
 ]
 
 AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
