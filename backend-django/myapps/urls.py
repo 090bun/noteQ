@@ -79,4 +79,5 @@ def jwt_refresh_view(request):
 urlpatterns += [
     path("api/token/", jwt_token_view, name='token_obtain_pair'),
     path("api/token/refresh/", jwt_refresh_view, name='token_refresh'),
+    path("api/", include("myapps.Topic.urls")),  # 包含 Topic app 的 URLs
 ]

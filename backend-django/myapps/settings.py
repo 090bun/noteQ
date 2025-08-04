@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "myapps.Authorization",  # 加入使用者models
     "myapps.Ecpay",  # 加入綠界金流models
-    "myapps.Toipc",  # 加入題目models
+    "myapps.Topic",  # 加入題目models
     "rest_framework",  # 加入 Django REST framework
     "rest_framework.authtoken",  # 加入 JWT 認證
     "corsheaders",  # 加入 CORS 支援

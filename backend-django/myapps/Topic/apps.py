@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class ToipcConfig(AppConfig):
+class TopicConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "myapps.Toipc"
+    name = "myapps.Topic"
