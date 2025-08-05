@@ -100,6 +100,8 @@ export default function UserPage() {
                                 alt="Background" 
                                 className={styles.profileBg}
                                 fill
+                                priority
+                                sizes="(max-width: 768px) 100vw, 450px"
                                 style={{ objectFit: 'cover' }}
                             />
                             
@@ -183,19 +185,19 @@ export default function UserPage() {
                             <div className={styles.planHeader + ' ' + styles.current}>目前方案</div>
                             <ul className={styles.featureList}>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>排行榜功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>免費生成10題</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>排行榜功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>免費生成10題</span>
                                 </li>
                             </ul>
@@ -205,19 +207,19 @@ export default function UserPage() {
                             <div className={styles.planHeader + ' ' + styles.upgrade}>升級PLUS</div>
                             <ul className={styles.featureList}>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>訂閱即享更多功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>30NTD/月</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>訂閱即享更多功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} />
+                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
                                     <span>30NTD/月</span>
                                 </li>
                             </ul>

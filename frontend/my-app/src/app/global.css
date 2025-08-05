@@ -872,13 +872,15 @@ button{
   
   .custom-alert-btn,
   .custom-confirm-btn {
-    padding: 14px 20px;
-    font-size: 15px;
+    padding: 10px 16px;
+    font-size: 13px;
+    min-width: 80px;
   }
   
   .custom-confirm-buttons {
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    gap: 8px;
+    justify-content: flex-end;
   }
   
   .custom-prompt-content {
@@ -897,13 +899,15 @@ button{
   }
   
   .custom-prompt-buttons {
-    flex-direction: column;
-    gap: 10px;
+    flex-direction: row;
+    gap: 8px;
+    justify-content: flex-end;
   }
   
   .custom-prompt-btn {
-    padding: 14px 20px;
-    font-size: 15px;
+    padding: 10px 16px;
+    font-size: 13px;
+    min-width: 80px;
   }
 }
 
