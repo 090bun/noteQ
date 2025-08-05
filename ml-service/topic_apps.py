@@ -1,26 +1,8 @@
 from flask import Flask, request, jsonify
-import mysql.connector
-from mysql.connector import Error
 
 app = Flask(__name__)
 
-# 資料庫連接配置
-DB_CONFIG = {
-    'host': '34.69.89.228',
-    'database': 'noteQ',
-    'user': 'bun',
-    'password': '145879',
-    'port': 3306
-}
 
-def get_db_connection():
-    """獲取資料庫連接"""
-    try:
-        connection = mysql.connector.connect(**DB_CONFIG)
-        return connection
-    except Error as e:
-        print(f"Error connecting to MySQL: {e}")
-        return None
 
 @app.route('/api/quiz', methods=['POST'])
 def create_quiz():
@@ -58,66 +40,48 @@ def create_quiz():
 
 @app.route('/api/quiz', methods=['GET'])
 def get_quiz():
-    """從資料庫獲取 quiz 和相關的 topic 數據"""
-    connection = get_db_connection()
-    if not connection:
-        return jsonify({"error": "Database connection failed"}), 500
-    
+    """從 Django API 獲取 quiz 和相關的 topic 數據"""
     try:
-        cursor = connection.cursor(dictionary=True)
+        # 調用 Django API 而不是直接連接資料庫
+        import requests
         
-        # 獲取所有 Quiz
-        cursor.execute("SELECT * FROM Quiz WHERE deleted_at IS NULL")
-        quizzes = cursor.fetchall()
+        # 這裡需要一個有效的 JWT token 來調用 Django API
+        # 你可能需要根據實際情況調整認證方式
+        django_response = requests.get('http://localhost:8000/api/create_quiz/')
         
-        quiz_list = []
-        for quiz in quizzes:
-            quiz_data = {
-                'id': quiz['id'],
-                'quiz_topic': quiz['quiz_topic'],
-                'created_at': quiz['created_at'].isoformat() if quiz['created_at'] else None
-            }
-            
-            # 獲取該 Quiz 相關的 Topics
-            cursor.execute("""
-                SELECT * FROM Topic 
-                WHERE quiz_topic_id = %s AND deleted_at IS NULL
-            """, (quiz['id'],))
-            topics = cursor.fetchall()
-            
-            topic_list = []
-            for topic in topics:
-                topic_data = {
-                    'id': topic['id'],
-                    'title': topic['title'],
-                    'subtitle': topic['subtitle'],
-                    'option_a': topic['option_a'],
-                    'option_b': topic['option_b'],
-                    'option_c': topic['option_c'],
-                    'option_d': topic['option_d'],
-                    'User_answer': topic['User_answer'],
-                    'Ai_answer': topic['Ai_answer'],
-                    'created_at': topic['created_at'].isoformat() if topic['created_at'] else None
-                }
-                topic_list.append(topic_data)
-            
-            quiz_data['topics'] = topic_list
-            quiz_list.append(quiz_data)
+        if django_response.status_code != 200:
+            return jsonify({
+                "error": f"Django API error: {django_response.status_code}",
+                "details": django_response.text
+            }), 500
         
-        return jsonify(quiz_list)
+        # 直接返回 Django 的響應
+        return jsonify(django_response.json())
         
-    except Error as e:
-        return jsonify({"error": f"Database query failed: {str(e)}"}), 500
-    
-    finally:
-        if connection and connection.is_connected():
-            cursor.close()
-            connection.close()
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            "error": "Cannot connect to Django service. Make sure it is running on port 8000."
+        }), 503
+    except Exception as e:
+        return jsonify({"error": f"Flask service error: {str(e)}"}), 500
 
 @app.route('/api/get_quiz/', methods=['GET'])
 def get_quiz_alt():
-    # 為了匹配您使用的 URL /api/get_quiz/
-    return get_quiz()
+    # 重定向到 Django API
+    try:
+        import requests
+        django_response = requests.get('http://localhost:8000/api/quiz/')
+        
+        if django_response.status_code != 200:
+            return jsonify({
+                "error": f"Django API error: {django_response.status_code}",
+                "details": django_response.text
+            }), 500
+        
+        return jsonify(django_response.json())
+        
+    except Exception as e:
+        return jsonify({"error": f"Error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

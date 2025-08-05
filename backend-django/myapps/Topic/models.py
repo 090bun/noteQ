@@ -1,6 +1,17 @@
 from django.db import models
+from django.utils import timezone
 
 # Create your models here.
+
+# 軟刪除管理器
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+# 包含軟刪除的所有記錄管理器
+class AllObjectsManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset()
 
 # 使用者加入'最愛'
 # 儲存使用者最愛的題目
@@ -47,8 +58,23 @@ class Topic(models.Model):
     User_answer = models.CharField(max_length=1 , null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # 管理器
+    objects = SoftDeleteManager()  # 預設只顯示未刪除的
+    all_objects = AllObjectsManager()  # 顯示所有記錄（包含已刪除）
+    
     class Meta:
         db_table = "Topic"
+    
+    def soft_delete(self):
+        """軟刪除 Topic"""
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復軟刪除的 Topic"""
+        self.deleted_at = None
+        self.save()
 
 # 考題題目
 #儲存考題名稱
@@ -61,8 +87,39 @@ class Quiz(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # 管理器
+    objects = SoftDeleteManager()  # 預設只顯示未刪除的
+    all_objects = AllObjectsManager()  # 顯示所有記錄（包含已刪除）
+    
     class Meta:
         db_table = "Quiz"
+    
+    def soft_delete(self):
+        """軟刪除 Quiz 及其相關的 Topic"""
+        # 軟刪除自己
+        self.deleted_at = timezone.now()
+        self.save()
+        
+        # 軟刪除所有相關的 Topic
+        topics = Topic.all_objects.filter(quiz_topic=self, deleted_at__isnull=True)
+        for topic in topics:
+            topic.soft_delete()
+    
+    def restore(self):
+        """恢復軟刪除的 Quiz"""
+        self.deleted_at = None
+        self.save()
+    
+    @classmethod
+    def soft_delete_old_quizzes_except_latest(cls, quiz_topic_name, latest_quiz_id):
+        """軟刪除同名的舊 Quiz，保留最新的"""
+        old_quizzes = cls.objects.filter(
+            quiz_topic=quiz_topic_name
+        ).exclude(id=latest_quiz_id)
+        
+        for quiz in old_quizzes:
+            quiz.soft_delete()
 # 測驗分數
 # 儲存使用者測驗分數
 # quiz_topic: 考題ID
