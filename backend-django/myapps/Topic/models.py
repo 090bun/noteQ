@@ -20,15 +20,31 @@ class UserFavorite(models.Model):
 # quiz_topic: 題目名稱
 # title: 題目標題
 # subtitle: 題目副標題
-# answer: 題目答案
+# option_a: 選項 A
+# option_b: 選項 B
+# option_c: 選項 C
+# option_d: 選項 D
+# Ai_answer: AI 答案
+# User_answer: 使用者答案
 # created_at: 建立時間
 # deleted_at: 刪除時間
 class Topic(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
     title = models.CharField(max_length=254)
     subtitle = models.TextField()
-    User_answer = models.CharField(max_length=128)
-    Ai_answer = models.CharField(max_length=128)
+    # 選項 A～D
+    option_a = models.CharField(max_length=128, null=True, blank=True)
+    option_b = models.CharField(max_length=128, null=True, blank=True)
+    option_c = models.CharField(max_length=128, null=True, blank=True)
+    option_d = models.CharField(max_length=128, null=True, blank=True)
+    Ai_answer = models.CharField(max_length=1,
+        choices=[
+            ('A', 'A'),
+            ('B', 'B'),
+            ('C', 'C'),
+            ('D', 'D'),
+        ], null=True, blank=True)  
+    User_answer = models.CharField(max_length=1 , null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     class Meta:
