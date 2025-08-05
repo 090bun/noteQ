@@ -329,10 +329,15 @@ export default function NotePage() {
     // 點擊外部關閉下拉選單
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (!event.target.closest('.custom-select-container')) {
+            // 檢查是否點擊了下拉選單容器或其子元素
+            const dropdownContainer = event.target.closest('[data-dropdown-container]');
+            if (!dropdownContainer) {
                 setIsDropdownOpen(false);
             }
-            if (!event.target.closest('.move-custom-select-container')) {
+            
+            // 檢查是否點擊了搬移下拉選單容器或其子元素
+            const moveDropdownContainer = event.target.closest('[data-move-dropdown-container]');
+            if (!moveDropdownContainer) {
                 setIsMoveDropdownOpen(false);
             }
         };
@@ -372,34 +377,32 @@ export default function NotePage() {
                     >
                         <Image src="/img/Vector-31.png" alt="Add" width={15} height={15} />
                     </span>
-                    {activeActionBar === note.id && (
-                        <div className={styles.actionBar}>
-                            <span 
-                                className={styles.actionItem} 
-                                onClick={() => handleDeleteNote(note)}
-                            >
-                                刪除
-                            </span>
-                            <span 
-                                className={styles.actionItem} 
-                                onClick={() => handleMoveNote(note)}
-                            >
-                                搬移
-                            </span>
-                            <span 
-                                className={styles.actionItem} 
-                                onClick={() => handleViewNote(note)}
-                            >
-                                查看
-                            </span>
-                            <span 
-                                className={styles.actionItem} 
-                                onClick={() => handleEditNote(note)}
-                            >
-                                編輯
-                            </span>
-                        </div>
-                    )}
+                    <div className={`${styles.actionBar} ${activeActionBar === note.id ? styles.active : ''}`}>
+                        <span 
+                            className={styles.actionItem} 
+                            onClick={() => handleDeleteNote(note)}
+                        >
+                            刪除
+                        </span>
+                        <span 
+                            className={styles.actionItem} 
+                            onClick={() => handleMoveNote(note)}
+                        >
+                            搬移
+                        </span>
+                        <span 
+                            className={styles.actionItem} 
+                            onClick={() => handleViewNote(note)}
+                        >
+                            查看
+                        </span>
+                        <span 
+                            className={styles.actionItem} 
+                            onClick={() => handleEditNote(note)}
+                        >
+                            編輯
+                        </span>
+                    </div>
                 </div>
             </article>
         );
@@ -540,7 +543,7 @@ export default function NotePage() {
                             </div>
                             <div className={styles.modalBody}>
                                 <p style={{ marginBottom: '15px' }}>選擇要搬移到的主題：</p>
-                                <div className={styles.moveCustomSelectContainer} style={{ marginBottom: '15px' }}>
+                                <div className={styles.moveCustomSelectContainer} data-move-dropdown-container style={{ marginBottom: '15px' }}>
                                     <div 
                                         className={styles.moveCustomSelect} 
                                         onClick={() => setIsMoveDropdownOpen(!isMoveDropdownOpen)}
@@ -656,7 +659,7 @@ export default function NotePage() {
                     <label className={styles.filterLabel}>選擇主題</label>
                     <div className={styles.filterRow}>
                         <div className={styles.selectWrapper}>
-                            <div className={styles.customSelectContainer}>
+                            <div className={styles.customSelectContainer} data-dropdown-container>
                                 <div 
                                     className={styles.customSelect} 
                                     onClick={toggleDropdown}
@@ -670,43 +673,46 @@ export default function NotePage() {
                                     width={16}
                                     height={16}
                                 />
-                                {isDropdownOpen && (
-                                    <div className={styles.customDropdown}>
-                                        {subjects.length === 0 ? (
+                                <div className={`${styles.customDropdown} ${isDropdownOpen ? styles.active : ''}`}>
+                                    {subjects.length === 0 ? (
+                                        <button 
+                                            className={styles.customDropdownOption}
+                                            onClick={handleAddSubject}
+                                        >
+                                            <span className={styles.optionText}>新增主題</span>
+                                        </button>
+                                    ) : (
+                                        <>
+                                            {subjects.map(subject => (
+                                                <div
+                                                    key={subject}
+                                                    className={`${styles.customDropdownOption} ${subject === currentSubject ? styles.selected : ''}`}
+                                                >
+                                                    <span 
+                                                        className={styles.optionText}
+                                                        onClick={() => selectSubject(subject)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    >
+                                                        {subject}
+                                                    </span>
+                                                    <button 
+                                                        className={styles.deleteOptionBtn}
+                                                        onClick={(e) => handleDeleteSubject(subject, e)}
+                                                    >
+                                                        <Image src="/img/Vector-25.png" alt="刪除" width={16} height={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <div style={{ height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.2)', margin: '8px 16px' }}></div>
                                             <button 
                                                 className={styles.customDropdownOption}
                                                 onClick={handleAddSubject}
                                             >
                                                 <span className={styles.optionText}>新增主題</span>
                                             </button>
-                                        ) : (
-                                            <>
-                                                {subjects.map(subject => (
-                                                    <button
-                                                        key={subject}
-                                                        className={`${styles.customDropdownOption} ${subject === currentSubject ? styles.selected : ''}`}
-                                                        onClick={() => selectSubject(subject)}
-                                                    >
-                                                        <span className={styles.optionText}>{subject}</span>
-                                                        <button 
-                                                            className={styles.deleteOptionBtn}
-                                                            onClick={(e) => handleDeleteSubject(subject, e)}
-                                                        >
-                                                            <Image src="/img/Vector-25.png" alt="刪除" width={16} height={16} />
-                                                        </button>
-                                                    </button>
-                                                ))}
-                                                <div style={{ height: '1px', backgroundColor: 'rgba(255, 255, 255, 0.2)', margin: '8px 16px' }}></div>
-                                                <button 
-                                                    className={styles.customDropdownOption}
-                                                    onClick={handleAddSubject}
-                                                >
-                                                    <span className={styles.optionText}>新增主題</span>
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <button className={styles.addNoteButton} onClick={handleAddNote}>
@@ -716,7 +722,15 @@ export default function NotePage() {
                 </div>
 
                 <div className={styles.notesGrid}>
-                    {getCurrentSubjectNotes().length === 0 ? (
+                    {subjects.length === 0 ? (
+                        <div className={styles.emptyState}>
+                            <div className={styles.emptyIcon}>
+                                <Image src="/img/Vector-32.png" alt="主題" width={64} height={64} />
+                            </div>
+                            <h3>還沒有主題</h3>
+                            <p>點擊「新增主題」開始創建你的學習主題吧！</p>
+                        </div>
+                    ) : getCurrentSubjectNotes().length === 0 ? (
                         <div className={styles.emptyState}>
                             <div className={styles.emptyIcon}>
                                 <Image src="/img/Vector-32.png" alt="筆記" width={64} height={64} />
@@ -738,12 +752,10 @@ export default function NotePage() {
             />
 
             {/* 動作背景 */}
-            {activeActionBar && (
-                <div 
-                    className={styles.actionBackdrop} 
-                    onClick={closeAllActionBars}
-                />
-            )}
+            <div 
+                className={`${styles.actionBackdrop} ${activeActionBar ? styles.active : ''}`} 
+                onClick={closeAllActionBars}
+            />
 
             {/* 模態框 */}
             {renderModal()}
