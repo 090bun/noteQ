@@ -11,7 +11,7 @@ export const showCustomAlert = (message, callback) => {
     
     document.body.appendChild(alertModal);
     
-    // 01存儲回調函數
+    // 存儲回調函數
     window.customAlertCallback = callback;
     
     // 禁用背景滾動
