@@ -20,7 +20,7 @@ export default function Menu({
             <div className={`menu-dropdown ${isOpen ? 'active' : ''}`}>
                 <div className="menu-header"></div>
 
-                <Link href="/" className="menu-item">
+                <Link href="/homegame" className="menu-item">
                     <Image src="/img/Vector-16.png" alt="" className="menu-item-icon" width={24} height={24} />
                     <span>首頁</span>
                 </Link>
