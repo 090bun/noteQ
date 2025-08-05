@@ -1,0 +1,75 @@
+README.md
+# =====================
+# 作業系統
+# =====================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =====================
+# Python / Django / Flask
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+.env
+venv/
+ENV/
+env.bak/
+*.sqlite3
+*.log
+
+# Django 特定
+db.sqlite3
+media/
+staticfiles/
+
+# =====================
+# Node.js / React
+# =====================
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+/build
+/.next
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# =====================
+# Celery
+# =====================
+celerybeat-schedule
+celerybeat.pid
+celerybeat.pid.lock
+
+# =====================
+# Docker
+# =====================
+# Docker 產生的檔案
+docker-compose.override.yml
+*.log
+
+# Docker 容器資料卷或本地映射資料夾 (視專案而定)
+data/
+db_data/
+
+# =====================
+# IDE / 編輯器
+# =====================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# =====================
+# 其他
+# =====================
+*.swp
+*~
