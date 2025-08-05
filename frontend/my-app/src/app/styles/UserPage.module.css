@@ -1,0 +1,401 @@
+.userDashboard {
+    padding-top: 66px;
+    padding-bottom: 100px;
+    min-height: 100vh;
+}
+
+.dashboardContainer {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 60px;
+    max-width: 100%;
+    margin: 80px auto 0 auto;
+    position: relative;
+}
+
+.profileColumn {
+    flex: none;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    width: 450px;
+}
+
+.profileHeader {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 40px;
+    position: relative;
+    padding: 30px;
+}
+
+.profileIcon {
+    position: absolute;
+    top: 28px;
+    left: 75px;
+    width: 75px;
+    height: 60px;
+    z-index: 1;
+}
+
+.profileName {
+    position: absolute;
+    font-size: 40px;
+    color: #fff;
+    letter-spacing: 5px;
+    top: 10px;
+    right: 20px;
+    z-index: 1;
+    margin: 0;
+}
+
+.profileCard {
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    min-height: 600px;
+    width: 100%;
+    max-width: 450px;
+}
+
+.profileBg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    object-fit: cover;
+}
+
+.tabContainer {
+    display: flex;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+    padding: 20px 30px;
+}
+
+.tabButton {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 20px;
+    padding: 10px 24px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tabButton.active {
+    background: var(--color-text-dark);
+}
+
+.tabPanel {
+    display: none;
+    z-index: 1;
+    position: relative;
+    padding: 0 30px 30px 30px;
+}
+
+.tabPanel.active {
+    display: block;
+}
+
+.personalInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.infoItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.infoTitle {
+    font-size: 16px;
+    color: #fff;
+    margin: 0;
+    font-weight: 500;
+}
+
+.infoContent {
+    font-size: 14px;
+    color: #ffffff;
+    margin: 0;
+}
+
+.changePasswordBtn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 20px;
+    padding: 12px 24px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    align-self: flex-start;
+}
+
+.changePasswordBtn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.topicsList {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.topicsList::-webkit-scrollbar {
+    width: 6px;
+}
+
+.topicsList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.topicsList::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.topicsList::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.topicItem {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.topicTitle {
+    font-size: 16px;
+    color: #fff;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.progressContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.progressLabel {
+    font-size: 14px;
+    color: #ffffff;
+}
+
+.progressBar {
+    flex-grow: 1;
+    height: 8px;
+    background-color: #57588c;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: #a3d1ff;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progressPercentage {
+    font-size: 14px;
+    color: #fff;
+    margin-left: 8px;
+}
+
+.subscriptionColumn {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+    margin-top: 0px;
+    min-width: 320px;
+    margin-left: 20px;
+}
+
+.planCard {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 0;
+}
+
+.planHeader {
+    border-radius: 50px;
+    font-size: 18px;
+    color: #fff;
+    text-align: center;
+    display: inline-block;
+    margin-bottom: 24px;
+}
+
+.planHeader.current {
+    background-color: rgba(255,255,255,0.1);
+    padding: 18px 0;
+    width: 100%;
+}
+
+.planHeader.upgrade {
+    background-color: #001830;
+    padding: 18px 0;
+    width: 100%;
+}
+
+.featureList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    margin-top: 0;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.featureItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    color: #fff;
+}
+
+.featureItem img {
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 768px) {
+    .dashboardContainer {
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        max-width: 100%;
+        margin: 40px auto 0 auto;
+        padding: 0 20px;
+        padding-bottom: 60px;
+    }
+
+    .profileColumn {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .profileCard {
+        max-width: 100%;
+        min-height: 500px;
+    }
+
+    .profileIcon {
+        top: 25px;
+        left: 60px;
+        width: 60px;
+        height: 50px;
+    }
+
+    .profileName {
+        top: 10px;
+        right: 10px;
+        font-size: 32px;
+    }
+
+    .tabContainer {
+        padding: 10px 20px;
+    }
+
+    .tabButton {
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+
+    .tabPanel {
+        padding: 0 20px 20px 20px;
+    }
+
+    .infoItem {
+        padding: 12px 0;
+    }
+
+    .infoTitle {
+        font-size: 14px;
+    }
+
+    .infoContent {
+        font-size: 13px;
+    }
+
+    .topicsList {
+        gap: 20px;
+    }
+
+    .topicItem {
+        gap: 15px;
+        padding: 8px 0;
+    }
+
+    .topicTitle {
+        font-size: 14px;
+    }
+
+    .progressLabel {
+        font-size: 13px;
+    }
+
+    .progressPercentage {
+        font-size: 13px;
+    }
+
+    .subscriptionColumn {
+        width: 90%;
+        max-width: 400px;
+        margin-top: 20px;
+        margin-left: 0;
+    }
+
+    .planCard {
+        text-align: center;
+    }
+
+    .planHeader {
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .featureList {
+        gap: 15px;
+    }
+
+    .featureItem {
+        font-size: 16px;
+    }
+
+    .featureItem img {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+
