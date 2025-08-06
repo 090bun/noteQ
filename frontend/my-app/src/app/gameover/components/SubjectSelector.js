@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { getSubjects, addSubject } from '../../utils/noteUtils';
 
 export default function SubjectSelector({ 
   subjects, 
@@ -30,14 +31,15 @@ export default function SubjectSelector({
           return;
         }
         
-        // 添加到主題列表
-        if (!window.subjects) {
-          window.subjects = ["數學", "英文", "程式設計", "物理"];
+        // 使用 noteUtils 的 addSubject 函數來添加新主題
+        try {
+          addSubject(trimmedSubject);
+          onSubjectChange(trimmedSubject);
+          onShowCustomAlert(`主題「${trimmedSubject}」新增成功！`);
+        } catch (error) {
+          console.error('添加主題失敗:', error);
+          onShowCustomAlert('添加主題失敗，請重試！');
         }
-        window.subjects.push(trimmedSubject);
-        onSubjectChange(trimmedSubject);
-        
-        onShowCustomAlert(`主題「${trimmedSubject}」新增成功！`);
       }
     });
     setIsDropdownOpen(false);

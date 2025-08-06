@@ -127,6 +127,7 @@ ${questionContent}`;
             currentNoteId={currentNoteId}
             onNoteChange={setCurrentNoteId}
             styles={styles}
+            currentSubject={currentSubject}
           />
           
           {(currentNoteId === 'add_note' || currentNoteId === null) && (

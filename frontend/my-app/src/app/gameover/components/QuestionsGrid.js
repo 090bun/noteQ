@@ -4,7 +4,7 @@
 import { useEffect, useRef } from 'react';
 import QuestionCard from './QuestionCard';
 
-export default function QuestionsGrid({ questionData, onOpenFavoriteModal, onOpenAnalysis, styles }) {
+export default function QuestionsGrid({ questionData, onOpenFavoriteModal, onOpenAnalysis, styles, isPlusSubscribed }) {
   const questionsGridRef = useRef(null);
 
   useEffect(() => {
@@ -41,6 +41,7 @@ export default function QuestionsGrid({ questionData, onOpenFavoriteModal, onOpe
               onOpenFavoriteModal={() => onOpenFavoriteModal(number)}
               onOpenAnalysis={onOpenAnalysis}
               styles={styles}
+              isPlusSubscribed={isPlusSubscribed}
             />
           ))}
         </div>

@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 
-export default function QuestionCard({ number, question, onOpenFavoriteModal, onOpenAnalysis, styles }) {
+export default function QuestionCard({ number, question, onOpenFavoriteModal, onOpenAnalysis, styles, isPlusSubscribed }) {
   return (
     <article className={styles['question-card']} data-question={number}>
       <header className={styles['card-header']}>
@@ -18,16 +18,24 @@ export default function QuestionCard({ number, question, onOpenFavoriteModal, on
         <p className="answer-text">您的答案: {question.userAnswer}</p>
         <p className="answer-text">正確答案: {question.correctAnswer}</p>
       </div>
-      <footer className={styles['card-actions']}>
-        <button className={`${styles['action-btn']} ${styles['btn-favorite']}`} onClick={onOpenFavoriteModal}>
-          <Image src="/img/Vector-11.png" alt="" width={15} height={15} />
-          <span>收藏</span>
-        </button>
-        <button className={`${styles['action-btn']} ${styles['btn-analysis']}`} onClick={onOpenAnalysis}>
-          <Image src="/img/Vector-10.png" alt="" width={15} height={15} />
-          <span>解析</span>
-        </button>
-      </footer>
+      {isPlusSubscribed ? (
+        <footer className={styles['card-actions']}>
+          <button className={`${styles['action-btn']} ${styles['btn-favorite']}`} onClick={onOpenFavoriteModal}>
+            <Image src="/img/Vector-11.png" alt="" width={15} height={15} />
+            <span>收藏</span>
+          </button>
+          <button className={`${styles['action-btn']} ${styles['btn-analysis']}`} onClick={onOpenAnalysis}>
+            <Image src="/img/Vector-10.png" alt="" width={15} height={15} />
+            <span>解析</span>
+          </button>
+        </footer>
+      ) : (
+        <footer className={styles['card-actions']}>
+          <div className={styles['upgrade-notice']}>
+            <span>升級Plus方案解鎖收藏和解析功能</span>
+          </div>
+        </footer>
+      )}
     </article>
   );
 } 

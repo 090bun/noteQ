@@ -124,6 +124,7 @@ ${content}`;
             onNoteChange={setCurrentNoteId}
             styles={styles}
             type="analysis-favorite"
+            currentSubject={currentSubject}
           />
           
           {(currentNoteId === 'add_note' || currentNoteId === null) && (

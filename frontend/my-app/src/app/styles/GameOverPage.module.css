@@ -107,6 +107,26 @@
     justify-content: flex-start;
   }
 
+  .upgrade-notice {
+    margin-top: auto;
+    padding-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .upgrade-notice span {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    text-align: center;
+    font-style: italic;
+  }
+
   .action-btn {
     border: 2px solid var(--color-button-border);
     border-radius: 16px;

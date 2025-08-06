@@ -2,8 +2,29 @@
 // 遊戲結束頁面工具 Hook - 提供題目資料管理、筆記操作、Markdown 解析等核心功能
 
 import { useState, useEffect } from 'react';
+import { getNotes, getSubjects, addNote } from '../../utils/noteUtils';
 
 export function useGameoverUtils() {
+  // 檢查用戶訂閱狀態
+  const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
+
+  // 從 note 頁面獲取真實數據
+  const [subjects, setSubjects] = useState([]);
+  const [notes, setNotes] = useState([]);
+
+  // 初始化時檢查訂閱狀態和獲取數據
+  useEffect(() => {
+    // 從localStorage獲取訂閱狀態
+    const subscriptionStatus = localStorage.getItem('isPlusSubscribed');
+    setIsPlusSubscribed(subscriptionStatus === 'true');
+
+    // 從 noteUtils 獲取真實的主題和筆記數據
+    const subjectsData = getSubjects();
+    const notesData = getNotes();
+    setSubjects(subjectsData);
+    setNotes(notesData);
+  }, []);
+
   // 題目數據（模擬從遊戲結果中獲取）
   const [questionData] = useState({
     1: {
@@ -38,8 +59,17 @@ export function useGameoverUtils() {
     }
   });
 
-  const [subjects, setSubjects] = useState(["數學", "英文", "程式設計", "物理"]);
-  const [notes, setNotes] = useState([]);
+  // 檢查是否為Plus用戶
+  const checkPlusSubscription = () => {
+    return isPlusSubscribed;
+  };
+
+  // 顯示升級提示
+  const showUpgradeAlert = () => {
+    if (window.showCustomAlert) {
+      window.showCustomAlert('此功能僅限Plus用戶使用，請升級到Plus方案！');
+    }
+  };
 
   // 簡單的Markdown解析函數
   const parseMarkdown = (text) => {
@@ -74,28 +104,31 @@ export function useGameoverUtils() {
     }
   };
 
-  // 添加筆記到系統
+  // 添加筆記到系統（僅Plus用戶可用）
   const addNoteToSystem = (note) => {
+    if (!checkPlusSubscription()) {
+      showUpgradeAlert();
+      return;
+    }
+
     try {
-      // 檢查是否已經存在相同的筆記（基於內容和主題）
-      const existingNote = notes.find(n => 
-        n.content.includes(note.content.split('\n')[0]) && 
-        n.subject === note.subject
-      );
+      // 使用 noteUtils 的 addNote 函數
+      const result = addNote(note);
       
-      if (existingNote) {
+      if (result.success) {
+        // 重新獲取最新的筆記和主題數據
+        const updatedNotes = getNotes();
+        const updatedSubjects = getSubjects();
+        setNotes(updatedNotes);
+        setSubjects(updatedSubjects);
+        
         if (window.showCustomAlert) {
-          window.showCustomAlert('此內容已經收藏過了！');
+          window.showCustomAlert(result.message);
         }
-        return;
-      }
-      
-      // 添加新筆記
-      setNotes(prevNotes => [...prevNotes, note]);
-      
-      // 同步主題數據
-      if (!subjects.includes(note.subject)) {
-        setSubjects(prevSubjects => [...prevSubjects, note.subject]);
+      } else {
+        if (window.showCustomAlert) {
+          window.showCustomAlert(result.message);
+        }
       }
       
     } catch (error) {
@@ -124,6 +157,9 @@ export function useGameoverUtils() {
     questionData,
     subjects,
     notes,
+    isPlusSubscribed,
+    checkPlusSubscription,
+    showUpgradeAlert,
     addNoteToSystem,
     showCustomAlert,
     showCustomPrompt,

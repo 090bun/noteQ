@@ -3,24 +3,43 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { getNotesBySubject } from '../../utils/noteUtils';
 
-export default function NoteSelector({ notes, currentNoteId, onNoteChange, styles, type = 'favorite' }) {
+export default function NoteSelector({ 
+  notes, 
+  currentNoteId, 
+  onNoteChange, 
+  styles, 
+  type = 'favorite',
+  currentSubject = '數學' // 添加當前主題參數
+}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedText, setSelectedText] = useState('新增筆記');
+  const [filteredNotes, setFilteredNotes] = useState([]);
+
+  // 根據當前主題過濾筆記
+  useEffect(() => {
+    if (currentSubject) {
+      const subjectNotes = getNotesBySubject(currentSubject);
+      setFilteredNotes(subjectNotes);
+    } else {
+      setFilteredNotes([]);
+    }
+  }, [currentSubject]);
 
   useEffect(() => {
-    if (notes.length > 0 && currentNoteId === null) {
-      onNoteChange(notes[0].id);
-    } else if (notes.length === 0) {
+    if (filteredNotes.length > 0 && currentNoteId === null) {
+      onNoteChange(filteredNotes[0].id);
+    } else if (filteredNotes.length === 0) {
       onNoteChange('add_note');
     }
-  }, [notes, currentNoteId, onNoteChange]);
+  }, [filteredNotes, currentNoteId, onNoteChange]);
 
   useEffect(() => {
     if (currentNoteId === 'add_note') {
       setSelectedText('新增筆記');
     } else {
-      const selectedNote = notes.find(note => note.id === currentNoteId);
+      const selectedNote = filteredNotes.find(note => note.id === currentNoteId);
       if (selectedNote) {
         const title = selectedNote.title.length > 20 
           ? selectedNote.title.substring(0, 20) + '...' 
@@ -30,7 +49,7 @@ export default function NoteSelector({ notes, currentNoteId, onNoteChange, style
         setSelectedText('新增筆記');
       }
     }
-  }, [currentNoteId, notes]);
+  }, [currentNoteId, filteredNotes]);
 
   const handleNoteSelect = (noteId) => {
     onNoteChange(noteId);
@@ -67,8 +86,8 @@ export default function NoteSelector({ notes, currentNoteId, onNoteChange, style
           </div>
           
           <div className={`${getStyleClass('note-dropdown')} ${isDropdownOpen ? styles.active : ''}`}>
-            {notes.length > 0 ? (
-              notes.map(note => (
+            {filteredNotes.length > 0 ? (
+              filteredNotes.map(note => (
                 <button
                   key={note.id}
                   className={`${getStyleClass('note-dropdown-option')} ${note.id === currentNoteId ? styles.selected : ''}`}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Header from '../components/Header';
 import Menu from '../components/Menu';
+import PlusPlanModal from '../components/PlusPlanModal';
 import styles from '../styles/UserPage.module.css';
 import { getUserData, getUserTopics, changePassword } from '../utils/userUtils';
 import { safeAlert, safeConfirm, showPasswordChangeDialog } from '../utils/dialogs';
@@ -13,6 +14,10 @@ export default function UserPage() {
     const [activeTab, setActiveTab] = useState('personal');
     const [userData, setUserData] = useState({});
     const [topics, setTopics] = useState([]);
+    
+    // 訂閱狀態管理
+    const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
+    const [showPlusModal, setShowPlusModal] = useState(false);
 
     // 切換選單
     const toggleMenu = () => {
@@ -55,14 +60,38 @@ export default function UserPage() {
         });
     };
 
+    // 升級到Plus方案
+    const handleUpgradeToPlus = () => {
+        setIsPlusSubscribed(true);
+        localStorage.setItem('isPlusSubscribed', 'true');
+        safeAlert('恭喜！您已成功升級到Plus方案');
+    };
+
+    // 取消Plus訂閱
+    const handleCancelPlusSubscription = () => {
+        safeConfirm('確定要取消Plus訂閱嗎？', () => {
+            setIsPlusSubscribed(false);
+            localStorage.setItem('isPlusSubscribed', 'false');
+            setShowPlusModal(false);
+            safeAlert('已取消Plus訂閱，回到免費方案');
+        });
+    };
+
+    // 查看目前方案詳情
+    const handleViewCurrentPlan = () => {
+        setShowPlusModal(true);
+    };
+
     // 初始化數據
     useEffect(() => {
         // 確保在客戶端渲染時才執行
         if (typeof window !== 'undefined') {
             const user = getUserData();
             const userTopics = getUserTopics();
+            const subscriptionStatus = localStorage.getItem('isPlusSubscribed');
             setUserData(user);
             setTopics(userTopics);
+            setIsPlusSubscribed(subscriptionStatus === 'true');
         }
     }, []);
 
@@ -144,8 +173,8 @@ export default function UserPage() {
                                         <p className={styles.infoContent}>{userData.registerDate}</p>
                                     </div>
                                     <div className={styles.infoItem}>
-                                        <h3 className={styles.infoTitle}>學習時數</h3>
-                                        <p className={styles.infoContent}>{userData.studyHours}</p>
+                                        <h3 className={styles.infoTitle}>目前方案</h3>
+                                        <p className={styles.infoContent}>{isPlusSubscribed ? 'Plus方案' : '免費方案'}</p>
                                     </div>
                                     <button 
                                         className={styles.changePasswordBtn}
@@ -182,51 +211,77 @@ export default function UserPage() {
                     {/* 訂閱方案欄 */}
                     <div className={styles.subscriptionColumn}>
                         <article className={styles.planCard}>
-                            <div className={styles.planHeader + ' ' + styles.current}>目前方案</div>
+                            <div className={`${styles.planHeader} ${isPlusSubscribed ? styles.free : styles.current}`}>
+                                {isPlusSubscribed ? '免費方案' : '目前方案'}
+                            </div>
                             <ul className={styles.featureList}>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>排行榜功能</span>
+                                    <span>熟悉度功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>免費生成10題</span>
+                                    <span>免費生成三次主題</span>
                                 </li>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>排行榜功能</span>
+                                    <span>單次生成十題題目</span>
                                 </li>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>免費生成10題</span>
+                                    <span>訂閱即享更多功能</span>
                                 </li>
                             </ul>
                         </article>
 
                         <article className={styles.planCard}>
-                            <div className={styles.planHeader + ' ' + styles.upgrade}>升級PLUS</div>
+                            <button 
+                                className={`${styles.planHeader} ${isPlusSubscribed ? styles.current : styles.upgrade}`}
+                                onClick={!isPlusSubscribed ? handleUpgradeToPlus : undefined}
+                                disabled={isPlusSubscribed}
+                            >
+                                {isPlusSubscribed ? '目前方案' : '升級PLUS'}
+                            </button>
                             <ul className={styles.featureList}>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>訂閱即享更多功能</span>
+                                    <span>筆記功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>30NTD/月</span>
+                                    <span>收藏與AI解析功能</span>
                                 </li>
                                 <li className={styles.featureItem}>
                                     <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>訂閱即享更多功能</span>
+                                    <span>主題不限/單次題目生成三十題</span>
                                 </li>
                                 <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>30NTD/月</span>
+                                    {isPlusSubscribed ? (
+                                        <button 
+                                            className={styles.viewCurrentPlanBtn}
+                                            onClick={handleViewCurrentPlan}
+                                        >
+                                            查看目前方案
+                                        </button>
+                                    ) : (
+                                        <div className={styles.priceDisplay}>
+                                            <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
+                                            <span>99NTD/月</span>
+                                        </div>
+                                    )}
                                 </li>
                             </ul>
                         </article>
                     </div>
                 </div>
             </section>
+
+            {/* Plus方案詳情模态框 */}
+            <PlusPlanModal 
+                isOpen={showPlusModal}
+                onClose={() => setShowPlusModal(false)}
+                onCancelSubscription={handleCancelPlusSubscription}
+            />
 
             {/* 選單 */}
             <Menu 
