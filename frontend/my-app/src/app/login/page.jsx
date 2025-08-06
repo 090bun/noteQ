@@ -46,7 +46,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       setMessage("登入成功");
 
-      // window.location.href = '/dashboard'; // 可選跳轉
+      window.location.href = '/homegame'; // 登入後跳轉
     } catch (err) {
       setMessage("登入失敗，請確認帳號密碼");
     }
