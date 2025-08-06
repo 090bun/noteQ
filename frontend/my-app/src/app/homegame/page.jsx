@@ -6,6 +6,7 @@ import Link from 'next/link';
 import styles from '../styles/HomeGamePage.module.css';
 import { safeAlert, safeConfirm } from '../utils/dialogs';
 import Header from '../components/Header';
+import { safeLogout } from '../utils/auth';
 import Menu from '../components/Menu';
 
 export default function HomeGamePage() {
@@ -42,27 +43,6 @@ export default function HomeGamePage() {
     const closeMenu = () => {
         setIsMenuOpen(false);
         document.body.style.overflow = 'auto';
-    };
-
-    // 登出功能
-    const logout = () => {
-        // 使用安全的確認對話框
-        safeConfirm('確定要登出嗎？', 
-            () => {
-                // 清除登入狀態
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('userData');
-                
-                // 關閉選單
-                closeMenu();
-                
-                // 跳轉到首頁
-                window.location.href = '/';
-            },
-            () => {
-                // 取消登出，不做任何操作
-            }
-        );
     };
 
     // 開始挑戰
@@ -202,7 +182,7 @@ export default function HomeGamePage() {
             <Menu 
                 isOpen={isMenuOpen}
                 onClose={closeMenu}
-                onLogout={logout}
+                onLogout={safeLogout}
             />
         </>
     );
