@@ -1,8 +1,8 @@
 import requests
 from django.shortcuts import render
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer, ScoreSerializer, NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer
-from .models import UserFavorite, Topic, Score, Note, Chat, AiPrompt,AiInteraction , Quiz
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer
+from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz
 from myapps.Authorization.serializers import UserSerializer
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
@@ -221,4 +221,27 @@ class QuizTopicsViewSet(APIView):
             return Response({
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
-        
+
+# 前端回傳要收藏的題目 加入到 userfavorites 和 note
+class AddFavoriteViewSet(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        try:
+            # 傳給 Flask 做處理
+            flask_response = requests.post(
+                'http://localhost:5000/api/add_favorite',
+                json=request.data  # 傳遞請求資料
+            )
+            # 檢查 Flask 響應狀態
+            if flask_response.status_code != 201:
+                return Response({
+                    'error': f'Flask service error: {flask_response.status_code}',
+                    'details': flask_response.text
+                }, status=500)
+            result = flask_response.json()
+            # 返回結果
+            return Response(result, status=201)
+        except Exception as e:
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=500)

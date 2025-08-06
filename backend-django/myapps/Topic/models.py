@@ -58,7 +58,7 @@ class Topic(models.Model):
     User_answer = models.CharField(max_length=1 , null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    
+    difficultyLevels = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
     # 管理器
     objects = SoftDeleteManager()  # 預設只顯示未刪除的
     all_objects = AllObjectsManager()  # 顯示所有記錄（包含已刪除）
@@ -120,21 +120,48 @@ class Quiz(models.Model):
         
         for quiz in old_quizzes:
             quiz.soft_delete()
-# 測驗分數
-# 儲存使用者測驗分數
-# quiz_topic: 考題ID
+
+# 使用者熟悉度
+# 儲存使用者對考題的熟悉度
 # user: 使用者ID
-# score: 測驗分數
+# quiz_topic: 考題ID
+# note: 關聯的筆記ID
+# difficultyLevels: 難度分類ID
+# total_questions: 總題數
+# correct_answers: 正確答案數量
 # familiarity: 熟悉度
-# created_at: 建立時間
-class Score(models.Model):
-    quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
+# updated_at: 更新時間
+class UserFamiliarity(models.Model):
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
+    note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE , null=True, blank=True)
+    difficultyLevels = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
+    total_questions = models.IntegerField(default=0)
+    correct_answers = models.IntegerField(default=0)
     familiarity = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now_add=True)
     class Meta:
-        db_table = "Score"
+        db_table = "UserFamiliarity"
+
+
+# 難度分類
+# 儲存使用者熟悉度
+# level_name: 難度名稱
+    # EASY = 'E', 'Easy'
+    # MEDIUM = 'M', 'Medium'
+    # HARD = 'H', 'Hard'
+    # EXPERT = 'X', 'Expert'
+# familiarity_cap: 熟悉度上限
+# weight_coefficients: 不同題型的權重係數
+# created_at: 建立時間
+
+class DifficultyLevels(models.Model):
+    level_name = models.CharField(max_length=10, unique=True)
+    familiarity_cap = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    weight_coefficients = models.JSONField(default=dict)  # 儲存不同題型的權重係數
+    created_at = models.DateTimeField(auto_now_add=True)
+
+        
 # note 資料庫
 # 儲存使用者筆記
 # quiz_topic: 關聯的考題ID
@@ -148,8 +175,7 @@ class Score(models.Model):
 class Note(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    retake = models.BooleanField(default=False)
-    retake_score = models.ForeignKey("Topic.Score", on_delete=models.CASCADE, null=True, blank=True)
+    is_retake = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)

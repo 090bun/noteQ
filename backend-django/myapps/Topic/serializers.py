@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import UserFavorite , Topic , Score, Note , Chat , AiPrompt , AiInteraction , Quiz
+from .models import UserFavorite , Topic , Note , Chat , AiPrompt , AiInteraction , Quiz , UserFamiliarity , DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
 
 class UserFavoriteSerializer(serializers.ModelSerializer):
@@ -24,13 +24,20 @@ class QuizSerializer(serializers.ModelSerializer):
             'deleted_at': {'required': False, 'allow_null': True}
         }
 
-class ScoreSerializer(serializers.ModelSerializer):
+class UserFamiliaritySerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     topic = TopicSerializer(read_only=True)
     class Meta:
-        model = Score
-        fields = ['id', 'topic', 'user', 'score', 'familiarity', 'created_at']
+        model = UserFamiliarity
+        fields = ['id', 'user', 'topic', 'familiarity_score']
 
+class DifficultyLevelsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DifficultyLevels
+        fields = ['id', 'level', 'description']
+        extra_kwargs = {
+            'description': {'required': False, 'allow_null': True}
+        }
 class ChatSerializer(serializers.ModelSerializer):
     class Meta:
         model = Chat

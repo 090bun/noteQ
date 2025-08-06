@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet
+from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet
 from .soft_delete_views import SoftDeleteManagementViewSet
 
 urlpatterns = [
@@ -15,4 +15,9 @@ urlpatterns = [
     # 軟刪除管理
     path('quiz/<int:quiz_id>/soft-delete/', SoftDeleteManagementViewSet.as_view(), name='soft_delete_quiz'),
     path('deleted-quizzes/', SoftDeleteManagementViewSet.as_view(), name='deleted_quizzes'),
+
+    # 加入收藏
+    path('add-favorite/', AddFavoriteViewSet.as_view(), name='add_favorite')
+
+
 ]

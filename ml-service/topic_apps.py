@@ -83,5 +83,15 @@ def get_quiz_alt():
     except Exception as e:
         return jsonify({"error": f"Error: {str(e)}"}), 500
 
+# 加入收藏&筆記 暫時放這
+# @app.route('api/add_favorite/', methods=['POST'])
+# def add_favorite():
+#     try:
+
+
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
