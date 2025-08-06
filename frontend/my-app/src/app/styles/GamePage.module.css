@@ -21,7 +21,7 @@
     color: var(--text-color);
     font-size: 24px;
     font-weight: 500;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
     text-align: center;
     margin: 0;
 }
@@ -50,7 +50,13 @@
     font-weight: 500;
     margin: 0;
     max-width: 900px;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+}
+
+.gameSection {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
 }
 
 .answerGrid {
@@ -60,6 +66,7 @@
     width: 100%;
     max-width: 900px;
     margin-top: 20px;
+    position: relative;
 }
 
 .answerOption {
@@ -104,12 +111,85 @@
 }
 
 .selected {
-    background:#001830;
     border-color: var(--text-color);
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
-/* 手機版樣式 */
+.backButton {
+    position: absolute;
+    top: -35px;
+    left: -15px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 8px 0;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.backButton:hover {
+    transform: translateY(-2px);
+    opacity: 0.8;
+}
+
+.backText {
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.completeButtonContainer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 30px;
+    width: 100%;
+}
+
+.completeButton {
+    padding: 25px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 14px;
+    color: var(--text-color);
+    font-size: 18px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 1px;
+    min-width: 200px;
+}
+
+.completeButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.completeButton:hover::before {
+    left: 100%;
+}
+
+.completeButton:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.completeButton:active {
+    transform: translateY(0) scale(1);
+}
+
+
 @media (max-width: 768px) {
     .gameMain {
         padding: 5vh 5vw;
@@ -131,10 +211,40 @@
     .answerGrid {
         gap: 15px;
         grid-template-columns: 1fr;
+        margin-bottom: 40px; 
     }
 
     .answerOption {
         padding: 18px;
         font-size: 16px;
+    }
+
+    .backButton {
+        top: auto;
+        bottom: -25px; 
+        left: 0;
+        padding: 8px 0;
+        font-size: 12px;
+        gap: 8px;
+    }
+
+    .backText {
+        font-size: 12px;
+    }
+
+    .completeButtonContainer {
+        position: absolute;
+        bottom: -80px;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0;
+        width: auto;
+        justify-content: center;
+    }
+
+    .completeButton {
+        padding: 18px;
+        font-size: 16px;
+        min-width: 150px;
     }
 }

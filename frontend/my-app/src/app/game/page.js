@@ -12,8 +12,10 @@ import Menu from '../components/Menu';
 const Game = () => {
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [showCompleteButton, setShowCompleteButton] = useState(false);
   const totalQuestions = 5;
   const progressPercent = (currentQuestion / totalQuestions) * 100;
+  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
      // 切換選單
     const toggleMenu = () => {
@@ -58,9 +60,25 @@ const Game = () => {
     'D 20個'
   ];
 
-  const handleOptionClick = (index) => {
-    setSelectedOption(index);
-  };
+const handleOptionClick = (index) => {
+  setSelectedOption(index);
+  
+  if (currentQuestion === totalQuestions) {
+    setShowCompleteButton(true);
+    return;
+  }
+
+  setTimeout(() => {
+    setCurrentQuestion(prev => prev + 1);
+    setSelectedOption(null); // 清除前一題的選擇樣式
+  }, 300); // 0.3 秒延遲，讓選擇樣式有時間顯示
+};
+
+// 完成挑戰處理函數
+const handleCompleteChallenge = () => {
+  window.location.href = '/gameover';
+};
+
 
   return (
   <>
@@ -90,17 +108,51 @@ const Game = () => {
           判斷101-200之間有多少個質數,並輸出所有質數
         </p>
 
-        <div className={styles.answerGrid}>
-          {options.map((option, index) => (
+        <div className={styles.gameSection}>
+          {/* 回上一題按鈕 */}
+          {currentQuestion > 1 && (
             <div
-              key={index}
-              className={`${styles.answerOption} ${selectedOption === index ? styles.selected : ''}`}
-              onClick={() => handleOptionClick(index)}
+              className={styles.backButton}
+              onClick={() => {
+                setCurrentQuestion((prev) => prev - 1);
+                setSelectedOption(null);
+              }}
             >
-              {option}
+              <Image
+                src="/img/Vector-9.png"
+                alt="Back"
+                width={14}
+                height={14}
+              />
+              <span className={styles.backText}>回上一題</span>
             </div>
-          ))}
+          )}
+
+          <div className={styles.answerGrid}>
+            {options.map((option, index) => (
+              <div
+                key={index}
+                className={`${styles.answerOption} ${selectedOption === index ? styles.selected : ''}`}
+                onClick={() => handleOptionClick(index)}
+              >
+                {option}
+              </div>
+            ))}
+          </div>
+
+          {/* 完成挑戰按鈕 - 只在最後一題且選擇完後顯示 */}
+          {currentQuestion === totalQuestions && showCompleteButton && (
+            <div className={styles.completeButtonContainer}>
+              <button 
+                className={styles.completeButton}
+                onClick={handleCompleteChallenge}
+              >
+                完成挑戰
+              </button>
+            </div>
+          )}
         </div>
+
       </div>
     </main>
   </>
