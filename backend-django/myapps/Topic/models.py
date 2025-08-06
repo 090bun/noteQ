@@ -120,18 +120,22 @@ class Quiz(models.Model):
         
         for quiz in old_quizzes:
             quiz.soft_delete()
-# 測驗分數
-# 儲存使用者測驗分數
-# quiz_topic: 考題ID
+
+# 使用者熟悉度
+# 儲存使用者對考題的熟悉度
 # user: 使用者ID
-# score: 測驗分數
+# quiz_topic: 考題ID
+# note: 關聯的筆記ID
+# difficultyLevels: 難度分類ID
+# total_questions: 總題數
+# correct_answers: 正確答案數量
 # familiarity: 熟悉度
-# created_at: 建立時間
+# updated_at: 更新時間
 class UserFamiliarity(models.Model):
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
     note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE , null=True, blank=True)
-    DifficultyLevels = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
+    difficultyLevels = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
     total_questions = models.IntegerField(default=0)
     correct_answers = models.IntegerField(default=0)
     familiarity = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -171,8 +175,7 @@ class DifficultyLevels(models.Model):
 class Note(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    retake = models.BooleanField(default=False)
-    retake_score = models.ForeignKey("Topic.Score", on_delete=models.CASCADE, null=True, blank=True)
+    is_retake = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)

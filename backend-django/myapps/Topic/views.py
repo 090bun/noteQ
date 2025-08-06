@@ -1,8 +1,8 @@
 import requests
 from django.shortcuts import render
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer, ScoreSerializer, NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer
-from .models import UserFavorite, Topic, Score, Note, Chat, AiPrompt,AiInteraction , Quiz
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer
+from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz
 from myapps.Authorization.serializers import UserSerializer
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView

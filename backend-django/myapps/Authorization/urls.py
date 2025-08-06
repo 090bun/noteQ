@@ -39,22 +39,11 @@ def custom_jwt_login(request):
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
             
-            # 存儲到資料庫
-            try:
-                ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
-                import datetime
-                
-                AuthToken.objects.create(
-                    user=user,
-                    jwt_token=str(access_token),
-                    refresh_token=str(refresh),
-                    ip_address=ip_address,
-                    expired_at=datetime.datetime.now() + datetime.timedelta(days=1)
-                )
-            except Exception as db_error:
-                print(f"資料庫儲存錯誤: {db_error}")
+            # 移除資料庫寫入操作以提升性能
+            # 如果需要追蹤登入記錄，可以考慮使用異步任務
             
             return JsonResponse({
+                'token': str(access_token),  # 為了前端兼容性，保持 'token' 字段
                 'access': str(access_token),
                 'refresh': str(refresh),
                 'user_id': user.id,

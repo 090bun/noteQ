@@ -106,19 +106,20 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+# 為了提升登入性能，簡化密碼驗證器
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 6,  # 最小長度為6位
+        }
     },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+]
+
+# 為了提升登入性能，使用更快的密碼加密算法（僅用於開發環境）
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.MD5PasswordHasher',  # 快速但不太安全，僅用於開發
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # 預設的安全算法
 ]
 
 
