@@ -20,6 +20,7 @@ import {
     parseMarkdown
 } from '../utils/noteUtils';
 import { safeAlert, safeConfirm } from '../utils/dialogs';
+import { safeLogout } from '../utils/auth';
 
 export default function NotePage() {
     const [notes, setNotes] = useState([]);
@@ -79,19 +80,6 @@ export default function NotePage() {
     const closeMenu = () => {
         setIsMenuOpen(false);
         document.body.style.overflow = 'auto';
-    };
-
-    // 登出功能
-    const logout = () => {
-        safeConfirm('確定要登出嗎？', 
-            () => {
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('userData');
-                closeMenu();
-                window.location.href = '/';
-            },
-            () => {}
-        );
     };
 
     // 獲取當前主題的筆記
@@ -786,7 +774,7 @@ export default function NotePage() {
             <Menu 
                 isOpen={isMenuOpen}
                 onClose={closeMenu}
-                onLogout={logout}
+                onLogout={safeLogout}
             />
 
             {/* 動作背景 */}

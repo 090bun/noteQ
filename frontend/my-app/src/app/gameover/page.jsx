@@ -13,6 +13,7 @@ import CustomAlertModal from './components/CustomAlertModal';
 import CustomPromptModal from './components/CustomPromptModal';
 import { useGameoverUtils } from './hooks/useGameoverUtils';
 import styles from '../styles/GameOverPage.module.css';
+import { safeLogout } from '../utils/auth';
 
 export default function GameOverPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -47,11 +48,6 @@ export default function GameOverPage() {
 
   const handleCloseMenu = () => {
     setIsMenuOpen(false);
-  };
-
-  const handleLogout = () => {
-    // 登出邏輯
-    console.log('登出');
   };
 
   const handleOpenAnalysis = () => {
@@ -183,7 +179,7 @@ export default function GameOverPage() {
       <Menu 
         isOpen={isMenuOpen}
         onClose={handleCloseMenu}
-        onLogout={handleLogout}
+        onLogout={safeLogout}
       />
 
       <AnalysisOverlay 
