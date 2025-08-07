@@ -83,6 +83,7 @@ class Topic(models.Model):
 # deleted_at: 刪除時間
 class Quiz(models.Model):
     quiz_topic = models.CharField(max_length=254)
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)

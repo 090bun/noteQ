@@ -35,18 +35,40 @@ class QuizViewSet(APIView):
             
             result = flask_response.json()
             
+            # 從請求中獲取 user_id（可能來自 Flask 的回應或原始請求）
+            user_id = request.data.get('user_id') or result.get('user')
+            user_instance = None
+            
+            # 如果有 user_id，取得 User 實例
+            if user_id:
+                from myapps.Authorization.models import User
+                try:
+                    user_instance = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    return Response({
+                        'error': f'User with ID {user_id} not found'
+                    }, status=400)
+            
             # 返回結果 寫回資料庫
             # 檢查是否已存在相同的 Quiz，如果存在就使用現有的
             quiz, created = Quiz.objects.get_or_create(
                 quiz_topic=result.get('quiz_topic'),
-                defaults={'quiz_topic': result.get('quiz_topic')}
+                defaults={
+                    'quiz_topic': result.get('quiz_topic'),
+                    'user': user_instance  # 添加 user 欄位
+                }
             )
+            
+            # 如果 Quiz 已存在但沒有 user，更新它
+            if not created and not quiz.user and user_instance:
+                quiz.user = user_instance
+                quiz.save()
             
             # 如果是新創建的 Quiz，記錄日誌
             if created:
-                print(f"Created new Quiz: {quiz.quiz_topic}")
+                print(f"Created new Quiz: {quiz.quiz_topic} for user: {user_instance}")
             else:
-                print(f"Using existing Quiz: {quiz.quiz_topic}")
+                print(f"Using existing Quiz: {quiz.quiz_topic} for user: {user_instance}")
             
             # 然後創建 Topic，並關聯到 Quiz
             topics = []
@@ -73,6 +95,9 @@ class QuizViewSet(APIView):
             
             print(f"Kept latest topic: {topic.title}")
 
+            # 重新從資料庫獲取 quiz 實例以確保最新資料
+            quiz.refresh_from_db()
+            
             # 序列化返回資料
             quiz_serializer = QuizSerializer(quiz)
             serializer = TopicSerializer(topic)
@@ -191,6 +216,7 @@ class QuizTopicsViewSet(APIView):
             # 構建返回資料
             quiz_data = {
                 'id': quiz.id,
+                'user': quiz.user.id if quiz.user else None,
                 'quiz_topic': quiz.quiz_topic,
                 'created_at': quiz.created_at.isoformat() if quiz.created_at else None,
                 'topics': []
@@ -226,71 +252,6 @@ class AddFavoriteViewSet(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            # 傳給 Flask 做處理
-            flask_response = requests.post(
-                'http://localhost:5000/api/add_favorite',
-                json=request.data  # 傳遞請求資料
-            )
-            # 檢查 Flask 響應狀態
-            if flask_response.status_code != 201:
-                return Response({
-                    'error': f'Flask service error: {flask_response.status_code}',
-                    'details': flask_response.text
-                }, status=500)
-            result = flask_response.json()
-            # 返回結果
-            return Response(result, status=201)
-        except Exception as e:
-            return Response({
-                'error': f'Internal server error: {str(e)}'
-            }, status=500)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# 前端回傳要收藏的題目 加入到 userfavorites 和 note
-class AddFavoriteViewSet(APIView):
-    permission_classes = [IsAuthenticated]
-    def post(self, request):
-        try:
             user = request.user
             topic = request.data.get('topic_id')
             if not user:
@@ -298,11 +259,10 @@ class AddFavoriteViewSet(APIView):
             if not topic:
                 return Response({'error': 'Topic ID is required'}, status=400)
             # 檢查 Topic 是否存在
-            topic_instance =Topic.objects.filter(id=topic,deleted_at__isnull=True).first()
+            topic_instance = Topic.objects.filter(id=topic, deleted_at__isnull=True).first()
             if not topic_instance:
                 return Response({'error': 'Topic not found'}, status=404)
             # 檢查是否已經收藏過
-            # 檢查是否已經存在相同的 UserFavorite
             existing_favorite = UserFavorite.objects.filter(
                 user=user,
                 topic=topic_instance,

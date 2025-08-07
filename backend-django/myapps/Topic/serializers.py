@@ -16,9 +16,11 @@ class TopicSerializer(serializers.ModelSerializer):
         model = Topic
         fields = ['id', 'quiz_topic', 'title', 'User_answer', 'Ai_answer', 'created_at', 'deleted_at', 'option_a', 'option_b', 'option_c', 'option_d']
 class QuizSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
     class Meta:
         model = Quiz
-        fields = ['id', 'quiz_topic', 'created_at', 'updated_at', 'deleted_at']
+        fields = ['id', 'user', 'quiz_topic', 'created_at', 'updated_at', 'deleted_at']
         extra_kwargs = {
             'updated_at': {'required': False, 'allow_null': True},
             'deleted_at': {'required': False, 'allow_null': True}

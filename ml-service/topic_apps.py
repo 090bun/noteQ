@@ -130,22 +130,16 @@ def create_quiz():
         topic = data.get('topic', '')
         difficulty = data.get('difficulty', 'medium')
         question_count = data.get('question_count', 1)
-        
+
         if not topic:
             return jsonify({"error": "Topic is required"}), 400
         
         # 呼叫 AI 生成題目
         generated_questions = generate_questions_with_ai(topic, difficulty, question_count)
         
-        # 新增：透過 Django API 存入資料庫
-        django_response = save_to_django_api(topic, difficulty, generated_questions)
-        return jsonify({
-                "quiz_topic": topic,
-                "questions": generated_questions,
-                "message": "Questions generated and saved to database successfully",
-                "quiz_id": django_response.get('quiz_id')
-            }), 201
-        
+        # 透過 Django API 存入資料庫
+        django_response = save_to_django_api( topic, difficulty, generated_questions)
+
         if django_response.get('success'):
             return jsonify({
                 "quiz_topic": topic,
@@ -163,8 +157,8 @@ def create_quiz():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
-def save_to_django_api(topic, difficulty, questions):
+
+def save_to_django_api( topic, difficulty, questions):
     #透過 Django API 存入資料庫
     try:
         django_data = {
@@ -172,7 +166,7 @@ def save_to_django_api(topic, difficulty, questions):
             "difficulty": difficulty,
             "questions": questions
         }
-        
+        print(f"~~~~~ 傳送到 Django API 的資料: {django_data} ~~~~~")
         response = requests.post(
             'http://localhost:8000/api/quiz/',
             json=django_data,
@@ -229,12 +223,6 @@ def get_quiz_alt():
         
     except Exception as e:
         return jsonify({"error": f"Error: {str(e)}"}), 500
-
-# 加入收藏&筆記 暫時放這
-# @app.route('api/add_favorite/', methods=['POST'])
-# def add_favorite():
-#     try:
-
 
 
 
