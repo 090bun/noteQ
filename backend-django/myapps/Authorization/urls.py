@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 # 第三方套件
 from rest_framework.routers import DefaultRouter
 # app
-from myapps.Authorization.auth_views import UserViewSet, AuthTokenViewSet, RegisterView
+from myapps.Authorization.auth_views import UserViewSet, AuthTokenViewSet, RegisterView ,forgot_password, reset_password
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -63,5 +63,6 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),  # 手動註冊路徑
     path('login/', custom_jwt_login, name='login'),  # 自定義 JWT 登入路徑
     path('', include(router.urls)),  # 加入 DefaultRouter 的路徑
-
+    path('forgot-password/', forgot_password),
+    path('reset-password/', reset_password),
 ]

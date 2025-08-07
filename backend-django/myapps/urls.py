@@ -22,7 +22,6 @@ from django.views.decorators.csrf import csrf_exempt
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("myapps.Authorization.urls")),  # 包含 Authorization app 的 URLs
-    
 ]
 
 # 簡單的 JWT 路由，直接使用類視圖

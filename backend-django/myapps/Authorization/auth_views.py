@@ -1,13 +1,19 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import viewsets, status, serializers, settings
+from rest_framework import viewsets, status, serializers
+from django.conf import settings
 from .models import User, AuthToken
 from .serializers import UserSerializer, AuthTokenSerializer, RegisterInputSerializer, UserTokenSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode  ,urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from rest_framework.decorators import api_view
 
 import jwt
 # Create your views here.
@@ -46,3 +52,57 @@ class RegisterView(APIView):
                 "is_paid": user.is_paid
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# 忘記密碼 API：發送重設連結
+@api_view(['POST'])
+def forgot_password(request):
+    try:
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "請提供電子郵件地址"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "使用者不存在"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # 生成重設密碼的
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
+        
+        # 嘗試發送郵件，並捕獲可能的錯誤
+        try:
+            send_mail(
+                subject="重設密碼",
+                message=f"請點擊以下連結重設您的密碼：{reset_link}",
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[email],
+                fail_silently=False
+            )
+            return Response({"message": "重設密碼郵件已發送"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"郵件發送失敗: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    except Exception as e:
+        return Response({"error": f"伺服器錯誤: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def reset_password(request):
+    uidb64 = request.data.get('uid')
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response({'error': '連結無效'}, status=400)
+
+    if default_token_generator.check_token(user, token):
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': '密碼重設成功'}, status=200)
+    else:
+        return Response({'error': 'token 無效或已過期'}, status=400)
