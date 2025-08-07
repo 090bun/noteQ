@@ -252,19 +252,37 @@ class AddFavoriteViewSet(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            user = request.user
+            user = request.data.get('user_id')  # 從請求中獲取當前使用者
             topic = request.data.get('topic_id')
+            print(f"~~~~~ 使用者: {user} 要收藏的題目ID: {topic} ~~~~~")
             if not user:
                 return Response({'error': 'User is not authenticated'}, status=401)
             if not topic:
                 return Response({'error': 'Topic ID is required'}, status=400)
+            
+            
+            # 獲取 User 實例
+            from myapps.Authorization.models import User
+            try:
+                user_instance = User.objects.get(id=user)
+            except User.DoesNotExist:
+                return Response({'error': f'User with ID {user} not found'}, status=404)
+
+
             # 檢查 Topic 是否存在
             topic_instance = Topic.objects.filter(id=topic, deleted_at__isnull=True).first()
             if not topic_instance:
                 return Response({'error': 'Topic not found'}, status=404)
+            
+            # 檢查該 Topic 的 Quiz 是否屬於該使用者
+            if topic_instance.quiz_topic.user != user_instance:
+                return Response({
+                    'error': 'You can only favorite topics from your own quizzes'
+                }, status=403)
+            
             # 檢查是否已經收藏過
             existing_favorite = UserFavorite.objects.filter(
-                user=user,
+                user=user_instance,
                 topic=topic_instance,
                 deleted_at__isnull=True
             ).first()
@@ -272,13 +290,12 @@ class AddFavoriteViewSet(APIView):
                 return Response({'message': 'This topic is already in your favorites'}, status=200) 
             # 創建 UserFavorite 實例
             user_favorite = UserFavorite.objects.create(
-                user=user,
+                user=user_instance,
                 topic=topic_instance,
                 note=Note.objects.create(
                     quiz_topic=topic_instance.quiz_topic,
-                    user=user,
-                    chat=None,  # 如果需要關聯 Chat，請提供相應的 Chat 實例
-                    is_retake=False # 根據需求設置是否為重考
+                    user=user_instance,
+                    is_retake=False  # 修正欄位名稱
                 )
             )
             # 序列化返回資料
