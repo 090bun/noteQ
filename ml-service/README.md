@@ -21,6 +21,6 @@
 git clone <repo-url>
 cd ml-service
 python -m venv venv
-source venv/bin/activate  # Linux / macOS
+source .venv/Scripts/activate  # Linux / macOS
 venv\Scripts\activate     # Windows
 pip install -r requirements.txt

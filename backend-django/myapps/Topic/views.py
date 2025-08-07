@@ -49,15 +49,18 @@ class QuizViewSet(APIView):
                 print(f"Using existing Quiz: {quiz.quiz_topic}")
             
             # 然後創建 Topic，並關聯到 Quiz
-            topic = Topic.objects.create(
-                quiz_topic=quiz,  # 關聯到 Quiz 實例
-                title=result.get('title'),
-                option_a=result.get('option_a'),
-                option_b=result.get('option_b'),
-                option_c=result.get('option_c'),
-                option_d=result.get('option_d'),
-                Ai_answer=result.get('Ai_answer')
-            )
+            topics = []
+            for q in result.get('questions', []):
+                topic = Topic.objects.create(
+                    quiz_topic=quiz,  # 關聯到 Quiz 實例
+                    title=q.get('title'),
+                    option_a=q.get('option_a'),
+                    option_b=q.get('option_b'),
+                    option_c=q.get('option_c'),
+                    option_d=q.get('option_d'),
+                    Ai_answer=q.get('Ai_answer')
+                )
+                topics.append(topic)
             
             # 生成新題目後，軟刪除同一個 Quiz 下的舊 Topics（保留最新的）
             old_topics = Topic.objects.filter(
@@ -217,6 +220,71 @@ class QuizTopicsViewSet(APIView):
             return Response({
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
+
+# 前端回傳要收藏的題目 加入到 userfavorites 和 note
+class AddFavoriteViewSet(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        try:
+            # 傳給 Flask 做處理
+            flask_response = requests.post(
+                'http://localhost:5000/api/add_favorite',
+                json=request.data  # 傳遞請求資料
+            )
+            # 檢查 Flask 響應狀態
+            if flask_response.status_code != 201:
+                return Response({
+                    'error': f'Flask service error: {flask_response.status_code}',
+                    'details': flask_response.text
+                }, status=500)
+            result = flask_response.json()
+            # 返回結果
+            return Response(result, status=201)
+        except Exception as e:
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=500)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # 前端回傳要收藏的題目 加入到 userfavorites 和 note
 class AddFavoriteViewSet(APIView):
