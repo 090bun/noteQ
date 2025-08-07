@@ -70,6 +70,16 @@
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   }
 
+  .addNoteButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .addNoteButton:disabled:hover {
+    transform: none;
+  }
+
 
   
   .filterLabel {
@@ -508,6 +518,72 @@
     font-size: 16px;
     opacity: 0.8;
     line-height: 1.5;
+  }
+
+  .upgradeState {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--primary-text-light);
+  }
+
+  .upgradeIcon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.9;
+  }
+
+  .upgradeState h3 {
+    font-size: 24px;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+
+  .upgradeState p {
+    font-size: 16px;
+    opacity: 0.8;
+    line-height: 1.5;
+    margin-bottom: 30px;
+  }
+
+  .upgradeButton {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 12px 24px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upgradeButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+    z-index: 0;
+  }
+
+  .upgradeButton:hover::before {
+    left: 100%;
+  }
+
+  .upgradeButton > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .upgradeButton:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
   }
   .modal {
     position: fixed;

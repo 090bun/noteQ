@@ -35,18 +35,35 @@ export default function NotePage() {
     const [modalType, setModalType] = useState(''); // 'add', 'edit', 'view', 'move', 'addSubject', 'deleteSubject'
     const [editingNote, setEditingNote] = useState(null);
     const [movingNote, setMovingNote] = useState(null);
+    const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
 
     // 初始化數據
     useEffect(() => {
         const notesData = getNotes();
         const subjectsData = getSubjects();
+        const subscriptionStatus = localStorage.getItem('isPlusSubscribed');
         setNotes(notesData);
         setSubjects(subjectsData);
+        setIsPlusSubscribed(subscriptionStatus === 'true');
         
-        if (subjectsData.length > 0 && !subjectsData.includes(currentSubject)) {
-            setCurrentSubject(subjectsData[0]);
+        if (subjectsData.length > 0) {
+            if (!subjectsData.includes(currentSubject)) {
+                setCurrentSubject(subjectsData[0]);
+            }
+        } else {
+            setCurrentSubject(''); // 沒有主題時重置為空字符串
         }
     }, []);
+
+    // 檢查是否為Plus用戶
+    const checkPlusSubscription = () => {
+        return isPlusSubscribed;
+    };
+
+    // 顯示升級提示
+    const showUpgradeAlert = () => {
+        safeAlert('此功能僅限Plus用戶使用，請升級到Plus方案！');
+    };
 
     // 切換選單
     const toggleMenu = () => {
@@ -95,158 +112,156 @@ export default function NotePage() {
 
     // 新增主題
     const handleAddSubject = () => {
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
         setModalType('addSubject');
         setModalContent('');
         setShowModal(true);
-        setIsDropdownOpen(false);
     };
 
-    // 確認新增主題
     const confirmAddSubject = () => {
-        if (!modalContent.trim()) {
-            safeAlert('請輸入主題名稱！');
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
             return;
         }
-        
-        const result = addSubject(modalContent.trim());
-        if (result.success) {
-            setSubjects(getSubjects());
+        if (modalContent.trim()) {
+            addSubject(modalContent.trim());
+            const updatedSubjects = getSubjects();
+            setSubjects(updatedSubjects);
             setCurrentSubject(modalContent.trim());
             setShowModal(false);
-            safeAlert(result.message);
-        } else {
-            safeAlert(result.message);
+            setModalContent('');
+            safeAlert('主題新增成功！');
         }
     };
 
     // 刪除主題
     const handleDeleteSubject = (subject, event) => {
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
         event.stopPropagation();
         setModalType('deleteSubject');
         setModalContent(subject);
         setShowModal(true);
-        setIsDropdownOpen(false);
     };
 
-    // 確認刪除主題
     const confirmDeleteSubject = () => {
-        safeConfirm(`確定要刪除主題「${modalContent}」嗎？\n\n此操作會刪除該主題的所有筆記，且無法復原！`, 
-            () => {
-                const result = deleteSubject(modalContent);
-                setNotes(getNotes());
-                setSubjects(getSubjects());
-                
-                if (currentSubject === modalContent) {
-                    const newSubjects = getSubjects();
-                    setCurrentSubject(newSubjects.length > 0 ? newSubjects[0] : '');
-                }
-                
-                setShowModal(false);
-                safeAlert(result.message);
-            },
-            () => {}
-        );
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
+        deleteSubject(modalContent);
+        const updatedSubjects = getSubjects();
+        const updatedNotes = getNotes();
+        setSubjects(updatedSubjects);
+        setNotes(updatedNotes);
+        if (currentSubject === modalContent) {
+            if (updatedSubjects.length > 0) {
+                setCurrentSubject(updatedSubjects[0]);
+            } else {
+                setCurrentSubject(''); // 重置為空字符串
+            }
+        }
+        setShowModal(false);
+        setModalContent('');
+        safeAlert('主題刪除成功！');
     };
 
     // 新增筆記
     const handleAddNote = () => {
-        if (!currentSubject || subjects.length === 0) {
-            safeAlert('請新增主題！');
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
             return;
         }
-        
         setModalType('add');
         setModalContent('');
         setShowModal(true);
     };
 
-    // 確認新增筆記
     const confirmAddNote = () => {
-        const [title, content] = modalContent.split('\n---\n');
-        
-        if (!title?.trim()) {
-            safeAlert('請輸入筆記名稱！');
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
             return;
         }
-        
-        if (!content?.trim()) {
-            safeAlert('請輸入筆記內容！');
-            return;
-        }
-        
-        const newNote = {
-            id: Date.now(),
-            title: title.trim(),
-            content: content.trim(),
-            subject: currentSubject
-        };
-        
-        const result = addNote(newNote);
-        if (result.success) {
-            setNotes(getNotes());
-            setSubjects(getSubjects());
+        if (modalContent.trim()) {
+            const newNote = {
+                id: Date.now(),
+                title: modalContent.split('\n')[0],
+                content: modalContent,
+                subject: currentSubject,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            addNote(newNote);
+            const updatedNotes = getNotes();
+            setNotes(updatedNotes);
             setShowModal(false);
-            safeAlert(result.message);
-        } else {
-            safeAlert(result.message);
+            setModalContent('');
+            safeAlert('筆記新增成功！');
         }
     };
 
     // 編輯筆記
     const handleEditNote = (note) => {
-        setEditingNote(note);
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
         setModalType('edit');
-        setModalContent(`${note.title}\n---\n${note.content}`);
+        setModalContent(note.content);
+        setEditingNote(note);
         setShowModal(true);
-        setActiveActionBar(null);
     };
 
-    // 確認編輯筆記
     const confirmEditNote = () => {
-        const [title, content] = modalContent.split('\n---\n');
-        
-        if (!title?.trim()) {
-            safeAlert('請輸入筆記名稱！');
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
             return;
         }
-        
-        if (!content?.trim()) {
-            safeAlert('請輸入筆記內容！');
-            return;
-        }
-        
-        const updatedNote = {
-            title: title.trim(),
-            content: content.trim()
-        };
-        
-        const result = updateNote(editingNote.id, updatedNote);
-        if (result.success) {
-            setNotes(getNotes());
+        if (modalContent.trim() && editingNote) {
+            const updatedNote = {
+                ...editingNote,
+                title: modalContent.split('\n')[0],
+                content: modalContent,
+                updatedAt: new Date().toISOString()
+            };
+            updateNote(updatedNote);
+            const updatedNotes = getNotes();
+            setNotes(updatedNotes);
             setShowModal(false);
+            setModalContent('');
             setEditingNote(null);
-            safeAlert(result.message);
-        } else {
-            safeAlert(result.message);
+            safeAlert('筆記更新成功！');
         }
     };
 
     // 查看筆記
     const handleViewNote = (note) => {
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
         setModalType('view');
-        setModalContent(note);
+        setModalContent(note.content);
         setShowModal(true);
-        setActiveActionBar(null);
     };
 
     // 刪除筆記
     const handleDeleteNote = (note) => {
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
         safeConfirm('確定要刪除這則筆記嗎？', 
             () => {
-                const result = deleteNote(note.id);
-                setNotes(getNotes());
-                setActiveActionBar(null);
-                safeAlert(result.message);
+                deleteNote(note.id);
+                const updatedNotes = getNotes();
+                setNotes(updatedNotes);
+                safeAlert('筆記刪除成功！');
             },
             () => {}
         );
@@ -254,36 +269,45 @@ export default function NotePage() {
 
     // 搬移筆記
     const handleMoveNote = (note) => {
-        setMovingNote(note);
-        setSelectedMoveSubject(note.subject);
-        setModalType('move');
-        setShowModal(true);
-        setActiveActionBar(null);
-    };
-
-    // 確認搬移筆記
-    const confirmMoveNote = () => {
-        if (!selectedMoveSubject) {
-            safeAlert('請選擇或輸入主題名稱！');
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
             return;
         }
-        
-        const result = moveNote(movingNote.id, selectedMoveSubject);
-        if (result.success) {
-            setNotes(getNotes());
-            setSubjects(getSubjects());
+        setModalType('move');
+        setMovingNote(note);
+        setSelectedMoveSubject(currentSubject);
+        setShowModal(true);
+    };
+
+    const confirmMoveNote = () => {
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
+        if (movingNote && selectedMoveSubject) {
+            const updatedNote = {
+                ...movingNote,
+                subject: selectedMoveSubject,
+                updatedAt: new Date().toISOString()
+            };
+            moveNote(updatedNote);
+            const updatedNotes = getNotes();
+            setNotes(updatedNotes);
             setShowModal(false);
             setMovingNote(null);
-            safeAlert(result.message);
-        } else {
-            safeAlert(result.message);
+            setSelectedMoveSubject('');
+            safeAlert('筆記移動成功！');
         }
     };
 
     // 生成題目
     const handleGenerateQuestions = (note) => {
-        const result = generateQuestions(note.id);
-        safeAlert(result.message);
+        if (!checkPlusSubscription()) {
+            showUpgradeAlert();
+            return;
+        }
+        const questions = generateQuestions(note.content);
+        safeAlert(`已生成 ${questions.length} 道題目！`);
     };
 
     // 切換動作欄
@@ -715,14 +739,28 @@ export default function NotePage() {
                                 </div>
                             </div>
                         </div>
-                        <button className={styles.addNoteButton} onClick={handleAddNote}>
+                        <button className={styles.addNoteButton} onClick={handleAddNote} disabled={!isPlusSubscribed}>
                             新增筆記
                         </button>
                     </div>
                 </div>
 
                 <div className={styles.notesGrid}>
-                    {subjects.length === 0 ? (
+                    {!isPlusSubscribed ? (
+                        <div className={styles.upgradeState}>
+                            <div className={styles.upgradeIcon}>
+                                <Image src="/img/Vector-41.png" alt="升級" width={64} height={64} />
+                            </div>
+                            <h3>升級Plus方案</h3>
+                            <p>筆記功能僅限Plus用戶使用，請升級到Plus方案！</p>
+                            <button 
+                                className={styles.upgradeButton}
+                                onClick={() => window.location.href = '/user'}
+                            >
+                                立即升級
+                            </button>
+                        </div>
+                    ) : subjects.length === 0 ? (
                         <div className={styles.emptyState}>
                             <div className={styles.emptyIcon}>
                                 <Image src="/img/Vector-32.png" alt="主題" width={64} height={64} />

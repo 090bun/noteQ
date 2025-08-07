@@ -1,239 +1,399 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import Header from '../components/Header';
-import Menu from '../components/Menu';
-import styles from '../styles/UserPage.module.css';
-import { getUserData, getUserTopics, changePassword } from '../utils/userUtils';
-import { safeAlert, safeConfirm, showPasswordChangeDialog } from '../utils/dialogs';
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Header from "../components/Header";
+import Menu from "../components/Menu";
+import PlusPlanModal from "../components/PlusPlanModal";
+import styles from "../styles/UserPage.module.css";
+import { getUserData, getUserTopics, changePassword } from "../utils/userUtils";
+import {
+  safeAlert,
+  safeConfirm,
+  showPasswordChangeDialog,
+} from "../utils/dialogs";
 
 export default function UserPage() {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('personal');
-    const [userData, setUserData] = useState({});
-    const [topics, setTopics] = useState([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("personal");
+  const [userData, setUserData] = useState({});
+  const [topics, setTopics] = useState([]);
 
-    // 切換選單
-    const toggleMenu = () => {
-        setIsMenuOpen(!isMenuOpen);
-        if (!isMenuOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'auto';
-        }
-    };
+  // 訂閱狀態管理
+  const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
+  const [showPlusModal, setShowPlusModal] = useState(false);
 
-    // 關閉選單
-    const closeMenu = () => {
-        setIsMenuOpen(false);
-        document.body.style.overflow = 'auto';
-    };
+  // 切換選單
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+    if (!isMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+  };
 
-    // 登出功能
-    const logout = () => {
-        safeConfirm('確定要登出嗎？', () => {
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('userData');
-            closeMenu();
-            window.location.href = '/';
+  // 關閉選單
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+    document.body.style.overflow = "auto";
+  };
+
+  // 登出功能
+  const logout = () => {
+    safeConfirm("確定要登出嗎？", () => {
+      localStorage.removeItem("isLoggedIn");
+      localStorage.removeItem("userData");
+      closeMenu();
+      window.location.href = "/";
+    });
+  };
+
+  // 切換標籤頁
+  const switchTab = (tabName) => {
+    setActiveTab(tabName);
+  };
+
+  // 更改密碼
+  const handleChangePassword = () => {
+    showPasswordChangeDialog((oldPassword, newPassword) => {
+      if (!oldPassword || !newPassword) return;
+
+      const result = changePassword(oldPassword, newPassword);
+      safeAlert(result.message);
+    });
+  };
+
+  // 升級到Plus方案
+  const handleUpgradeToPlus = () => {
+    setIsPlusSubscribed(true);
+    localStorage.setItem("isPlusSubscribed", "true");
+    safeAlert("恭喜！您已成功升級到Plus方案");
+  };
+
+  // 取消Plus訂閱
+  const handleCancelPlusSubscription = () => {
+    safeConfirm("確定要取消Plus訂閱嗎？", () => {
+      setIsPlusSubscribed(false);
+      localStorage.setItem("isPlusSubscribed", "false");
+      setShowPlusModal(false);
+      safeAlert("已取消Plus訂閱，回到免費方案");
+    });
+  };
+
+  // 查看目前方案詳情
+  const handleViewCurrentPlan = () => {
+    setShowPlusModal(true);
+  };
+
+  // 後端請求使用者資料(帶上token)
+  const fetchUserDataFromAPI = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("找不到 token");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/users/", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("API 請求失敗");
+      }
+
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const user = data[0]; // 假設只取第一筆資料
+        setUserData({
+          name: user.username,
+          email: user.email,
+          registerDate: new Date(user.created_at).toLocaleString(),
         });
+      }
+    } catch (error) {
+      console.error("取得使用者資料失敗:", error);
+    }
+  };
+
+  // 初始化數據
+  useEffect(() => {
+    // 確保在客戶端渲染時才執行
+    if (typeof window !== "undefined") {
+      fetchUserDataFromAPI();
+      const userTopics = getUserTopics();
+      const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+      setTopics(userTopics);
+      setIsPlusSubscribed(subscriptionStatus === "true");
+    }
+  }, []);
+
+  // 鍵盤事件處理
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
     };
 
-    // 切換標籤頁
-    const switchTab = (tabName) => {
-        setActiveTab(tabName);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
     };
+  }, []);
 
-    // 更改密碼
-    const handleChangePassword = () => {
-        showPasswordChangeDialog((oldPassword, newPassword) => {
-            if (!oldPassword || !newPassword) return;
-            
-            const result = changePassword(oldPassword, newPassword);
-            safeAlert(result.message);
-        });
-    };
+  return (
+    <>
+      {/* 頭部 */}
+      <Header
+        showMenu={true}
+        isMenuOpen={isMenuOpen}
+        onToggleMenu={toggleMenu}
+      />
 
-    // 初始化數據
-    useEffect(() => {
-        // 確保在客戶端渲染時才執行
-        if (typeof window !== 'undefined') {
-            const user = getUserData();
-            const userTopics = getUserTopics();
-            setUserData(user);
-            setTopics(userTopics);
-        }
-    }, []);
+      {/* 主要內容 */}
+      <section className={styles.userDashboard}>
+        <div className={styles.dashboardContainer}>
+          {/* 個人資料欄 */}
+          <div className={styles.profileColumn}>
+            <div className={styles.profileCard}>
+              <Image
+                src="/img/Vector-20.png"
+                alt="Background"
+                className={styles.profileBg}
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 450px"
+                style={{ objectFit: "cover" }}
+              />
 
-    // 鍵盤事件處理
-    useEffect(() => {
-        const handleKeyDown = (event) => {
-            if (event.key === 'Escape') {
-                closeMenu();
-            }
-        };
+              <header className={styles.profileHeader}>
+                <Image
+                  src="/img/Vector-35.png"
+                  alt="Chart Icon"
+                  className={styles.profileIcon}
+                  width={75}
+                  height={60}
+                />
+                <h1 className={styles.profileName}>{userData.name}</h1>
+              </header>
 
-        document.addEventListener('keydown', handleKeyDown);
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, []);
+              {/* 標籤頁容器 */}
+              <div className={styles.tabContainer}>
+                <button
+                  className={`${styles.tabButton} ${
+                    activeTab === "personal" ? styles.active : ""
+                  }`}
+                  onClick={() => switchTab("personal")}
+                >
+                  個人資料
+                </button>
+                <button
+                  className={`${styles.tabButton} ${
+                    activeTab === "familiarity" ? styles.active : ""
+                  }`}
+                  onClick={() => switchTab("familiarity")}
+                >
+                  熟悉度
+                </button>
+              </div>
 
-    return (
-        <>
-            {/* 頭部 */}
-            <Header 
-                showMenu={true}
-                isMenuOpen={isMenuOpen}
-                onToggleMenu={toggleMenu}
-            />
-
-            {/* 主要內容 */}
-            <section className={styles.userDashboard}>
-                <div className={styles.dashboardContainer}>
-                    {/* 個人資料欄 */}
-                    <div className={styles.profileColumn}>
-                        <div className={styles.profileCard}>
-                            <Image 
-                                src="/img/Vector-20.png" 
-                                alt="Background" 
-                                className={styles.profileBg}
-                                fill
-                                priority
-                                sizes="(max-width: 768px) 100vw, 450px"
-                                style={{ objectFit: 'cover' }}
-                            />
-                            
-                            <header className={styles.profileHeader}>
-                                <Image 
-                                    src="/img/Vector-35.png" 
-                                    alt="Chart Icon" 
-                                    className={styles.profileIcon}
-                                    width={75}
-                                    height={60}
-                                />
-                                <h1 className={styles.profileName}>{userData.name}</h1>
-                            </header>
-                            
-                            {/* 標籤頁容器 */}
-                            <div className={styles.tabContainer}>
-                                <button 
-                                    className={`${styles.tabButton} ${activeTab === 'personal' ? styles.active : ''}`}
-                                    onClick={() => switchTab('personal')}
-                                >
-                                    個人資料
-                                </button>
-                                <button 
-                                    className={`${styles.tabButton} ${activeTab === 'familiarity' ? styles.active : ''}`}
-                                    onClick={() => switchTab('familiarity')}
-                                >
-                                    熟悉度
-                                </button>
-                            </div>
-                            
-                            {/* 個人資料標籤頁 */}
-                            <div className={`${styles.tabPanel} ${activeTab === 'personal' ? styles.active : ''}`}>
-                                <div className={styles.personalInfo}>
-                                    <div className={styles.infoItem}>
-                                        <h3 className={styles.infoTitle}>電子郵件</h3>
-                                        <p className={styles.infoContent}>{userData.email}</p>
-                                    </div>
-                                    <div className={styles.infoItem}>
-                                        <h3 className={styles.infoTitle}>註冊時間</h3>
-                                        <p className={styles.infoContent}>{userData.registerDate}</p>
-                                    </div>
-                                    <div className={styles.infoItem}>
-                                        <h3 className={styles.infoTitle}>學習時數</h3>
-                                        <p className={styles.infoContent}>{userData.studyHours}</p>
-                                    </div>
-                                    <button 
-                                        className={styles.changePasswordBtn}
-                                        onClick={handleChangePassword}
-                                    >
-                                        更改密碼
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            {/* 熟悉度標籤頁 */}
-                            <div className={`${styles.tabPanel} ${activeTab === 'familiarity' ? styles.active : ''}`}>
-                                <div className={styles.topicsList}>
-                                    {topics.map((topic, index) => (
-                                        <div key={index} className={styles.topicItem}>
-                                            <h2 className={styles.topicTitle}>{topic.name}</h2>
-                                            <div className={styles.progressContainer}>
-                                                <span className={styles.progressLabel}>熟悉度：</span>
-                                                <div className={styles.progressBar}>
-                                                    <div 
-                                                        className={styles.progress} 
-                                                        style={{ width: `${topic.familiarity}%` }}
-                                                    ></div>
-                                                </div>
-                                                <span className={styles.progressPercentage}>{topic.familiarity}%</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 訂閱方案欄 */}
-                    <div className={styles.subscriptionColumn}>
-                        <article className={styles.planCard}>
-                            <div className={styles.planHeader + ' ' + styles.current}>目前方案</div>
-                            <ul className={styles.featureList}>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>排行榜功能</span>
-                                </li>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>免費生成10題</span>
-                                </li>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>排行榜功能</span>
-                                </li>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>免費生成10題</span>
-                                </li>
-                            </ul>
-                        </article>
-
-                        <article className={styles.planCard}>
-                            <div className={styles.planHeader + ' ' + styles.upgrade}>升級PLUS</div>
-                            <ul className={styles.featureList}>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>訂閱即享更多功能</span>
-                                </li>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>30NTD/月</span>
-                                </li>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>訂閱即享更多功能</span>
-                                </li>
-                                <li className={styles.featureItem}>
-                                    <Image src="/img/Vector-22.png" alt="Feature icon" width={20} height={20} loading="lazy" />
-                                    <span>30NTD/月</span>
-                                </li>
-                            </ul>
-                        </article>
-                    </div>
+              {/* 個人資料標籤頁 */}
+              <div
+                className={`${styles.tabPanel} ${
+                  activeTab === "personal" ? styles.active : ""
+                }`}
+              >
+                <div className={styles.personalInfo}>
+                  <div className={styles.infoItem}>
+                    <h3 className={styles.infoTitle}>電子郵件</h3>
+                    <p className={styles.infoContent}>{userData.email}</p>
+                  </div>
+                  <div className={styles.infoItem}>
+                    <h3 className={styles.infoTitle}>註冊時間</h3>
+                    <p className={styles.infoContent}>
+                      {userData.registerDate}
+                    </p>
+                  </div>
+                  <div className={styles.infoItem}>
+                    <h3 className={styles.infoTitle}>目前方案</h3>
+                    <p className={styles.infoContent}>
+                      {isPlusSubscribed ? "Plus方案" : "免費方案"}
+                    </p>
+                  </div>
+                  <button
+                    className={styles.changePasswordBtn}
+                    onClick={handleChangePassword}
+                  >
+                    更改密碼
+                  </button>
                 </div>
-            </section>
+              </div>
 
-            {/* 選單 */}
-            <Menu 
-                isOpen={isMenuOpen}
-                onClose={closeMenu}
-                onLogout={logout}
-            />
-        </>
-    );
+              {/* 熟悉度標籤頁 */}
+              <div
+                className={`${styles.tabPanel} ${
+                  activeTab === "familiarity" ? styles.active : ""
+                }`}
+              >
+                <div className={styles.topicsList}>
+                  {topics.map((topic, index) => (
+                    <div key={index} className={styles.topicItem}>
+                      <h2 className={styles.topicTitle}>{topic.name}</h2>
+                      <div className={styles.progressContainer}>
+                        <span className={styles.progressLabel}>熟悉度：</span>
+                        <div className={styles.progressBar}>
+                          <div
+                            className={styles.progress}
+                            style={{ width: `${topic.familiarity}%` }}
+                          ></div>
+                        </div>
+                        <span className={styles.progressPercentage}>
+                          {topic.familiarity}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 訂閱方案欄 */}
+          <div className={styles.subscriptionColumn}>
+            <article className={styles.planCard}>
+              <div
+                className={`${styles.planHeader} ${
+                  isPlusSubscribed ? styles.free : styles.current
+                }`}
+              >
+                {isPlusSubscribed ? "免費方案" : "目前方案"}
+              </div>
+              <ul className={styles.featureList}>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>熟悉度功能</span>
+                </li>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>免費生成三次主題</span>
+                </li>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>單次生成十題題目</span>
+                </li>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>訂閱即享更多功能</span>
+                </li>
+              </ul>
+            </article>
+
+            <article className={styles.planCard}>
+              <button
+                className={`${styles.planHeader} ${
+                  isPlusSubscribed ? styles.current : styles.upgrade
+                }`}
+                onClick={!isPlusSubscribed ? handleUpgradeToPlus : undefined}
+                disabled={isPlusSubscribed}
+              >
+                {isPlusSubscribed ? "目前方案" : "升級PLUS"}
+              </button>
+              <ul className={styles.featureList}>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>筆記功能</span>
+                </li>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>收藏與AI解析功能</span>
+                </li>
+                <li className={styles.featureItem}>
+                  <Image
+                    src="/img/Vector-22.png"
+                    alt="Feature icon"
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                  />
+                  <span>主題不限/單次題目生成三十題</span>
+                </li>
+                <li className={styles.featureItem}>
+                  {isPlusSubscribed ? (
+                    <button
+                      className={styles.viewCurrentPlanBtn}
+                      onClick={handleViewCurrentPlan}
+                    >
+                      查看目前方案
+                    </button>
+                  ) : (
+                    <div className={styles.priceDisplay}>
+                      <Image
+                        src="/img/Vector-22.png"
+                        alt="Feature icon"
+                        width={20}
+                        height={20}
+                        loading="lazy"
+                      />
+                      <span>99NTD/月</span>
+                    </div>
+                  )}
+                </li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* Plus方案詳情模态框 */}
+      <PlusPlanModal
+        isOpen={showPlusModal}
+        onClose={() => setShowPlusModal(false)}
+        onCancelSubscription={handleCancelPlusSubscription}
+      />
+
+      {/* 選單 */}
+      <Menu isOpen={isMenuOpen} onClose={closeMenu} onLogout={logout} />
+    </>
+  );
 }

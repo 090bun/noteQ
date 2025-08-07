@@ -21,7 +21,8 @@ class AllObjectsManager(models.Manager):
 # deleted_at: 刪除時間
 class UserFavorite(models.Model):
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
-    note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE)
+    note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE , null=True, blank=True)
+    topic = models.ForeignKey("Topic.Topic", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     class Meta:
@@ -30,7 +31,6 @@ class UserFavorite(models.Model):
 # 儲存題目資訊
 # quiz_topic: 題目名稱
 # title: 題目標題
-# subtitle: 題目副標題
 # option_a: 選項 A
 # option_b: 選項 B
 # option_c: 選項 C
@@ -41,8 +41,7 @@ class UserFavorite(models.Model):
 # deleted_at: 刪除時間
 class Topic(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
-    title = models.CharField(max_length=254)
-    subtitle = models.TextField()
+    title = models.CharField(max_length=512)
     # 選項 A～D
     option_a = models.CharField(max_length=128, null=True, blank=True)
     option_b = models.CharField(max_length=128, null=True, blank=True)
@@ -147,10 +146,6 @@ class UserFamiliarity(models.Model):
 # 難度分類
 # 儲存使用者熟悉度
 # level_name: 難度名稱
-    # EASY = 'E', 'Easy'
-    # MEDIUM = 'M', 'Medium'
-    # HARD = 'H', 'Hard'
-    # EXPERT = 'X', 'Expert'
 # familiarity_cap: 熟悉度上限
 # weight_coefficients: 不同題型的權重係數
 # created_at: 建立時間

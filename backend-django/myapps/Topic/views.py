@@ -1,8 +1,8 @@
 import requests
 from django.shortcuts import render
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer
-from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer
+from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz , UserFamiliarity, DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
@@ -52,7 +52,6 @@ class QuizViewSet(APIView):
             topic = Topic.objects.create(
                 quiz_topic=quiz,  # 關聯到 Quiz 實例
                 title=result.get('title'),
-                subtitle=result.get('subtitle'),
                 option_a=result.get('option_a'),
                 option_b=result.get('option_b'),
                 option_c=result.get('option_c'),
@@ -111,7 +110,6 @@ class QuizViewSet(APIView):
                     topic_data = {
                         'id': topic.id,
                         'title': topic.title,
-                        'subtitle': topic.subtitle,
                         'User_answer': topic.User_answer,
                         'Ai_answer': topic.Ai_answer,
                         'created_at': topic.created_at.isoformat() if topic.created_at else None
@@ -144,7 +142,6 @@ class TopicDetailViewSet(APIView):
             topic_data = {
                 'id': topic.id,
                 'title': topic.title,
-                'subtitle': topic.subtitle,
                 'option_a': topic.option_a,
                 'option_b': topic.option_b,
                 'option_c': topic.option_c,
@@ -200,7 +197,6 @@ class QuizTopicsViewSet(APIView):
                 topic_data = {
                     'id': topic.id,
                     'title': topic.title,
-                    'subtitle': topic.subtitle,
                     'option_a': topic.option_a,
                     'option_b': topic.option_b,
                     'option_c': topic.option_c,
@@ -227,21 +223,39 @@ class AddFavoriteViewSet(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         try:
-            # 傳給 Flask 做處理
-            flask_response = requests.post(
-                'http://localhost:5000/api/add_favorite',
-                json=request.data  # 傳遞請求資料
+            user = request.user
+            topic = request.data.get('topic_id')
+            if not user:
+                return Response({'error': 'User is not authenticated'}, status=401)
+            if not topic:
+                return Response({'error': 'Topic ID is required'}, status=400)
+            # 檢查 Topic 是否存在
+            topic_instance =Topic.objects.filter(id=topic,deleted_at__isnull=True).first()
+            if not topic_instance:
+                return Response({'error': 'Topic not found'}, status=404)
+            # 檢查是否已經收藏過
+            # 檢查是否已經存在相同的 UserFavorite
+            existing_favorite = UserFavorite.objects.filter(
+                user=user,
+                topic=topic_instance,
+                deleted_at__isnull=True
+            ).first()
+            if existing_favorite:
+                return Response({'message': 'This topic is already in your favorites'}, status=200) 
+            # 創建 UserFavorite 實例
+            user_favorite = UserFavorite.objects.create(
+                user=user,
+                topic=topic_instance,
+                note=Note.objects.create(
+                    quiz_topic=topic_instance.quiz_topic,
+                    user=user,
+                    chat=None,  # 如果需要關聯 Chat，請提供相應的 Chat 實例
+                    is_retake=False # 根據需求設置是否為重考
+                )
             )
-            # 檢查 Flask 響應狀態
-            if flask_response.status_code != 201:
-                return Response({
-                    'error': f'Flask service error: {flask_response.status_code}',
-                    'details': flask_response.text
-                }, status=500)
-            result = flask_response.json()
-            # 返回結果
-            return Response(result, status=201)
+            # 序列化返回資料
+            serializer = UserFavoriteSerializer(user_favorite)
+            return Response(serializer.data, status=201)
         except Exception as e:
-            return Response({
-                'error': f'Internal server error: {str(e)}'
-            }, status=500)
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+

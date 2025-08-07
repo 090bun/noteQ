@@ -880,7 +880,7 @@ button{
   .custom-confirm-buttons {
     flex-direction: row;
     gap: 8px;
-    justify-content: flex-end;
+    justify-content: center;
   }
   
   .custom-prompt-content {
@@ -901,7 +901,7 @@ button{
   .custom-prompt-buttons {
     flex-direction: row;
     gap: 8px;
-    justify-content: flex-end;
+    justify-content: center;
   }
   
   .custom-prompt-btn {

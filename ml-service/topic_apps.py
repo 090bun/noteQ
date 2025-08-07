@@ -12,7 +12,6 @@ def create_quiz():
     # 這裡可以添加邏輯來處理數據並生成主題
     topic = {
         'title': data.get('title', 'Default Title'),
-        'subtitle': data.get('subtitle', 'Default Subtitle'),
         'option_a': data.get('option_a', 'Default Option A'),
         'option_b': data.get('option_b', 'Default Option B'),
         'option_c': data.get('option_c', 'Default Option C'),
@@ -28,7 +27,6 @@ def create_quiz():
     return jsonify({
         "quiz_topic": quiz_topic['quiz_topic'],
         "title": topic['title'],
-        "subtitle": topic['subtitle'],
         "option_a": topic['option_a'],
         "option_b": topic['option_b'],
         "option_c": topic['option_c'],
@@ -82,12 +80,6 @@ def get_quiz_alt():
         
     except Exception as e:
         return jsonify({"error": f"Error: {str(e)}"}), 500
-
-# 加入收藏&筆記 暫時放這
-# @app.route('api/add_favorite/', methods=['POST'])
-# def add_favorite():
-#     try:
-
 
 
 

@@ -13,7 +13,12 @@ router.register(r'token', AuthTokenViewSet, basename='auth-token')
 @csrf_exempt
 def custom_jwt_login(request):
     import json
+    import logging
     from django.http import JsonResponse
+    
+    # 添加日誌記錄
+    logger = logging.getLogger(__name__)
+    logger.info(f"Login request received: {request.method}")
     
     if request.method == 'POST':
         try:
@@ -22,7 +27,10 @@ def custom_jwt_login(request):
             email = data.get('email')
             password = data.get('password')
             
+            logger.info(f"Login attempt for email: {email}")
+            
             if not email or not password:
+                logger.warning("Missing email or password")
                 return JsonResponse({'error': '需要提供 email 和 password'}, status=400)
             
             # 驗證用戶
@@ -32,6 +40,7 @@ def custom_jwt_login(request):
             # 由於 USERNAME_FIELD = 'email'，所以第一個參數還是 username，但值是 email
             user = authenticate(request, username=email, password=password)
             if not user:
+                logger.warning(f"Invalid login credentials for email: {email}")
                 return JsonResponse({'error': '登入憑證無效'}, status=401)
             
             # 生成 JWT token
@@ -39,12 +48,11 @@ def custom_jwt_login(request):
             refresh = RefreshToken.for_user(user)
             access_token = refresh.access_token
             
-            # 移除資料庫寫入操作以提升性能
-            # 如果需要追蹤登入記錄，可以考慮使用異步任務
+            logger.info(f"Successful login for user: {user.email}")
             
             return JsonResponse({
                 'token': str(access_token),  # 為了前端兼容性，保持 'token' 字段
-                'access': str(access_token),
+                # 'access': str(access_token),
                 'refresh': str(refresh),
                 'user_id': user.id,
                 'username': user.username,
@@ -52,11 +60,14 @@ def custom_jwt_login(request):
                 'is_paid': user.is_paid
             })
             
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
             return JsonResponse({'error': '無效的 JSON 格式'}, status=400)
         except Exception as e:
+            logger.error(f"Unexpected error in login: {str(e)}")
             return JsonResponse({'error': f'伺服器錯誤: {str(e)}'}, status=500)
     
+    logger.warning(f"Invalid request method: {request.method}")
     return JsonResponse({'error': '只支援 POST 請求'}, status=405)
 
 urlpatterns = [
