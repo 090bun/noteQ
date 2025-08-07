@@ -43,10 +43,10 @@ class Topic(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
     title = models.CharField(max_length=512)
     # 選項 A～D
-    option_a = models.CharField(max_length=128, null=True, blank=True)
-    option_b = models.CharField(max_length=128, null=True, blank=True)
-    option_c = models.CharField(max_length=128, null=True, blank=True)
-    option_d = models.CharField(max_length=128, null=True, blank=True)
+    option_A = models.CharField(max_length=128, null=True, blank=True)
+    option_B = models.CharField(max_length=128, null=True, blank=True)
+    option_C = models.CharField(max_length=128, null=True, blank=True)
+    option_D = models.CharField(max_length=128, null=True, blank=True)
     Ai_answer = models.CharField(max_length=1,
         choices=[
             ('A', 'A'),
@@ -181,18 +181,19 @@ class Note(models.Model):
 # AI Chat 資料庫
 # 儲存聊天內容
 # note: 關聯的筆記ID
+# user: 使用者ID
 # content: 聊天內容
 # sender: 發送者 (user 或 ai)預設為 ai
 # created_at: 建立時間
 # deleted_at: 刪除時間
 # updated_at: 更新時間
 class Chat(models.Model):
-    note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE)
+    topic = models.ForeignKey("Topic.Topic", on_delete=models.CASCADE)
     content = models.TextField()
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     sender = models.CharField(max_length=16, choices=[('user', 'User'), ('ai', 'AI')],default='ai')
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    updated_at = models.DateTimeField(null=True, blank=True)
     class Meta:
         db_table = "Chat"
 

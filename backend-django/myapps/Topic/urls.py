@@ -19,5 +19,6 @@ urlpatterns = [
     # 加入收藏
     path('add-favorite/', AddFavoriteViewSet.as_view(), name='add_favorite'),
 
-
+    # AI聊天室
+    path('chat/', ChatViewSet.as_view(), name='ai_chat'),
 ]

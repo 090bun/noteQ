@@ -304,3 +304,132 @@ class AddFavoriteViewSet(APIView):
         except Exception as e:
             return Response({'error': f'Internal server error: {str(e)}'}, status=500)
 
+class ChatViewSet(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """獲取聊天記錄"""
+        try:
+            topic_id = request.GET.get('topic_id')
+            user_id = request.GET.get('user_id')
+            
+            if not topic_id:
+                return Response({'error': 'topic_id is required'}, status=400)
+            
+            # 構建查詢條件
+            filters = {'topic_id': topic_id, 'deleted_at__isnull': True}
+            if user_id:
+                filters['user_id'] = user_id
+            
+            # 獲取聊天記錄，按時間排序
+            chats = Chat.objects.filter(**filters).order_by('created_at')
+            
+            # 序列化並返回
+            serializer = ChatSerializer(chats, many=True)
+            return Response({
+                'topic_id': topic_id,
+                'chat_history': serializer.data,
+                'total_messages': chats.count()
+            }, status=200)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=500)
+
+    def post(self, request):
+        """處理聊天訊息"""
+        try:
+            print(f"~~~~~ Django 收到的請求資料: {request.data} ~~~~~")
+            
+            # 檢查必要欄位是否存在
+            user_id = request.data.get('user_id')
+            topic_id = request.data.get('topic_id')
+            content = request.data.get('content') or request.data.get('message')
+            
+            if not user_id:
+                return Response({'error': 'user_id is required'}, status=400)
+            if not topic_id:
+                return Response({'error': 'topic_id is required'}, status=400)
+            if not content:
+                return Response({'error': 'content or message is required'}, status=400)
+            
+            # 驗證用戶和主題存在
+            from myapps.Authorization.models import User
+            try:
+                user_instance = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    'error': f'User with ID {user_id} not found'
+                }, status=400)
+            
+            try:
+                topic_instance = Topic.objects.get(id=topic_id, deleted_at__isnull=True)
+            except Topic.DoesNotExist:
+                return Response({
+                    'error': f'Topic with ID {topic_id} not found'
+                }, status=404)
+            
+            # 1. 先儲存用戶訊息
+            user_chat = Chat.objects.create(
+                user=user_instance,
+                topic=topic_instance,
+                content=content,
+                sender='user'
+            )
+            
+            # 2. 獲取歷史對話記錄用於 AI 思考
+            chat_history = Chat.objects.filter(
+                topic=topic_instance, 
+                deleted_at__isnull=True
+            ).order_by('created_at').values('content', 'sender')
+            
+            # 準備傳送給 Flask 的資料，包含歷史對話
+            flask_data = {
+                'user_id': user_id,
+                'topic_id': topic_id,
+                'content': content,
+                'chat_history': list(chat_history)  # 包含歷史對話供 AI 參考
+            }
+            
+            print(f"~~~~~ 傳送給 Flask 的資料: {flask_data} ~~~~~")
+            
+            # 3. 傳給 Flask 做處理
+            flask_response = requests.post(
+                'http://localhost:5000/api/chat',
+                json=flask_data
+            )
+        
+            # 檢查 Flask 響應狀態
+            if flask_response.status_code not in [200, 201]:
+                return Response({
+                    'error': f'Flask service error: {flask_response.status_code}',
+                    'details': flask_response.text
+                }, status=500)
+            
+            result = flask_response.json()
+            print(f"~~~~~ Flask 回傳的資料: {result} ~~~~~")
+            
+            # 4. 儲存 AI 回應
+            ai_chat = Chat.objects.create(
+                user=user_instance,
+                topic=topic_instance,
+                content=result.get('response', ''),
+                sender='ai'
+            )
+            
+            # 5. 返回雙方的訊息
+            return Response({
+                'user_message': ChatSerializer(user_chat).data,
+                'ai_response': ChatSerializer(ai_chat).data,
+                'conversation_id': topic_id
+            }, status=201)
+            
+        except requests.exceptions.ConnectionError:
+            return Response({
+                'error': 'Cannot connect to Flask service. Make sure it is running on port 5000.'
+            }, status=503)
+        except Exception as e:
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=500)  
