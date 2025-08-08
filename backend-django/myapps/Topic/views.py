@@ -50,19 +50,15 @@ class QuizViewSet(APIView):
                     }, status=400)
             
             # 返回結果 寫回資料庫
-            # 檢查是否已存在相同的 Quiz，如果存在就使用現有的
+            # 檢查是否已存在相同的 Quiz（根據 quiz_topic 和 user），如果存在就使用現有的
             quiz, created = Quiz.objects.get_or_create(
                 quiz_topic=result.get('quiz_topic'),
+                user=user_instance,  # 加入 user 作為查詢條件
                 defaults={
                     'quiz_topic': result.get('quiz_topic'),
-                    'user': user_instance  # 添加 user 欄位
+                    'user': user_instance
                 }
             )
-            
-            # 如果 Quiz 已存在但沒有 user，更新它
-            if not created and not quiz.user and user_instance:
-                quiz.user = user_instance
-                quiz.save()
             
             # 如果是新創建的 Quiz，記錄日誌
             if created:
