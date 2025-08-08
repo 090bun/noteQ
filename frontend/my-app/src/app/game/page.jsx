@@ -15,8 +15,25 @@ const Game = () => {
   const [showCompleteButton, setShowCompleteButton] = useState(false);
   const totalQuestions = 5;
   const progressPercent = (currentQuestion / totalQuestions) * 100;
-
+  const [quizData, setQuizData] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // 從 sessionStorage 讀取題目資料
+  useEffect(() => {
+    const data = sessionStorage.getItem("quizData");
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        setQuizData(parsed); // ⬅️ 儲存 AI 題目陣列
+      } catch (err) {
+        console.error("題目解析失敗", err);
+      }
+    } else {
+      safeAlert("找不到題目資料，將返回首頁");
+      window.location.href = "/";
+    }
+  }, []);
+
   // 切換選單
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -33,7 +50,8 @@ const Game = () => {
     document.body.style.overflow = "auto";
   };
 
-  const options = ["A 10個", "B 17個", "C 13個", "D 20個"];
+  const currentOptions =
+    quizData.length > 0 ? quizData[currentQuestion - 1]?.options || [] : [];
 
   const handleOptionClick = (index) => {
     setSelectedOption(index);
@@ -77,7 +95,7 @@ const Game = () => {
           </div>
 
           <p className={styles.questionText}>
-            判斷101-200之間有多少個質數,並輸出所有質數
+            {quizData.length > 0 && quizData[currentQuestion - 1]?.question}
           </p>
 
           <div className={styles.gameSection}>
@@ -101,7 +119,7 @@ const Game = () => {
             )}
 
             <div className={styles.answerGrid}>
-              {options.map((option, index) => (
+              {currentOptions.map((option, index) => (
                 <div
                   key={index}
                   className={`${styles.answerOption} ${
