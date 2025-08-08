@@ -13,29 +13,51 @@ const Game = () => {
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [selectedOption, setSelectedOption] = useState(null);
   const [showCompleteButton, setShowCompleteButton] = useState(false);
-  const totalQuestions = 5;
-  const progressPercent = (currentQuestion / totalQuestions) * 100;
-
+  const [totalQuestions, setTotalQuestions] = useState(1);
+  const [quizData, setQuizData] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [userAnswers, setUserAnswers] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // 切換選單
+
+  // 初始化資料
+  useEffect(() => {
+    const data = sessionStorage.getItem("quizData");
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        setQuizData(parsed.quiz || {});
+        setQuestions(parsed.topics || []);
+        setTotalQuestions(parsed.question_count || 1);
+      } catch (err) {
+        console.error("解析 quizData 失敗：", err);
+      }
+    } else {
+      window.location.href = "/";
+    }
+  }, []);
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
-    if (!isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
+    document.body.style.overflow = !isMenuOpen ? "hidden" : "auto";
   };
 
-  // 關閉選單
   const closeMenu = () => {
     setIsMenuOpen(false);
     document.body.style.overflow = "auto";
   };
 
-  const options = ["A 10個", "B 17個", "C 13個", "D 20個"];
-
   const handleOptionClick = (index) => {
+    const currentTopic = questions[currentQuestion - 1];
+    const optionLetter = ["A", "B", "C", "D"][index];
+
+    setUserAnswers((prev) => [
+      ...prev,
+      {
+        //topicId: currentTopic.id,
+        selected: optionLetter,
+      },
+    ]);
+
     setSelectedOption(index);
 
     if (currentQuestion === totalQuestions) {
@@ -45,14 +67,25 @@ const Game = () => {
 
     setTimeout(() => {
       setCurrentQuestion((prev) => prev + 1);
-      setSelectedOption(null); // 清除前一題的選擇樣式
-    }, 300); // 0.3 秒延遲，讓選擇樣式有時間顯示
+      setSelectedOption(null);
+    }, 300);
   };
 
-  // 完成挑戰處理函數
   const handleCompleteChallenge = () => {
+    sessionStorage.setItem("userAnswers", JSON.stringify(userAnswers));
     window.location.href = "/gameover";
   };
+
+  const options = questions.length
+    ? [
+        `A ${questions[currentQuestion - 1]?.option_A}`,
+        `B ${questions[currentQuestion - 1]?.option_B}`,
+        `C ${questions[currentQuestion - 1]?.option_C}`,
+        `D ${questions[currentQuestion - 1]?.option_D}`,
+      ]
+    : [];
+
+  const progressPercent = (currentQuestion / totalQuestions) * 100;
 
   return (
     <>
@@ -66,7 +99,7 @@ const Game = () => {
       <main className={styles.gameMain}>
         <div className={styles.questionContainer}>
           <h2 className={styles.questionNumber}>
-            第 {currentQuestion} 題 / {totalQuestions}
+            第 {currentQuestion} 題 / {totalQuestions} 題
           </h2>
 
           <div className={styles.progressBar}>
@@ -77,11 +110,10 @@ const Game = () => {
           </div>
 
           <p className={styles.questionText}>
-            判斷101-200之間有多少個質數,並輸出所有質數
+            {questions[currentQuestion - 1]?.title || "題目載入中..."}
           </p>
 
           <div className={styles.gameSection}>
-            {/* 回上一題按鈕 */}
             {currentQuestion > 1 && (
               <div
                 className={styles.backButton}
@@ -114,7 +146,6 @@ const Game = () => {
               ))}
             </div>
 
-            {/* 完成挑戰按鈕 - 只在最後一題且選擇完後顯示 */}
             {currentQuestion === totalQuestions && showCompleteButton && (
               <div className={styles.completeButtonContainer}>
                 <button
