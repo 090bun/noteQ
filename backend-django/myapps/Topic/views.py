@@ -35,6 +35,15 @@ class QuizViewSet(APIView):
             
             result = flask_response.json()
             
+            # 調試: 印出 Flask 回應
+            print(f"=== Flask API 回應 ===")
+            print(f"回應狀態碼: {flask_response.status_code}")
+            print(f"回應內容: {result}")
+            print(f"題目數量: {len(result.get('questions', []))}")
+            for i, q in enumerate(result.get('questions', []), 1):
+                print(f"題目 {i}: {q.get('title', 'No title')}")
+            print("=" * 50)
+            
             # 從請求中獲取 user_id（可能來自 Flask 的回應或原始請求）
             user_id = request.data.get('user_id') or result.get('user')
             user_instance = None
@@ -50,25 +59,22 @@ class QuizViewSet(APIView):
                     }, status=400)
             
             # 返回結果 寫回資料庫
-            # 檢查是否已存在相同的 Quiz（根據 quiz_topic 和 user），如果存在就使用現有的
-            quiz, created = Quiz.objects.get_or_create(
+            # 每次都創建新的 Quiz（避免重用舊的導致題目被軟刪除）
+            quiz = Quiz.objects.create(
                 quiz_topic=result.get('quiz_topic'),
-                user=user_instance,  # 加入 user 作為查詢條件
-                defaults={
-                    'quiz_topic': result.get('quiz_topic'),
-                    'user': user_instance
-                }
+                user=user_instance
             )
             
-            # 如果是新創建的 Quiz，記錄日誌
-            if created:
-                print(f"Created new Quiz: {quiz.quiz_topic} for user: {user_instance}")
-            else:
-                print(f"Using existing Quiz: {quiz.quiz_topic} for user: {user_instance}")
+            print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
             
             # 然後創建 Topic，並關聯到 Quiz
             topics = []
-            for q in result.get('questions', []):
+            new_topic_ids = []
+            print(f"=== 開始創建 Topic ===")
+            print(f"準備創建 {len(result.get('questions', []))} 個 Topic")
+            
+            for i, q in enumerate(result.get('questions', []), 1):
+                print(f"創建第 {i} 個 Topic: {q.get('title', 'No title')}")
                 topic = Topic.objects.create(
                     quiz_topic=quiz,  # 關聯到 Quiz 實例
                     title=q.get('title'),
@@ -79,28 +85,23 @@ class QuizViewSet(APIView):
                     Ai_answer=q.get('Ai_answer')
                 )
                 topics.append(topic)
+                new_topic_ids.append(topic.id)
+                print(f"成功創建 Topic ID: {topic.id}")
             
-            # 生成新題目後，軟刪除同一個 Quiz 下的舊 Topics（保留最新的）
-            old_topics = Topic.objects.filter(
-                quiz_topic=quiz
-            ).exclude(id=topic.id).order_by('-created_at')
-            
-            for old_topic in old_topics:
-                old_topic.soft_delete()
-                print(f"Soft deleted old topic: {old_topic.title}")
-            
-            print(f"Kept latest topic: {topic.title}")
+            print(f"總共創建了 {len(topics)} 個 Topic")
+            print("=" * 50)
 
             # 重新從資料庫獲取 quiz 實例以確保最新資料
             quiz.refresh_from_db()
             
             # 序列化返回資料
             quiz_serializer = QuizSerializer(quiz)
-            serializer = TopicSerializer(topic)
+            topics_serializer = TopicSerializer(topics, many=True)
 
             return Response({
                 "quiz": quiz_serializer.data,
-                "topic": serializer.data
+                "topics": topics_serializer.data,
+                "message": f"Successfully created {len(topics)} topics"
             })
 
         except requests.exceptions.ConnectionError:
