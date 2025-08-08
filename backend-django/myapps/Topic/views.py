@@ -76,10 +76,10 @@ class QuizViewSet(APIView):
                 topic = Topic.objects.create(
                     quiz_topic=quiz,  # 關聯到 Quiz 實例
                     title=q.get('title'),
-                    option_a=q.get('option_a'),
-                    option_b=q.get('option_b'),
-                    option_c=q.get('option_c'),
-                    option_d=q.get('option_d'),
+                    option_A=q.get('option_A'),
+                    option_B=q.get('option_B'),
+                    option_C=q.get('option_C'),
+                    option_D=q.get('option_D'),
                     Ai_answer=q.get('Ai_answer')
                 )
                 topics.append(topic)
@@ -170,10 +170,10 @@ class TopicDetailViewSet(APIView):
             topic_data = {
                 'id': topic.id,
                 'title': topic.title,
-                'option_a': topic.option_a,
-                'option_b': topic.option_b,
-                'option_c': topic.option_c,
-                'option_d': topic.option_d,
+                'option_A': topic.option_A,
+                'option_B': topic.option_B,
+                'option_C': topic.option_C,
+                'option_D': topic.option_D,
                 'User_answer': topic.User_answer,
                 'Ai_answer': topic.Ai_answer,
                 'created_at': topic.created_at.isoformat() if topic.created_at else None,
@@ -226,10 +226,10 @@ class QuizTopicsViewSet(APIView):
                 topic_data = {
                     'id': topic.id,
                     'title': topic.title,
-                    'option_a': topic.option_a,
-                    'option_b': topic.option_b,
-                    'option_c': topic.option_c,
-                    'option_d': topic.option_d,
+                    'option_A': topic.option_A,
+                    'option_B': topic.option_B,
+                    'option_C': topic.option_C,
+                    'option_D': topic.option_D,
                     'User_answer': topic.User_answer,
                     'Ai_answer': topic.Ai_answer,
                     'created_at': topic.created_at.isoformat() if topic.created_at else None

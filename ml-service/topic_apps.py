@@ -33,17 +33,17 @@ def generate_questions_with_ai(topic, difficulty, count):
 
     每道題目需包含：
     1. 題目描述 (title) - 請使用繁體中文
-    2. 四個選項 (option_a, option_b, option_c, option_d) - 請使用繁體中文
+    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
     3. 正確答案 (correct_answer: A/B/C/D)
 
     請回傳json format, do not use markdown syntax only text，格式如下：
     [
         {{
             "title": "題目描述（繁體中文）",
-            "option_a": "選項A",
-            "option_b": "選項B", 
-            "option_c": "選項C",
-            "option_d": "選項D",
+            "option_A": "選項A",
+            "option_B": "選項B", 
+            "option_C": "選項C",
+            "option_D": "選項D",
             "correct_answer": "A"
         }}
     ]
@@ -86,10 +86,10 @@ def parse_ai_response(ai_text):
         for q in questions:
             formatted_q = {
                 "title": q.get("title", "預設題目"),
-                "option_a": q.get("option_a", "選項A"),
-                "option_b": q.get("option_b", "選項B"),
-                "option_c": q.get("option_c", "選項C"),
-                "option_d": q.get("option_d", "選項D"),
+                "option_A": q.get("option_A", "選項A"),
+                "option_B": q.get("option_B", "選項B"),
+                "option_C": q.get("option_C", "選項C"),
+                "option_D": q.get("option_D", "選項D"),
                 "correct_answer": q.get("correct_answer", "A"),
                 "User_answer": "",  # 預設空值
                 "Ai_answer": q.get("correct_answer", "A")
@@ -110,10 +110,10 @@ def generate_mock_questions(topic, count):
     for i in range(count):
         mock_q = {
             "title": f"關於 {topic} 的題目 {i+1}",
-            "option_a": "選項 A",
-            "option_b": "選項 B", 
-            "option_c": "選項 C",
-            "option_d": "選項 D",
+            "option_A": "選項 A",
+            "option_B": "選項 B", 
+            "option_C": "選項 C",
+            "option_D": "選項 D",
             "correct_answer": "A",
             "User_answer": "",
             "Ai_answer": "A"
@@ -136,10 +136,10 @@ def create_quiz():
         
         # 呼叫 AI 生成題目
         generated_questions = generate_questions_with_ai(topic, difficulty, question_count)
-        
+        print(f"1.生成的題目數量: {len(generated_questions)}")
         # 透過 Django API 存入資料庫
         django_response = save_to_django_api( topic, difficulty, generated_questions)
-
+        print(f"2. Django API 回應: {django_response}")
         if django_response.get('success'):
             return jsonify({
                 "quiz_topic": topic,

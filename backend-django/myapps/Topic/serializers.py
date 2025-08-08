@@ -14,7 +14,7 @@ class UserFavoriteSerializer(serializers.ModelSerializer):
 class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
-        fields = ['id', 'quiz_topic', 'title', 'User_answer', 'Ai_answer', 'created_at', 'deleted_at', 'option_a', 'option_b', 'option_c', 'option_d']
+        fields = ['id', 'quiz_topic', 'title', 'User_answer', 'Ai_answer', 'created_at', 'deleted_at', 'option_A', 'option_B', 'option_C', 'option_D']
 class QuizSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
