@@ -44,6 +44,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user_id", data.user_id);
       setMessage("登入成功");
 
       window.location.href = '/homegame'; // 登入後跳轉
