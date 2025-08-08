@@ -12,6 +12,7 @@ import {
   safeConfirm,
   showPasswordChangeDialog,
 } from "../utils/dialogs";
+import { safeLogout } from "../utils/auth";
 
 export default function UserPage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -37,16 +38,6 @@ export default function UserPage() {
   const closeMenu = () => {
     setIsMenuOpen(false);
     document.body.style.overflow = "auto";
-  };
-
-  // 登出功能
-  const logout = () => {
-    safeConfirm("確定要登出嗎？", () => {
-      localStorage.removeItem("isLoggedIn");
-      localStorage.removeItem("userData");
-      closeMenu();
-      window.location.href = "/";
-    });
   };
 
   // 切換標籤頁
@@ -88,6 +79,17 @@ export default function UserPage() {
 
   // 後端請求使用者資料(帶上token)
   const fetchUserDataFromAPI = async () => {
+    // 時間格式化
+    const formatDate = (isoString) => {
+      const date = new Date(isoString);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const hh = String(date.getHours()).padStart(2, "0");
+      const mi = String(date.getMinutes()).padStart(2, "0");
+      return `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
+    };
+
     const token = localStorage.getItem("token");
     if (!token) {
       console.error("找不到 token");
@@ -112,7 +114,7 @@ export default function UserPage() {
         setUserData({
           name: user.username,
           email: user.email,
-          registerDate: new Date(user.created_at).toLocaleString(),
+          registerDate: formatDate(user.created_at),
         });
       }
     } catch (error) {
@@ -393,7 +395,7 @@ export default function UserPage() {
       />
 
       {/* 選單 */}
-      <Menu isOpen={isMenuOpen} onClose={closeMenu} onLogout={logout} />
+      <Menu isOpen={isMenuOpen} onClose={closeMenu} onLogout={safeLogout} />
     </>
   );
 }
