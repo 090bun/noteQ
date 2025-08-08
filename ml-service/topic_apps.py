@@ -27,13 +27,23 @@ def generate_questions_with_ai(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-    請用繁體中文回答，請根據以下條件生成 {count} 道選擇題：
+    你是一個全知型 AI 題目生成系統，擁有豐富的跨學科知識，能設計出涵蓋任何主題的題目。你可以根據任意領域產出題目，並提供精確的答案與詳細易懂的解析。你能調整題目的難度與風格，適應不同年齡與知識程度的使用者。 {count} 道選擇題：
+    
+    難度說明：
+    - beginner: 基礎概念，適合初學者
+    - intermediate: 中等難度，需要一定理解力
+    - advanced: 進階內容，需要深入思考
+    - master: 專家級別，複雜應用題
+    - test: 測試題目，由beginner intermediate advanced master四種難度平均組成
+
+    
     主題：{topic}
     難度：{difficulty}
 
+
     每道題目需包含：
     1. 題目描述 (title) - 請使用繁體中文
-    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
+    2. 四個選項 (option_a, option_b, option_c, option_d) - 請使用繁體中文
     3. 正確答案 (correct_answer: A/B/C/D)
 
     請回傳json format, do not use markdown syntax only text，格式如下：
@@ -110,10 +120,10 @@ def generate_mock_questions(topic, count):
     for i in range(count):
         mock_q = {
             "title": f"關於 {topic} 的題目 {i+1}",
-            "option_A": "選項 A",
-            "option_B": "選項 B", 
-            "option_C": "選項 C",
-            "option_D": "選項 D",
+            "option_a": "選項 A",
+            "option_b": "選項 B", 
+            "option_c": "選項 C",
+            "option_d": "選項 D",
             "correct_answer": "A",
             "User_answer": "",
             "Ai_answer": "A"
@@ -128,18 +138,25 @@ def create_quiz():
     try:
         data = request.json
         topic = data.get('topic', '')
-        difficulty = data.get('difficulty', 'medium')
+        difficulty = data.get('difficulty', 'test')
         question_count = data.get('question_count', 1)
+
+        # 驗證難度等級
+        valid_difficulties = ['beginner', 'intermediate', 'advanced', 'master', 'test']
+        if difficulty not in valid_difficulties:
+            return jsonify({
+                "error": f"Invalid difficulty level. Valid options are: {', '.join(valid_difficulties)}"
+            }), 400
 
         if not topic:
             return jsonify({"error": "Topic is required"}), 400
         
         # 呼叫 AI 生成題目
         generated_questions = generate_questions_with_ai(topic, difficulty, question_count)
-        print(f"1.生成的題目數量: {len(generated_questions)}")
+        
         # 透過 Django API 存入資料庫
         django_response = save_to_django_api( topic, difficulty, generated_questions)
-        print(f"2. Django API 回應: {django_response}")
+
         if django_response.get('success'):
             return jsonify({
                 "quiz_topic": topic,
