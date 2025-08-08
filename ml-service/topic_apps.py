@@ -120,10 +120,10 @@ def generate_mock_questions(topic, count):
     for i in range(count):
         mock_q = {
             "title": f"關於 {topic} 的題目 {i+1}",
-            "option_a": "選項 A",
-            "option_b": "選項 B", 
-            "option_c": "選項 C",
-            "option_d": "選項 D",
+            "option_A": "選項 A",
+            "option_B": "選項 B", 
+            "option_C": "選項 C",
+            "option_D": "選項 D",
             "correct_answer": "A",
             "User_answer": "",
             "Ai_answer": "A"
