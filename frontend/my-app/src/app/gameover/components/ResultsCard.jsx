@@ -12,4 +12,4 @@ export default function ResultsCard({ styles }) {
       </div>
     </div>
   );
-} 
+}
