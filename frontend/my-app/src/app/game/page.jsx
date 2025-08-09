@@ -25,8 +25,10 @@ const Game = () => {
     if (data) {
       try {
         const parsed = JSON.parse(data);
+        //console.log(data)
         setQuizData(parsed.quiz || {});
         setQuestions(parsed.topics || []);
+        //console.log(parsed.topics)
         setTotalQuestions(parsed.question_count || 1);
       } catch (err) {
         console.error("解析 quizData 失敗：", err);
@@ -49,11 +51,11 @@ const Game = () => {
   const handleOptionClick = (index) => {
     const currentTopic = questions[currentQuestion - 1];
     const optionLetter = ["A", "B", "C", "D"][index];
-
+    
     setUserAnswers((prev) => [
       ...prev,
       {
-        //topicId: currentTopic.id,
+        topicId: currentTopic.id,
         selected: optionLetter,
       },
     ]);

@@ -130,7 +130,7 @@ export default function HomeGamePage() {
         "quizData",
         JSON.stringify({
           quiz: result.quiz, // 單題形式
-          topics: [result.topic], // 多題陣列形式
+          topics: result.topics || [], // 多題陣列形式
           question_count: count, // 設定題數
         })
       );
