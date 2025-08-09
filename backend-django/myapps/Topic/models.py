@@ -161,16 +161,20 @@ class DifficultyLevels(models.Model):
 # note 資料庫
 # 儲存使用者筆記
 # quiz_topic: 關聯的考題ID
+# topic: 關聯的題目ID (保留可以新增空白筆記)
 # user: 使用者ID
-# chat: 聊天ID
+# content: 筆記內容 (保留可以新增空白筆記)
 # retake: 是否再次測驗(針對筆記)
 # retake_score_id: 再次測驗分數ID
 # created_at: 建立時間
 # updated_at: 更新時間
 # deleted_at: 刪除時間
+# 
 class Note(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
+    topic = models.ForeignKey("Topic.Topic", on_delete=models.CASCADE, null=True, blank=True)
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    content = models.TextField(null=True, blank=True)
     is_retake = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)

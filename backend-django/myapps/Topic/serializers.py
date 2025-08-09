@@ -57,11 +57,11 @@ class NoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Note
-        fields = ['id', 'topic', 'user', 'chat', 'retake', 'retake_score_id', 'created_at', 'updated_at', 'deleted_at']
+        fields = ['id', 'quiz_topic', 'topic', 'user', 'content', 'is_retake', 'created_at', 'updated_at', 'deleted_at']
         extra_kwargs = {
-            'retake_score_id': {'required': False, 'allow_null': True},
             'updated_at': {'required': False, 'allow_null': True},
-            'deleted_at': {'required': False, 'allow_null': True}
+            'deleted_at': {'required': False, 'allow_null': True},
+            'is_retake': {'required': False}
         }
 
 class AiPromptSerializer(serializers.ModelSerializer):
