@@ -554,4 +554,98 @@ class NoteEdit(APIView):
                 return Response({'message': 'Note deleted successfully'}, status=204)
         except Note.DoesNotExist:
             return Response({'error': f'Note with ID {note_id} not found'}, status=404)
-        
+
+class NoteListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """獲取使用者的所有筆記"""
+        try:
+            if 'quiz_topic' in request.data:
+                quiz_topic = request.data.get('quiz_topic')
+                notes = Note.objects.filter(
+                    quiz_topic=quiz_topic,
+                    user=request.user,
+                    deleted_at__isnull=True,
+                    quiz_topic__deleted_at__isnull=True
+                ).order_by('-created_at')  # 按創建時間倒序排列
+            else:
+                # 使用 filter 而不是 get，獲取多個筆記
+                notes = Note.objects.filter(
+                    user=request.user,
+                    deleted_at__isnull=True,
+                    quiz_topic__deleted_at__isnull=True
+                ).order_by('-created_at')  # 按創建時間倒序排列
+            
+            return Response({
+                'notes': NoteSerializer(notes, many=True).data,
+                'count': notes.count()
+            }, status=200)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Error fetching notes: {str(e)}'
+            }, status=500)
+    
+    # 手動新增空白筆記
+    def post(self, request):
+        try:
+            quiz_topic = request.data.get('quiz_topic')
+            content = request.data.get('content')
+            if not quiz_topic or not content:
+                return Response({'error': 'quiz_topic and content are required'}, status=400)
+            try:
+                quiz_topic_instance = Quiz.objects.get(id=quiz_topic, deleted_at__isnull=True)
+            except Quiz.DoesNotExist:
+                return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
+
+                # 創建新的 Note
+            note = Note.objects.create(
+                user=request.user,
+                quiz_topic=quiz_topic_instance,
+                content=content
+            )
+            return Response({
+                'message': 'Note created successfully',
+                'note_id': note.id
+            }, status=201)
+
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+
+
+class CreateQuizTopicView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 創建新的 QuizTopic (自創筆記的部分)
+        try:
+            # 從請求中獲取 quiz_topic 名稱
+            quiz_topic_name = request.data.get('quiz_topic')
+            user = request.user
+            if not quiz_topic_name:
+                return Response({'error': 'quiz_topic is required'}, status=400)
+            
+            # 檢查是否已經存在同名的 Quiz
+            existing_quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
+            if existing_quiz:
+                return Response({'error': f'Quiz with topic "{quiz_topic_name}" already exists'}, status=400)
+            
+            # 創建新的 QuizTopic
+            serializer = QuizSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            quiz_topic_instance = serializer.save(user=user)  # 在保存時設定 user
+            return Response({
+                "message": "QuizTopic created successfully.",
+                "quiz_topic_id": quiz_topic_instance.id
+            }, status=201)
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+
+class UserQuizView(APIView):
+    permission_classes = [IsAuthenticated]
+    # 取得所有 Quiz
+    def get(self, request):
+        quizzes = Quiz.objects.filter(user=request.user, deleted_at__isnull=True).order_by('-created_at')
+        serializer = QuizSerializer(quizzes, many=True)
+        return Response(serializer.data)

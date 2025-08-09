@@ -53,7 +53,7 @@ class ChatSerializer(serializers.ModelSerializer):
 class NoteSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     topic = TopicSerializer(read_only=True)
-    chat = ChatSerializer(read_only=True)
+    quiz_topic = QuizSerializer(read_only=True)
 
     class Meta:
         model = Note

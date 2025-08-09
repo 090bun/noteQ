@@ -179,8 +179,23 @@ class Note(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    
+    # 管理器
+    objects = SoftDeleteManager()  # 預設只顯示未刪除的
+    all_objects = AllObjectsManager()  # 顯示所有記錄（包含已刪除）
+    
     class Meta:
         db_table = "Note"
+    
+    def soft_delete(self):
+        """軟刪除 Note"""
+        self.deleted_at = timezone.now()
+        self.save()
+    
+    def restore(self):
+        """恢復軟刪除的 Note"""
+        self.deleted_at = None
+        self.save()
 # -----------------
 # AI Chat 資料庫
 # 儲存聊天內容
