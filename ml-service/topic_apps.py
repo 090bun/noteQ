@@ -27,21 +27,26 @@ def generate_questions_with_ai(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-    你是一個專業的程式設計題目生成系統。請根據以下條件生成 {count} 道關於程式設計的選擇題。
-
+    你是一位擁有跨領域知識的「全能出題專家」，精通各式各樣的領域。你能根據任何主題，快速理解核心概念，並創造出貼近該主題、具有啟發性與準確性的題目。你的出題風格靈活多變，並確保內容具有知識價值、邏輯嚴謹且無錯誤。
+    如果主題包含"物件導向"、"OOP"、"Object-Oriented"等詞彙，請生成物件導向程式設計相關題目
     請根據以下條件生成 {count} 道選擇題：
-    
-    **重要：無論主題是什麼，都必須生成與程式設計、軟體開發相關的題目**
-    
-    主題：{topic} (如果主題包含"物件導向"、"OOP"、"Object-Oriented"等詞彙，請生成物件導向程式設計相關題目)
-    難度：{difficulty}
     
     難度說明：
     - beginner: 基礎概念，適合初學者
     - intermediate: 中等難度，需要一定理解力  
     - advanced: 進階內容，需要深入思考
-    - master: 專家級別，複雜應用題
+    - master: 專家級別，需要精熟此{topic}主題才能回答得出來
     - test: 測試題目，由beginner intermediate advanced master四種難度平均組成
+    
+    主題：{topic} 
+    難度：{difficulty}
+    題目數量：{count} 題（必須生成完整的 {count} 題，且不會有重複的題目）
+    
+    **重要提醒：
+    1. 請嚴格按照上述難度說明來設計題目難度
+    2. 必須生剛剛好的 {count} 道題目，不可少於、多於此數量
+    3. 每道題目都必須完整包含所有必要欄位**
+    
 
     每道題目需包含：
     1. 題目描述 (title) - 請使用繁體中文
@@ -69,7 +74,7 @@ def generate_questions_with_ai(topic, difficulty, count):
                 {"role": "system", "content": "你是一個題目生成助手，請根據使用者的需求生成題目。"},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7,
+            temperature=0.9,
             max_tokens=4000  # 增加最大 token 數以支持更多題目
         )
 
