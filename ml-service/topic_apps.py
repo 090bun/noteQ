@@ -27,23 +27,40 @@ def generate_questions_with_ai(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-    請用繁體中文回答，請根據以下條件生成 {count} 道選擇題：
-    主題：{topic}
+    你是一位擁有跨領域知識的「全能出題專家」，精通各式各樣的領域。你能根據任何主題，快速理解核心概念，並創造出貼近該主題、具有啟發性與準確性的題目。你的出題風格靈活多變，並確保內容具有知識價值、邏輯嚴謹且無錯誤。
+    如果主題包含"物件導向"、"OOP"、"Object-Oriented"等詞彙，請生成物件導向程式設計相關題目
+    請根據以下條件生成 {count} 道選擇題：
+    
+    難度說明：
+    - beginner: 基礎概念，適合初學者
+    - intermediate: 中等難度，需要一定理解力  
+    - advanced: 進階內容，需要深入思考
+    - master: 專家級別，需要精熟此{topic}主題才能回答得出來
+    - test: 測試題目，由beginner intermediate advanced master四種難度平均組成
+    
+    主題：{topic} 
     難度：{difficulty}
+    題目數量：{count} 題（必須生成完整的 {count} 題，且不會有重複的題目）
+    
+    **重要提醒：
+    1. 請嚴格按照上述難度說明來設計題目難度
+    2. 必須生剛剛好的 {count} 道題目，不可少於、多於此數量
+    3. 每道題目都必須完整包含所有必要欄位**
+    
 
     每道題目需包含：
     1. 題目描述 (title) - 請使用繁體中文
-    2. 四個選項 (option_a, option_b, option_c, option_d) - 請使用繁體中文
+    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
     3. 正確答案 (correct_answer: A/B/C/D)
 
     請回傳json format, do not use markdown syntax only text，格式如下：
     [
         {{
             "title": "題目描述（繁體中文）",
-            "option_a": "選項A",
-            "option_b": "選項B", 
-            "option_c": "選項C",
-            "option_d": "選項D",
+            "option_A": "選項A",
+            "option_B": "選項B", 
+            "option_C": "選項C",
+            "option_D": "選項D",
             "correct_answer": "A"
         }}
     ]
@@ -57,13 +74,18 @@ def generate_questions_with_ai(topic, difficulty, count):
                 {"role": "system", "content": "你是一個題目生成助手，請根據使用者的需求生成題目。"},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.7
+            temperature=0.9,
+            max_tokens=4000  # 增加最大 token 數以支持更多題目
         )
 
         ai_response = response.choices[0].message.content
-        print(ai_response)
+        print(f"=== OpenAI API 回應詳情 ===")
+        print(f"使用的 tokens: {response.usage.total_tokens if hasattr(response, 'usage') else '未知'}")
+        print(f"完成原因: {response.choices[0].finish_reason if hasattr(response.choices[0], 'finish_reason') else '未知'}")
+        print(f"回應長度: {len(ai_response)} 字元")
+        print(f"AI 回應: {ai_response}")
 
-        return parse_ai_response(ai_response)
+        return parse_ai_response(ai_response, count)
 
     except Exception as e:
         print(f"❌ OpenAI API 錯誤: {str(e)}")
@@ -71,7 +93,7 @@ def generate_questions_with_ai(topic, difficulty, count):
         return generate_mock_questions(topic, count)
 
 
-def parse_ai_response(ai_text):
+def parse_ai_response(ai_text, count=1):
     """解析 AI 回應格式化為標準格式"""
     try:
         # 先印出 AI 的原始回應來除錯
@@ -86,10 +108,10 @@ def parse_ai_response(ai_text):
         for q in questions:
             formatted_q = {
                 "title": q.get("title", "預設題目"),
-                "option_a": q.get("option_a", "選項A"),
-                "option_b": q.get("option_b", "選項B"),
-                "option_c": q.get("option_c", "選項C"),
-                "option_d": q.get("option_d", "選項D"),
+                "option_A": q.get("option_A", "選項A"),
+                "option_B": q.get("option_B", "選項B"),
+                "option_C": q.get("option_C", "選項C"),
+                "option_D": q.get("option_D", "選項D"),
                 "correct_answer": q.get("correct_answer", "A"),
                 "User_answer": "",  # 預設空值
                 "Ai_answer": q.get("correct_answer", "A")
@@ -102,7 +124,7 @@ def parse_ai_response(ai_text):
         # 如果解析失敗，回傳模擬資料
         print(f"JSON 解析錯誤: {str(e)}")
         print(f"無法解析的內容: {ai_text[:200]}...")  # 只顯示前200字元
-        return generate_mock_questions("解析失敗", 1)
+        return generate_mock_questions("解析失敗", count)
 
 def generate_mock_questions(topic, count):
     """生成模擬題目（當 AI 服務不可用時使用）"""
@@ -110,10 +132,10 @@ def generate_mock_questions(topic, count):
     for i in range(count):
         mock_q = {
             "title": f"關於 {topic} 的題目 {i+1}",
-            "option_a": "選項 A",
-            "option_b": "選項 B", 
-            "option_c": "選項 C",
-            "option_d": "選項 D",
+            "option_A": "選項 A",
+            "option_B": "選項 B", 
+            "option_C": "選項 C",
+            "option_D": "選項 D",
             "correct_answer": "A",
             "User_answer": "",
             "Ai_answer": "A"
@@ -127,9 +149,37 @@ def create_quiz():
     """使用 AI 生成題目"""
     try:
         data = request.json
+        print(f"=== Flask 接收到的請求 ===")
+        print(f"完整請求數據: {data}")
+        print(f"請求來源: {request.headers.get('User-Agent', 'Unknown')}")
+        
+        # 檢查字符編碼
+        topic_raw = data.get('topic', '')
+        print(f"原始 topic: {repr(topic_raw)}")
+        print(f"topic 類型: {type(topic_raw)}")
+        print(f"topic 編碼: {topic_raw.encode('utf-8') if isinstance(topic_raw, str) else 'N/A'}")
+        print("=" * 50)
+        
+        # 強制輸出到控制台
+        import sys
+        sys.stdout.flush()
+        
         topic = data.get('topic', '')
-        difficulty = data.get('difficulty', 'medium')
+        difficulty = data.get('difficulty', 'test')
         question_count = data.get('question_count', 1)
+        
+        print(f"解析的參數:")
+        print(f"  topic: {topic}")
+        print(f"  difficulty: {difficulty}")
+        print(f"  question_count: {question_count}")
+        print("=" * 50)
+
+        # 驗證難度等級
+        valid_difficulties = ['beginner', 'intermediate', 'advanced', 'master', 'test']
+        if difficulty not in valid_difficulties:
+            return jsonify({
+                "error": f"Invalid difficulty level. Valid options are: {', '.join(valid_difficulties)}"
+            }), 400
 
         if not topic:
             return jsonify({"error": "Topic is required"}), 400
@@ -137,49 +187,15 @@ def create_quiz():
         # 呼叫 AI 生成題目
         generated_questions = generate_questions_with_ai(topic, difficulty, question_count)
         
-        # 透過 Django API 存入資料庫
-        django_response = save_to_django_api( topic, difficulty, generated_questions)
-
-        if django_response.get('success'):
-            return jsonify({
-                "quiz_topic": topic,
-                "questions": generated_questions,
-                "message": "Questions generated and saved to database successfully",
-                "quiz_id": django_response.get('quiz_id')
-            }), 201
-        else:
-            return jsonify({
-                "quiz_topic": topic,
-                "questions": generated_questions,
-                "message": "Questions generated but failed to save to database",
-                "error": django_response.get('error')
-            }), 201
+        # 直接返回生成的題目，讓 Django 處理儲存
+        return jsonify({
+            "quiz_topic": topic,
+            "questions": generated_questions,
+            "message": "Questions generated successfully"
+        }), 201
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-def save_to_django_api( topic, difficulty, questions):
-    #透過 Django API 存入資料庫
-    try:
-        django_data = {
-            "topic": topic,
-            "difficulty": difficulty,
-            "questions": questions
-        }
-        print(f"~~~~~ 傳送到 Django API 的資料: {django_data} ~~~~~")
-        response = requests.post(
-            'http://localhost:8000/api/quiz/',
-            json=django_data,
-            headers={'Content-Type': 'application/json'}
-        )
-        
-        if response.status_code == 201:
-            return {"success": True, "quiz_id": response.json().get('id')}
-        else:
-            return {"success": False, "error": response.text}
-            
-    except Exception as e:
-        return {"success": False, "error": str(e)}
 
 @app.route('/api/quiz_list', methods=['GET'])
 def get_quiz():

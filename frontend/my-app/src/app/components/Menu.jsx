@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { safeLogout } from '../utils/auth';
 
 export default function Menu({ 
     isOpen = false, 
@@ -37,7 +38,7 @@ export default function Menu({
 
                 <button 
                     className="menu-item" 
-                    onClick={onLogout}
+                    onClick={safeLogout}
                     style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                     <Image src="/img/Vector-30.png" alt="" className="menu-item-icon" width={24} height={24} />

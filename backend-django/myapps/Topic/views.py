@@ -1,9 +1,10 @@
 import requests
-from django.shortcuts import render
+from django.shortcuts import render , get_object_or_404
 from django.http import JsonResponse
 from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer
 from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz , UserFamiliarity, DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
+from myapps.Authorization.models import User
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny , IsAuthenticated
@@ -35,6 +36,15 @@ class QuizViewSet(APIView):
             
             result = flask_response.json()
             
+            # 調試: 印出 Flask 回應
+            print(f"=== Flask API 回應 ===")
+            print(f"回應狀態碼: {flask_response.status_code}")
+            print(f"回應內容: {result}")
+            print(f"題目數量: {len(result.get('questions', []))}")
+            for i, q in enumerate(result.get('questions', []), 1):
+                print(f"題目 {i}: {q.get('title', 'No title')}")
+            print("=" * 50)
+            
             # 從請求中獲取 user_id（可能來自 Flask 的回應或原始請求）
             user_id = request.data.get('user_id') or result.get('user')
             user_instance = None
@@ -50,61 +60,49 @@ class QuizViewSet(APIView):
                     }, status=400)
             
             # 返回結果 寫回資料庫
-            # 檢查是否已存在相同的 Quiz，如果存在就使用現有的
-            quiz, created = Quiz.objects.get_or_create(
+            # 每次都創建新的 Quiz（避免重用舊的導致題目被軟刪除）
+            quiz = Quiz.objects.create(
                 quiz_topic=result.get('quiz_topic'),
-                defaults={
-                    'quiz_topic': result.get('quiz_topic'),
-                    'user': user_instance  # 添加 user 欄位
-                }
+                user=user_instance
             )
             
-            # 如果 Quiz 已存在但沒有 user，更新它
-            if not created and not quiz.user and user_instance:
-                quiz.user = user_instance
-                quiz.save()
-            
-            # 如果是新創建的 Quiz，記錄日誌
-            if created:
-                print(f"Created new Quiz: {quiz.quiz_topic} for user: {user_instance}")
-            else:
-                print(f"Using existing Quiz: {quiz.quiz_topic} for user: {user_instance}")
+            print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
             
             # 然後創建 Topic，並關聯到 Quiz
             topics = []
-            for q in result.get('questions', []):
+            new_topic_ids = []
+            print(f"=== 開始創建 Topic ===")
+            print(f"準備創建 {len(result.get('questions', []))} 個 Topic")
+            
+            for i, q in enumerate(result.get('questions', []), 1):
+                print(f"創建第 {i} 個 Topic: {q.get('title', 'No title')}")
                 topic = Topic.objects.create(
                     quiz_topic=quiz,  # 關聯到 Quiz 實例
                     title=q.get('title'),
-                    option_a=q.get('option_a'),
-                    option_b=q.get('option_b'),
-                    option_c=q.get('option_c'),
-                    option_d=q.get('option_d'),
+                    option_A=q.get('option_A'),
+                    option_B=q.get('option_B'),
+                    option_C=q.get('option_C'),
+                    option_D=q.get('option_D'),
                     Ai_answer=q.get('Ai_answer')
                 )
                 topics.append(topic)
+                new_topic_ids.append(topic.id)
+                print(f"成功創建 Topic ID: {topic.id}")
             
-            # 生成新題目後，軟刪除同一個 Quiz 下的舊 Topics（保留最新的）
-            old_topics = Topic.objects.filter(
-                quiz_topic=quiz
-            ).exclude(id=topic.id).order_by('-created_at')
-            
-            for old_topic in old_topics:
-                old_topic.soft_delete()
-                print(f"Soft deleted old topic: {old_topic.title}")
-            
-            print(f"Kept latest topic: {topic.title}")
+            print(f"總共創建了 {len(topics)} 個 Topic")
+            print("=" * 50)
 
             # 重新從資料庫獲取 quiz 實例以確保最新資料
             quiz.refresh_from_db()
             
             # 序列化返回資料
             quiz_serializer = QuizSerializer(quiz)
-            serializer = TopicSerializer(topic)
+            topics_serializer = TopicSerializer(topics, many=True)
 
             return Response({
                 "quiz": quiz_serializer.data,
-                "topic": serializer.data
+                "topics": topics_serializer.data,
+                "message": f"Successfully created {len(topics)} topics"
             })
 
         except requests.exceptions.ConnectionError:
@@ -170,10 +168,10 @@ class TopicDetailViewSet(APIView):
             topic_data = {
                 'id': topic.id,
                 'title': topic.title,
-                'option_a': topic.option_a,
-                'option_b': topic.option_b,
-                'option_c': topic.option_c,
-                'option_d': topic.option_d,
+                'option_A': topic.option_A,
+                'option_B': topic.option_B,
+                'option_C': topic.option_C,
+                'option_D': topic.option_D,
                 'User_answer': topic.User_answer,
                 'Ai_answer': topic.Ai_answer,
                 'created_at': topic.created_at.isoformat() if topic.created_at else None,
@@ -226,10 +224,10 @@ class QuizTopicsViewSet(APIView):
                 topic_data = {
                     'id': topic.id,
                     'title': topic.title,
-                    'option_a': topic.option_a,
-                    'option_b': topic.option_b,
-                    'option_c': topic.option_c,
-                    'option_d': topic.option_d,
+                    'option_A': topic.option_A,
+                    'option_B': topic.option_B,
+                    'option_C': topic.option_C,
+                    'option_D': topic.option_D,
                     'User_answer': topic.User_answer,
                     'Ai_answer': topic.Ai_answer,
                     'created_at': topic.created_at.isoformat() if topic.created_at else None
@@ -262,7 +260,6 @@ class AddFavoriteViewSet(APIView):
             
             
             # 獲取 User 實例
-            from myapps.Authorization.models import User
             try:
                 user_instance = User.objects.get(id=user)
             except User.DoesNotExist:
@@ -270,8 +267,9 @@ class AddFavoriteViewSet(APIView):
 
 
             # 檢查 Topic 是否存在
-            topic_instance = Topic.objects.filter(id=topic, deleted_at__isnull=True).first()
-            if not topic_instance:
+            try:
+                topic_instance = Topic.objects.get(id=topic, deleted_at__isnull=True)
+            except Topic.DoesNotExist:
                 return Response({'error': 'Topic not found'}, status=404)
             
             # 檢查該 Topic 的 Quiz 是否屬於該使用者
@@ -289,14 +287,26 @@ class AddFavoriteViewSet(APIView):
             if existing_favorite:
                 return Response({'message': 'This topic is already in your favorites'}, status=200) 
             # 創建 UserFavorite 實例
+            # 定義 ai_answer_text
+            ai_answer_text = getattr(topic_instance, f"option_{topic_instance.Ai_answer}", "選項不存在")
+            
+            # 先創建 Note 實例
+            note_instance = Note.objects.create(
+                quiz_topic=topic_instance.quiz_topic,
+                topic=topic_instance,  # 設定 topic 欄位
+                user=user_instance,
+                content=f"""
+題目: {topic_instance.title}
+正確答案: {ai_answer_text}
+                """.strip(),
+                is_retake=False
+            )
+            
+            # 然後創建 UserFavorite 實例
             user_favorite = UserFavorite.objects.create(
                 user=user_instance,
                 topic=topic_instance,
-                note=Note.objects.create(
-                    quiz_topic=topic_instance.quiz_topic,
-                    user=user_instance,
-                    is_retake=False  # 修正欄位名稱
-                )
+                note=note_instance
             )
             # 序列化返回資料
             serializer = UserFavoriteSerializer(user_favorite)
@@ -432,4 +442,116 @@ class ChatViewSet(APIView):
         except Exception as e:
             return Response({
                 'error': f'Internal server error: {str(e)}'
-            }, status=500)  
+            }, status=500)
+
+class ChatContentToNoteView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self,request):
+        """加入單一對話至NOTE"""
+        try:
+            # 前端回傳 chat  user 目前題目topic_id
+            chat_id = request.data.get('chat_id')
+            user_id = request.data.get('user_id')
+            topic_id = request.data.get('topic_id')
+            
+            # 驗證必要參數
+            if not chat_id:
+                return Response({'error': 'chat_id is required'}, status=400)
+            if not user_id:
+                return Response({'error': 'user_id is required'}, status=400)
+            if not topic_id:
+                return Response({'error': 'topic_id is required'}, status=400)
+            
+            # 確認是否已經加入過收藏 如果加入過直接把對話加入到note.content後面
+            try:
+                user_instance = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    'error': f'User with ID {user_id} not found'
+                }, status=400)
+            try:
+                topic_instance = Topic.objects.get(id=topic_id)
+            except Topic.DoesNotExist:
+                return Response({
+                    'error': f'Topic with ID {topic_id} not found'
+                }, status=400)
+            try:
+                chat_instance = Chat.objects.get(id=chat_id)
+            except Chat.DoesNotExist:
+                return Response({
+                    'error': f'Chat with ID {chat_id} not found'
+                }, status=400)
+            
+            try:
+                note_instance = Note.objects.get(user=user_instance, quiz_topic=topic_instance.quiz_topic, topic=topic_instance)
+            except Note.DoesNotExist:
+                ai_answer_text = getattr(topic_instance, f"option_{topic_instance.Ai_answer}", "選項不存在")
+                serializer = NoteSerializer(data={
+                    "quiz_topic": topic_instance.quiz_topic.id,
+                    "topic": topic_instance.id,
+                    "user": user_instance.id,
+                    "content": f"題目: {topic_instance.title}\n正確答案: {ai_answer_text}\n\n=== 聊天記錄 ===\n{chat_instance.content}",
+                    "is_retake": False
+                })
+                serializer.is_valid(raise_exception=True)
+                note_instance = serializer.save()
+            return Response({
+                "message": "Chat added to note successfully.",
+                "note_id": note_instance.id
+            }, status=200)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Internal server error: {str(e)}'
+            }, status=500)
+
+
+# 編輯筆記內容
+class NoteEdit(APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request, note_id):
+        """編輯筆記內容"""
+        try:
+            # 直接使用 URL 參數中的 note_id，不需要從 request.data 獲取
+            new_content = request.data.get('content')
+
+            if not new_content:
+                return Response({'error': 'content is required'}, status=400)
+
+            try:
+                note_instance = Note.objects.get(
+                    id=note_id,
+                    deleted_at__isnull=True
+                )
+            except Note.DoesNotExist:
+                return Response({'error': f'Note with ID {note_id} not found'}, status=404)
+
+            # 簡單直接更新，不使用 select_for_update 和複雜的序列化
+            note_instance.content = new_content
+            note_instance.updated_at = timezone.now()
+            note_instance.save()
+
+            return Response({
+                'message': 'Note updated successfully',
+                'note_id': note_instance.id,
+                'content': note_instance.content
+            }, status=200)
+
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+        
+    # 軟刪除
+    def delete(self , request, note_id):
+        try:
+            note_instance = Note.objects.get(
+                id=note_id,
+                deleted_at__isnull=True
+            )
+            if note_instance:
+                note_instance.deleted_at = timezone.now()
+                note_instance.save()
+                return Response({'message': 'Note deleted successfully'}, status=204)
+        except Note.DoesNotExist:
+            return Response({'error': f'Note with ID {note_id} not found'}, status=404)
+        

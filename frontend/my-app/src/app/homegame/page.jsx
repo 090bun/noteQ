@@ -15,6 +15,8 @@ export default function HomeGamePage() {
   const [topic, setTopic] = useState("");
   const [questionCount, setQuestionCount] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // 初始化路由器
   const router = useRouter();
 
   // 難度選項配置
@@ -74,7 +76,7 @@ export default function HomeGamePage() {
 
   // 開始挑戰
   const startChallenge = async () => {
-    const validDifficulties = ["medium", "hard"];
+    const validDifficulties = ["advanced", "intermediate"];
 
     if (!selectedDifficulty) {
       safeAlert("請選擇難度");
@@ -82,7 +84,7 @@ export default function HomeGamePage() {
     }
 
     if (!validDifficulties.includes(selectedDifficulty)) {
-      safeAlert("目前僅支援中級（medium）與高級（hard）題目");
+      safeAlert("目前僅支援 中級 與 高級 題目");
       return;
     }
 
@@ -111,6 +113,7 @@ export default function HomeGamePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          user_id: localStorage.getItem("userId"),
           topic: topic.trim(),
           difficulty: selectedDifficulty,
           question_count: count,
@@ -123,9 +126,15 @@ export default function HomeGamePage() {
 
       const result = await res.json();
       console.log("題目已送出，回傳結果:", result);
-      sessionStorage.setItem("quizData", JSON.stringify(result)); // 儲存題目資料到 sessionStorage
-      router.push("/game"); // 跳轉到 game 頁面
-
+      sessionStorage.setItem(
+        "quizData",
+        JSON.stringify({
+          quiz: result.quiz, // 單題形式
+          topics: result.topics || [], // 多題陣列形式
+          question_count: count, // 設定題數
+        })
+      );
+      router.push("/game"); // 跳轉至 game 頁面
     } catch (err) {
       console.error("發送題目失敗:", err);
       safeAlert("題目發送失敗，請稍後再試");

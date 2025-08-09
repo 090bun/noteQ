@@ -14,7 +14,7 @@ class UserFavoriteSerializer(serializers.ModelSerializer):
 class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
-        fields = ['id', 'quiz_topic', 'title', 'User_answer', 'Ai_answer', 'created_at', 'deleted_at', 'option_a', 'option_b', 'option_c', 'option_d']
+        fields = ['id', 'quiz_topic', 'title', 'User_answer', 'Ai_answer', 'created_at', 'deleted_at', 'option_A', 'option_B', 'option_C', 'option_D']
 class QuizSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
@@ -36,10 +36,8 @@ class UserFamiliaritySerializer(serializers.ModelSerializer):
 class DifficultyLevelsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DifficultyLevels
-        fields = ['id', 'level', 'description']
-        extra_kwargs = {
-            'description': {'required': False, 'allow_null': True}
-        }
+        fields = ['id', 'level_name', 'familiarity_cap','weight_coefficients', 'created_at']
+
 class ChatSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     topic = TopicSerializer(read_only=True)
@@ -59,11 +57,11 @@ class NoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Note
-        fields = ['id', 'topic', 'user', 'chat', 'retake', 'retake_score_id', 'created_at', 'updated_at', 'deleted_at']
+        fields = ['id', 'quiz_topic', 'topic', 'user', 'content', 'is_retake', 'created_at', 'updated_at', 'deleted_at']
         extra_kwargs = {
-            'retake_score_id': {'required': False, 'allow_null': True},
             'updated_at': {'required': False, 'allow_null': True},
-            'deleted_at': {'required': False, 'allow_null': True}
+            'deleted_at': {'required': False, 'allow_null': True},
+            'is_retake': {'required': False}
         }
 
 class AiPromptSerializer(serializers.ModelSerializer):
