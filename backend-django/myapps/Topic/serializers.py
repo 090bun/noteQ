@@ -36,10 +36,8 @@ class UserFamiliaritySerializer(serializers.ModelSerializer):
 class DifficultyLevelsSerializer(serializers.ModelSerializer):
     class Meta:
         model = DifficultyLevels
-        fields = ['id', 'level', 'description']
-        extra_kwargs = {
-            'description': {'required': False, 'allow_null': True}
-        }
+        fields = ['id', 'level_name', 'familiarity_cap','weight_coefficients', 'created_at']
+
 class ChatSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     topic = TopicSerializer(read_only=True)

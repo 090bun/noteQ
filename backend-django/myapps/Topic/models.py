@@ -146,13 +146,13 @@ class UserFamiliarity(models.Model):
 
 # 難度分類
 # 儲存使用者熟悉度
-# level_name: 難度名稱
+# level_name: 難度名稱 
 # familiarity_cap: 熟悉度上限
 # weight_coefficients: 不同題型的權重係數
 # created_at: 建立時間
 
 class DifficultyLevels(models.Model):
-    level_name = models.CharField(max_length=10, unique=True)
+    level_name = models.CharField(max_length=128, unique=True)
     familiarity_cap = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     weight_coefficients = models.JSONField(default=dict)  # 儲存不同題型的權重係數
     created_at = models.DateTimeField(auto_now_add=True)
