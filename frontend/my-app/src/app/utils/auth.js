@@ -7,6 +7,8 @@ export const safeLogout = () => {
       localStorage.removeItem('isLoggedIn');
       localStorage.removeItem('userData');
       localStorage.removeItem('token');
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('isPlusSubscribed');
       window.location.href = '/';
     },
     () => {

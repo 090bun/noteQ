@@ -135,7 +135,7 @@ const Game = () => {
             )}
 
             <div className={styles.answerGrid}>
-              {currentOptions.map((option, index) => (
+              {options.map((option, index) => (
                 <div
                   key={index}
                   className={`${styles.answerOption} ${
