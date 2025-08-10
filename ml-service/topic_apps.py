@@ -361,5 +361,68 @@ def generate_smart_response(user_content, chat_history):
     return responses.get(response_type, f"我理解您關於「{user_content}」的問題，讓我為您提供相關的資訊和建議。")
 
 
+
+# GPT統整note content 資料
+
+def parse_note_content(content):
+    print("----content內容------")
+    print(content)
+    print("----content內容------")
+    api_key = os.getenv('OPENAI_API_KEY', '')
+    if api_key == '' or not api_key:
+        print("API key is missing.")
+        return content  # 直接返回原始內容
+
+    print("~~~~~~~~~~~~~~~~~")
+    try:
+        client = OpenAI(api_key=api_key)
+        prompt = f"""
+        1. 分析文章內容，提取關鍵主題。
+        2. 根據主題，設計一個測驗標題。
+        3. 測驗標題需簡短、有吸引力，且字數不超過30字。
+        4. 只輸出測驗標題，不需要多餘解釋。
+        需整理內容：{content}
+
+        請直接回傳整理後的內容，不要使用任何格式標記。
+        """
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8
+        )
+        
+        processed_content = response.choices[0].message.content.strip()
+        print("----以下GPT彙整content內容----")
+        print(processed_content)
+        print("----以上GPT彙整content內容 END------")
+
+        return processed_content  # 返回處理後的純文字內容
+        
+    except Exception as e:
+        print(f"GPT 處理錯誤: {str(e)}")
+        return content  # 如果出錯，返回原始內容
+
+
+@app.route('/api/retest',methods=['POST'])
+def retest():
+    # 取出django輸入的 content
+    try:
+        data=request.json
+        content = data.get('content', '內容未提供')
+
+        if content =="內容未提供" :
+            return jsonify({"error": "內容未提供"}), 400
+
+        # 進行重新測試的content整理
+        parse_content = parse_note_content(content)
+        return jsonify({"content": parse_content}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+

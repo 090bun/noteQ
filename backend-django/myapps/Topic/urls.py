@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet , ChatViewSet , ChatContentToNoteView,NoteEdit , NoteListView , CreateQuizTopicView ,UserQuizView
+from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet , ChatViewSet , ChatContentToNoteView,NoteEdit , NoteListView , CreateQuizTopicView ,UserQuizView ,RetestView
 from .soft_delete_views import SoftDeleteManagementViewSet
 
 urlpatterns = [
@@ -26,6 +26,9 @@ urlpatterns = [
     path('notes/', NoteListView.as_view(), name='note-list'),
     path('create_quiz/', CreateQuizTopicView.as_view(), name='create_quiz'),
 
+    # 查詢USER創建的主題
     path('user_quiz/', UserQuizView.as_view(), name='user_quiz'),
+    # note內容重新測試
+    path('retest/', RetestView.as_view(), name='retest'),
 
 ]

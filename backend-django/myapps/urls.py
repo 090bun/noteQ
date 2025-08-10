@@ -19,10 +19,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.decorators.csrf import csrf_exempt
 
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("", include("myapps.Authorization.urls")),  # 包含 Authorization app 的 URLs
-]
 
 # 簡單的 JWT 路由，直接使用類視圖
 @csrf_exempt
@@ -75,8 +71,13 @@ def jwt_refresh_view(request):
     return TokenRefreshView.as_view()(request)
 
 # 添加 JWT 路由
-urlpatterns += [
+
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
     path("api/token/", jwt_token_view, name='token_obtain_pair'),
     path("api/token/refresh/", jwt_refresh_view, name='token_refresh'),
     path("api/", include("myapps.Topic.urls")),  # 包含 Topic app 的 URLs
+    path("", include("myapps.Authorization.urls")),  # 包含 Authorization app 的 URLs
+
 ]

@@ -649,3 +649,60 @@ class UserQuizView(APIView):
         quizzes = Quiz.objects.filter(user=request.user, deleted_at__isnull=True).order_by('-created_at')
         serializer = QuizSerializer(quizzes, many=True)
         return Response(serializer.data)
+
+
+class RetestView(APIView):
+    permission_classes = [IsAuthenticated]
+    # 在下重新測驗後 筆記內容傳至flask  GPT處理整理筆記內容 再由用戶選擇難度 題數重新測驗
+    def post(self, request):
+        note_id = request.data.get("note_id")
+        if not note_id:
+            return Response({'error': 'note_id is required'}, status=400)
+        
+        # 查出要重測的用戶筆記內容
+        note = get_object_or_404(
+            Note.objects.select_related("quiz_topic"), id=note_id,
+            user=request.user,
+            deleted_at__isnull=True,
+            quiz_topic__deleted_at__isnull=True
+        )
+        # 資料傳輸給flask
+        note_data = NoteSerializer(note).data
+        try:
+            response = requests.post(
+                'http://localhost:5000/api/retest',
+                json=note_data
+            )
+            if response.status_code == 200:
+                flask_data = response.json()
+                raw_content = flask_data.get('content', '')
+                
+                # 解析 Flask 回傳的 JSON 字串
+                try:
+                    import json
+                    # 嘗試解析 GPT 回傳的 JSON 格式
+                    parsed_content = json.loads(raw_content)
+                    if isinstance(parsed_content, list) and len(parsed_content) > 0:
+                        # 提取實際的 content
+                        processed_content = parsed_content[0].get('content', raw_content)
+                    else:
+                        processed_content = raw_content
+                except (json.JSONDecodeError, AttributeError, KeyError):
+                    # 如果解析失敗，直接使用原始內容
+                    processed_content = raw_content
+                
+                note.is_retake = True
+                # 只更新is_retake欄位
+                note.save(update_fields=['is_retake'])
+                
+                return Response({
+                    'message': 'Re-testing successful', 
+                    'original_content': note.content,
+                    'processed_content': processed_content,
+                    'raw_flask_response': flask_data
+                })
+            else:
+                return Response({'error': f'Error occurred while re-testing: {response.text}'}, status=response.status_code)
+
+        except Exception as e:
+            return Response({'error': f'Error fetching notes: {str(e)}'}, status=500)
