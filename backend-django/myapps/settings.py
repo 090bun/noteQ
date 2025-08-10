@@ -188,3 +188,18 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+SWAGGER_SETTINGS = {
+    "USE_SESSION_AUTH": False,
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "輸入：Bearer <access_token>",
+        }
+    },
+    # ★ 讓所有 API 預設都使用 Bearer（Swagger 才會自動附帶 header）
+    "SECURITY_REQUIREMENTS": [{"Bearer": []}],
+}

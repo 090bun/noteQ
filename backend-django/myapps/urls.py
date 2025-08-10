@@ -87,10 +87,12 @@ urlpatterns = [
     path("api/token/", jwt_token_view, name='token_obtain_pair'),
     path("api/token/refresh/", jwt_refresh_view, name='token_refresh'),
     path("api/", include("myapps.Topic.urls")),  # 包含 Topic app 的 URLs
-    path("", include("myapps.Authorization.urls")),  # 包含 Authorization app 的 URLs
+    path("", include("myapps.Authorization.urls"), name='authorization'),  # 包含 Authorization app 的 URLs
     # Swagger 介面
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     # ReDoc 介面
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+
+
 ]

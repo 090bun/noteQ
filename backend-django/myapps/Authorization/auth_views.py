@@ -31,9 +31,34 @@ class AuthTokenViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 # 註冊帳號
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
     permission_classes = [AllowAny]  # 允許未認證的使用者
+    
+    @swagger_auto_schema(
+        operation_summary="用戶註冊",
+        operation_description="創建新的用戶帳號",
+        request_body=RegisterInputSerializer,
+        responses={
+            201: openapi.Response(
+                description="註冊成功",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(type=openapi.TYPE_STRING, description='成功消息'),
+                        'user_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='用戶ID'),
+                        'username': openapi.Schema(type=openapi.TYPE_STRING, description='用戶名'),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING, description='電子郵件'),
+                        'is_paid': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='是否為付費用戶'),
+                    }
+                )
+            ),
+            400: openapi.Response(description="請求參數錯誤"),
+        }
+    )
     def post(self, request, *args, **kwargs):
         serializer = RegisterInputSerializer(data=request.data)
         if serializer.is_valid():
@@ -55,6 +80,24 @@ class RegisterView(APIView):
 
 
 # 忘記密碼 API：發送重設連結
+@swagger_auto_schema(
+    method='post',
+    operation_summary="忘記密碼",
+    operation_description="發送密碼重設連結到用戶電子郵件",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['email'],
+        properties={
+            'email': openapi.Schema(type=openapi.TYPE_STRING, description='用戶電子郵件'),
+        },
+    ),
+    responses={
+        200: openapi.Response(description="重設密碼郵件已發送"),
+        400: openapi.Response(description="請求參數錯誤"),
+        404: openapi.Response(description="使用者不存在"),
+        500: openapi.Response(description="伺服器錯誤"),
+    }
+)
 @api_view(['POST'])
 def forgot_password(request):
     try:
@@ -88,6 +131,24 @@ def forgot_password(request):
     except Exception as e:
         return Response({"error": f"伺服器錯誤: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='post',
+    operation_summary="重設密碼",
+    operation_description="使用重設連結重設用戶密碼",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['uid', 'token', 'new_password'],
+        properties={
+            'uid': openapi.Schema(type=openapi.TYPE_STRING, description='用戶ID（base64編碼）'),
+            'token': openapi.Schema(type=openapi.TYPE_STRING, description='重設密碼token'),
+            'new_password': openapi.Schema(type=openapi.TYPE_STRING, description='新密碼'),
+        },
+    ),
+    responses={
+        200: openapi.Response(description="密碼重設成功"),
+        400: openapi.Response(description="連結無效或token過期"),
+    }
+)
 @api_view(['POST'])
 def reset_password(request):
     uidb64 = request.data.get('uid')
