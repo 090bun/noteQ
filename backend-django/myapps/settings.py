@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "rest_framework",  # 加入 Django REST framework
     "rest_framework.authtoken",  # 加入 JWT 認證
     "corsheaders",  # 加入 CORS 支援
+    'drf_yasg',
 ]
 
 AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
