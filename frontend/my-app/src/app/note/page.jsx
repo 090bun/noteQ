@@ -463,7 +463,9 @@ const handleAddNote = () => {
                                     <p style={{ marginBottom: '10px', color: '#666', fontSize: '14px' }}>支援 Markdown 語法</p>
                                     <textarea 
                                         className={styles.modalTextarea}
-                                        placeholder="請輸入筆記內容..."
+                                        placeholder={
+                                            "請輸入筆記內容...\n範例格式：**\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`"
+                                        }
                                         value={modalContent.split('\n---\n')[1] || ''}
                                         onChange={(e) => {
                                             const [title] = modalContent.split('\n---\n');
