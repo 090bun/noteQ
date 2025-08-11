@@ -181,7 +181,16 @@ export default function UserPage() {
                   width={75}
                   height={60}
                 />
-                <h1 className={styles.profileName}>{userData.name}</h1>
+                <h1
+                    className={styles.profileName}
+                    title={userData.name}
+                    style={{
+                      fontSize: userData.name?.length > 6 ? "1.3rem" : "2.3rem", // 超過 6 字縮小
+                    }}
+                  >
+                    {userData.name}
+                  </h1>
+
               </header>
 
               {/* 標籤頁容器 */}
