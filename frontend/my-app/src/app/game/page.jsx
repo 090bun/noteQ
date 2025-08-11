@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import styles from "../styles/GamePage.module.css";
-import { safeAlert, safeConfirm } from "../utils/dialogs";
 import Header from "../components/Header";
 import Menu from "../components/Menu";
 import { safeLogout } from "../utils/auth";
@@ -18,6 +16,7 @@ const Game = () => {
   const [questions, setQuestions] = useState([]);
   const [userAnswers, setUserAnswers] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isOptionDisabled, setIsOptionDisabled] = useState(false); // 新增防連點狀態
 
   // 初始化資料
   useEffect(() => {
@@ -25,10 +24,8 @@ const Game = () => {
     if (data) {
       try {
         const parsed = JSON.parse(data);
-        //console.log(data)
         setQuizData(parsed.quiz || {});
         setQuestions(parsed.topics || []);
-        //console.log(parsed.topics)
         setTotalQuestions(parsed.question_count || 1);
       } catch (err) {
         console.error("解析 quizData 失敗：", err);
@@ -48,30 +45,37 @@ const Game = () => {
     document.body.style.overflow = "auto";
   };
 
-  const handleOptionClick = (index) => {
-    const currentTopic = questions[currentQuestion - 1];
-    const optionLetter = ["A", "B", "C", "D"][index];
-    
-    setUserAnswers((prev) => [
-      ...prev,
-      {
-        topicId: currentTopic.id,
-        selected: optionLetter,
-      },
-    ]);
+const handleOptionClick = (index) => {
+  if (isOptionDisabled) return;
 
-    setSelectedOption(index);
+  const currentTopic = questions[currentQuestion - 1];
+  if (!currentTopic) return;
 
-    if (currentQuestion === totalQuestions) {
-      setShowCompleteButton(true);
-      return;
-    }
+  const optionLetter = ["A", "B", "C", "D"][index];
 
-    setTimeout(() => {
-      setCurrentQuestion((prev) => prev + 1);
-      setSelectedOption(null);
-    }, 300);
-  };
+  setIsOptionDisabled(true);
+
+  setUserAnswers((prev) => {
+    const filtered = prev.filter((ans) => ans.topicId !== currentTopic.id);
+    return [...filtered, { topicId: currentTopic.id, selected: optionLetter }];
+  });
+
+  setSelectedOption(index);
+
+  if (currentQuestion === totalQuestions) {
+    // 最後一題選完後才顯示完成按鈕，且不跳題
+    setShowCompleteButton(true);
+    setIsOptionDisabled(false);
+    return;
+  }
+
+  setTimeout(() => {
+    setCurrentQuestion((prev) => prev + 1);
+    setSelectedOption(null);
+    setIsOptionDisabled(false);
+  }, 300);
+};
+
 
   const handleCompleteChallenge = () => {
     sessionStorage.setItem("userAnswers", JSON.stringify(userAnswers));
@@ -142,6 +146,7 @@ const Game = () => {
                     selectedOption === index ? styles.selected : ""
                   }`}
                   onClick={() => handleOptionClick(index)}
+                  style={{ pointerEvents: isOptionDisabled ? "none" : "auto" }} // 點擊禁用
                 >
                   {option}
                 </div>
