@@ -53,9 +53,11 @@ export default function FavoriteModal({
       const content = `## 題目解析\n${explanation}\n\n**正確答案：** ${correctAnsText}`;
       // 從 sessionStorage 取得 quiz_topic
       const title = quizData?.quiz?.quiz_topic || "題目收藏";
-
+      // 取得題目標題
+      const questionTitle = questionData.title || `收藏題目 - 第${questionData.number}題`;
+      
       setQuestionContent(content);
-      setNoteTitle(`收藏題目 - 第${questionData.number}題`);
+      setNoteTitle(questionTitle);
 
       // 重置選擇器
       setCurrentSubject(title);
