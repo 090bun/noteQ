@@ -92,35 +92,6 @@
 }
 
 
-@keyframes blink {
-  0%, 50% {
-    opacity: 1;
-  }
-  51%, 100% {
-    opacity: 0;
-  }
-}
-
-
-@keyframes glitchLine {
-  0%, 100% {
-    transform: translateX(0);
-    opacity: 0.8;
-  }
-  25% {
-    transform: translateX(-2px);
-    opacity: 0.9;
-  }
-  50% {
-    transform: translateX(2px);
-    opacity: 0.7;
-  }
-  75% {
-    transform: translateX(-1px);
-    opacity: 0.85;
-  }
-}
-
 @keyframes glitchChar {
   0%, 100% {
     opacity: 0.8;
