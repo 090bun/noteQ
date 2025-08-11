@@ -182,14 +182,18 @@ export default function UserPage() {
                 style={{ objectFit: "cover" }}
               />
 
-              <header className={styles.profileHeader}>
-                <Image
-                  src="/img/Vector-35.png"
-                  alt="Chart Icon"
-                  className={styles.profileIcon}
-                  width={75}
-                  height={60}
-                />
+                <header className={styles.profileHeader}>
+                  <Image
+                    src="/img/social-page2.gif"
+                    alt="Chart Icon"
+                    className={styles.profileIcon}
+                    width={100}
+                    height={80}
+                    style={{ 
+                      objectFit: "contain",
+                      mixBlendMode: "multiply"
+                    }}
+                  />
       <h1
         className={styles.profileName}
         title={name}
