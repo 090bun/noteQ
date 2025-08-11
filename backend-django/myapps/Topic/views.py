@@ -706,3 +706,52 @@ class RetestView(APIView):
 
         except Exception as e:
             return Response({'error': f'Error fetching notes: {str(e)}'}, status=500)
+
+
+# GPT 解析題目
+
+class ParseAnswerView(APIView):
+    permission_classes = [IsAuthenticated]
+    # 輸入要解析的題目&答案
+    def post(self, request):
+        topic_id = request.data.get("topic_id")
+        if not topic_id:
+            return Response({'error': 'topic_id is required'}, status=400)
+        topic = get_object_or_404(Topic, id=topic_id, deleted_at__isnull=True)
+
+        title = topic.title
+        Ai_answer = topic.Ai_answer
+        option_A = topic.option_A
+        option_B = topic.option_B
+        option_C = topic.option_C
+        option_D = topic.option_D
+
+        def switch(Ai_answer):
+            if Ai_answer == 'A':
+                return option_A
+            elif Ai_answer == 'B':
+                return option_B
+            elif Ai_answer == 'C':
+                return option_C
+            elif Ai_answer == 'D':
+                return option_D
+            else:
+                return "選項不存在"
+
+        # 傳給flask處理 解析
+        flask_data = {
+            "title": title,
+            "Ai_answer": switch(Ai_answer),
+        }
+        print(f"傳送給 Flask 的資料: {flask_data}")
+        try:
+            response = requests.post(
+                'http://localhost:5000/api/parse_answer',
+                json=flask_data
+            )
+            if response.status_code != 200:
+                return Response({'error': f'Error occurred while parsing: {response.text}'}, status=response.status_code)
+            flask_data.update(response.json())
+            return Response({"message": "Parsing successful", "data": flask_data}, status=200)
+        except Exception as e:
+            return Response({'error': f'Error occurred while parsing: {str(e)}'}, status=500)

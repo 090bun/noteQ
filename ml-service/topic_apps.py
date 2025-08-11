@@ -422,6 +422,50 @@ def retest():
         return jsonify({"error": str(e)}), 500
 
 
+# GPT 解析題目
+@app.route('/api/parse_answer', methods=['POST'])
+def parse_answer():
+    print("=== 開始解析答案 ===")
+    data = request.json
+    title = data.get('title')
+    Ai_answer = data.get('Ai_answer')
+    print(f"接收到 {title} {Ai_answer}")
+    if not title or not Ai_answer:
+        return jsonify({"error": "Title and AI answer are required"}), 400
+
+    # Call OpenAI API to parse the question
+    api_key = os.getenv('OPENAI_API_KEY', '')
+    if not api_key:
+        return jsonify({"error": "API key is missing"}), 400
+
+    try:
+        client = OpenAI(api_key=api_key)
+        prompt = f"""
+        你是一個題目解析專家，請根據以下內容進行詳細解釋：
+        題目:{title},解答:{Ai_answer}
+        直接回傳整理後的內容，不要使用任何格式標記。
+        """
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "user", 
+                    "content":
+                      f"""
+                        題目:{title}
+                        解答:{Ai_answer}
+                        解析:{prompt}
+                    """
+                }
+            ]
+        )
+
+        parsed_answer = response.choices[0].message.content.strip()
+        return jsonify({"parsed_answer": parsed_answer}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
