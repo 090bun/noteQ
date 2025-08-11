@@ -91,13 +91,15 @@ export default function UserPage() {
     };
 
     const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
     if (!token) {
       console.error("找不到 token");
       return;
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/users/", {
+      const res = await fetch(`http://127.0.0.1:8000/users/${userId}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -109,14 +111,12 @@ export default function UserPage() {
       }
 
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const user = data[0]; // 假設只取第一筆資料
-        setUserData({
-          name: user.username,
-          email: user.email,
-          registerDate: formatDate(user.created_at),
-        });
-      }
+      // 根據 API 回應格式更新 userData
+      setUserData({
+        name: data.username || "未知",
+        email: data.email || "未知",
+        registerDate: formatDate(data.created_at || new Date()),
+      });
     } catch (error) {
       console.error("取得使用者資料失敗:", error);
     }
