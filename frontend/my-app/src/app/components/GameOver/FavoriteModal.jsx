@@ -17,7 +17,7 @@ export default function FavoriteModal({
   onShowCustomPrompt,
   styles,
 }) {
-  const [currentSubject, setCurrentSubject] = useState("數學");
+  const [currentSubject, setCurrentSubject] = useState("新增主題");
   const [currentNoteId, setCurrentNoteId] = useState(null);
   const [noteTitle, setNoteTitle] = useState("");
   const [questionContent, setQuestionContent] = useState("");
@@ -54,7 +54,7 @@ export default function FavoriteModal({
       setNoteTitle(`收藏題目 - 第${questionData.number}題`);
 
       // 重置選擇器
-      setCurrentSubject("數學");
+      setCurrentSubject("新增主題");
       setCurrentNoteId(null);
     }
   }, [isOpen, questionData]);

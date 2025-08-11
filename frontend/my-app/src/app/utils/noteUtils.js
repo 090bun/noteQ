@@ -28,7 +28,7 @@ let notes = [
     }
 ];
 
-let subjects = ["數學", "英文", "程式設計", "物理"];
+let subjects = [""];
 
 // 清理文字內容 - 保留換行符
 export function cleanTextContent(text) {
