@@ -93,8 +93,8 @@ export default function HomeGamePage() {
     }
 
     const count = parseInt(questionCount, 10);
-    if (!count || count < 1 || count > 3) {
-      safeAlert("請輸入有效的題數（1~3 題）");
+    if (!count || count < 1 || count > 15) {
+      safeAlert("請輸入有效的題數（1~15 題）");
       return;
     }
 
