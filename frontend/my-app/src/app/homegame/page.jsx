@@ -83,11 +83,6 @@ export default function HomeGamePage() {
       return;
     }
 
-    if (!validDifficulties.includes(selectedDifficulty)) {
-      safeAlert("目前僅支援 中級 與 高級 題目");
-      return;
-    }
-
     if (!topic.trim()) {
       safeAlert("請輸入主題");
       return;
