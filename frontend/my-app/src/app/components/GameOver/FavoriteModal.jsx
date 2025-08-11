@@ -25,10 +25,7 @@ export default function FavoriteModal({
 
   useEffect(() => {
     if (isOpen && questionData) {
-      // 題目
-      const titleText = questionData.title || questionData.question || "";
-
-      // 選項映射（優先使用 questionData.options，沒有就回退到 option_A~D）
+      // 選項映射
       const options = questionData.options ?? {
         A: questionData.option_A,
         B: questionData.option_B,
@@ -36,25 +33,29 @@ export default function FavoriteModal({
         D: questionData.option_D,
       };
 
-      // 使用者答案代號 & 正確答案代號
-      const userCode =
-        questionData.userAnswer ?? questionData.userSelected ?? "";
+      // 正確答案代號
       const correctCode =
         questionData.correctAnswer ?? questionData.aiAnswer ?? "";
-
-      // 轉成文字（若找不到對應選項，則保留代號）
-      const userAnsText = options[userCode] ?? userCode;
       const correctAnsText = options[correctCode] ?? correctCode;
 
-      const content = `# ${titleText}
+      // 從 sessionStorage 取得 quizData
+      const quizData = JSON.parse(sessionStorage.getItem("quizData") || "{}");
+      let explanation = "";
 
-      **您的答案：** ${userAnsText}
-      **正確答案：** ${correctAnsText}`;
+      if (quizData?.topics && Array.isArray(quizData.topics)) {
+        const matchedTopic = quizData.topics.find(
+          (t) => t.id === questionData.id
+        );
+        explanation = matchedTopic?.explanation_text || "";
+      }
+
+      // 組合內容：正確答案 + 解析
+      const content = `## 題目解析\n${explanation}\n\n**正確答案：** ${correctAnsText}`;
       setQuestionContent(content);
       setNoteTitle(`收藏題目 - 第${questionData.number}題`);
 
       // 重置選擇器
-      setCurrentSubject("新增主題");
+      setCurrentSubject("數學");
       setCurrentNoteId(null);
     }
   }, [isOpen, questionData]);
