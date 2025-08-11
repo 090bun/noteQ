@@ -302,6 +302,7 @@ class AddFavoriteViewSet(APIView):
                 content=f"""
 題目: {topic_instance.title}
 正確答案: {ai_answer_text}
+解析: {topic_instance.explanation_text}
                 """.strip(),
                 is_retake=False
             )
@@ -310,7 +311,7 @@ class AddFavoriteViewSet(APIView):
             user_favorite = UserFavorite.objects.create(
                 user=user_instance,
                 topic=topic_instance,
-                note=note_instance
+                note=note_instance,
             )
             # 序列化返回資料
             serializer = UserFavoriteSerializer(user_favorite)
