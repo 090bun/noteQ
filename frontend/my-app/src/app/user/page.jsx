@@ -148,6 +148,15 @@ export default function UserPage() {
     };
   }, []);
 
+  const name = userData.name || "";
+  const isChinese = /[^\x00-\x7F]/.test(name);
+  const fontSize = isChinese
+    ? name.length > 5
+      ? "1rem"
+      : "1.5rem"
+    : name.length > 6
+    ? "1.3rem"
+    : "2.3rem";
   return (
     <>
       {/* 頭部 */}
@@ -181,15 +190,14 @@ export default function UserPage() {
                   width={75}
                   height={60}
                 />
-                <h1
-                    className={styles.profileName}
-                    title={userData.name}
-                    style={{
-                      fontSize: userData.name?.length > 6 ? "1.3rem" : "2.3rem", // 超過 6 字縮小
-                    }}
-                  >
-                    {userData.name}
-                  </h1>
+      <h1
+        className={styles.profileName}
+        title={name}
+        style={{ fontSize }}
+      >
+        {name}
+      </h1>
+
 
               </header>
 
