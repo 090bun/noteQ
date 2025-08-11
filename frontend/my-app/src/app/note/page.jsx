@@ -159,16 +159,21 @@ export default function NotePage() {
         safeAlert('主題刪除成功！');
     };
 
-    // 新增筆記
-    const handleAddNote = () => {
-        if (!checkPlusSubscription()) {
-            showUpgradeAlert();
-            return;
-        }
-        setModalType('add');
-        setModalContent('');
-        setShowModal(true);
-    };
+// 新增筆記
+const handleAddNote = () => {
+    if (!checkPlusSubscription()) {
+        showUpgradeAlert();
+        return;
+    }
+    if (subjects.length === 0) {
+        safeAlert('請先新增主題！');
+        return;
+    }
+    setModalType('add');
+    setModalContent('');
+    setShowModal(true);
+};
+
 
     const confirmAddNote = () => {
         if (!checkPlusSubscription()) {
