@@ -54,8 +54,9 @@ export default function FavoriteModal({
       // 從 sessionStorage 取得 quiz_topic
       const title = quizData?.quiz?.quiz_topic || "題目收藏";
       // 取得題目標題
-      const questionTitle = questionData.title || `收藏題目 - 第${questionData.number}題`;
-      
+      const questionTitle =
+        questionData.title || `收藏題目 - 第${questionData.number}題`;
+
       setQuestionContent(content);
       setNoteTitle(questionTitle);
 
@@ -65,13 +66,85 @@ export default function FavoriteModal({
     }
   }, [isOpen, questionData]);
 
-  const handleConfirm = () => {
+  // 新增：組裝並送出收藏資料
+  const sendFavoriteToBackend = async () => {
+    const userId = localStorage.getItem("userId");
+    const token = localStorage.getItem("token");
+
+    if (!userId) {
+      throw new Error("找不到 userId，請確認已登入。");
+    }
+
+    const quizData = JSON.parse(sessionStorage.getItem("quizData") || "{}");
+
+    // 選項映射
+    const options = questionData.options ?? {
+      A: questionData.option_A,
+      B: questionData.option_B,
+      C: questionData.option_C,
+      D: questionData.option_D,
+    };
+
+    // 使用者答案與正確答案轉成文字
+    const userAnsText = questionData.userSelected
+      ? options[questionData.userSelected] ?? questionData.userSelected
+      : "";
+    const aiAnsText = questionData.aiAnswer
+      ? options[questionData.aiAnswer] ?? questionData.aiAnswer
+      : "";
+
+    // 解析文字
+    let explanation = "";
+    if (quizData?.topics && Array.isArray(quizData.topics)) {
+      const matched = quizData.topics.find((t) => t.id === questionData.id);
+      explanation = matched?.explanation_text || "";
+    }
+
+    const payload = {
+      user_id: Number(userId),
+      topic_id: questionData.id,
+      title: questionData.title || `收藏題目 - 第${questionData.number}題`,
+      content: {
+        explanation_text: explanation,
+        user_answer: userAnsText,
+        Ai_answer: aiAnsText,
+      },
+    };
+
+    const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : undefined,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || `收藏失敗 (${res.status})`);
+    }
+
+    return await res.json().catch(() => ({}));
+  };
+
+  const handleConfirm = async () => {
     if (!questionData) {
       onShowCustomAlert("沒有要收藏的題目數據！");
       return;
     }
 
     try {
+      // 先送到後端
+      try {
+        const result = await sendFavoriteToBackend();
+        if (result?.message) {
+          onShowCustomAlert(result.message);
+        }
+      } catch (err) {
+        onShowCustomAlert(err.message);
+      }
+
       if (currentNoteId === "add_note" || currentNoteId === null) {
         // 新增筆記
         const userTitle = noteTitle.trim();
@@ -95,11 +168,8 @@ export default function FavoriteModal({
 
         if (targetNote) {
           const updatedContent = `${targetNote.content}
-
 ---
-
 ## 新增題目
-
 ${questionContent}`;
 
           targetNote.content = updatedContent;
