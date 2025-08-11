@@ -76,7 +76,7 @@ const DecryptedText = ({
 
   return (
     <div className={`${styles.decryptedText} ${className}`}>
-      {/* 故障背景 */}
+      {/* 故障背景，保持不動 */}
       <div className={styles.glitchBackground}>
         {Array.from({ length: 15 }, (_, i) => (
           <div key={i} className={styles.glitchLine}>
@@ -89,14 +89,23 @@ const DecryptedText = ({
         ))}
       </div>
       
-      {/* 解密文字 */}
+      {/* 解密文字，亂碼與文字合併顯示 */}
       <div className={styles.textContainer}>
-        <span className={styles.mainText}>{displayText}</span>
-        <span className={styles.scrambleText}>{scrambleText}</span>
+        {text.split("").map((char, i) => {
+          const isDecoded = i < displayText.length;
+          return (
+            <span 
+              key={i} 
+              className={isDecoded ? styles.mainText : styles.scrambleText}
+            >
+              {isDecoded ? char : scrambleText[i] || " "}
+            </span>
+          );
+        })}
       </div>
       {!isComplete}
     </div>
   );
 };
 
-export default DecryptedText; 
+export default DecryptedText;

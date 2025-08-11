@@ -283,7 +283,7 @@ export default function HomeGamePage() {
               <DecryptedText
                 text="正在初始化題目生成系統..."
                 onComplete={handleDecryptionComplete}
-                speed={80}
+                speed={60}
                 className={styles.decryptionText}
               />
             )}
@@ -299,7 +299,7 @@ export default function HomeGamePage() {
               <DecryptedText
                 text="正在生成個性化題目，請稍候..."
                 onComplete={handleDecryptionComplete}
-                speed={70}
+                speed={60}
                 className={styles.decryptionText}
               />
             )}
@@ -307,7 +307,7 @@ export default function HomeGamePage() {
               <DecryptedText
                 text="題目生成完成！準備開始..."
                 onComplete={handleDecryptionComplete}
-                speed={50}
+                speed={60}
                 className={styles.decryptionText}
               />
             )}

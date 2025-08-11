@@ -54,7 +54,7 @@
 
 .textContainer {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
   position: absolute;
@@ -73,10 +73,8 @@
   letter-spacing: 3px;
   line-height: 1.8;
   text-align: center;
-  color: var(--text-color, #ffffff);
+  color: var(--accent-color-2, #57588c);
   position: relative;
-  z-index: 3;
-  text-shadow: 0 0 10px var(--text-color, #ffffff);
   margin-bottom: 1rem;
 }
 
@@ -139,24 +137,20 @@
   }
   
   .glitchChar {
-    font-size: 0.8rem;
+    font-size: 1.8rem;
     margin: 0 1px;
   }
   
   .mainText {
     letter-spacing: 2px;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
   }
   
   .scrambleText {
-    font-size: 0.7em;
+    font-size: 1rem;
     letter-spacing: 2px;
   }
   
-  .cursor {
-    font-size: 1.5rem;
-    margin-left: 6px;
-  }
 }
 
 /* 動畫完成後的狀態 */
