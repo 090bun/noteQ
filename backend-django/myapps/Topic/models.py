@@ -47,6 +47,7 @@ class Topic(models.Model):
     option_B = models.CharField(max_length=128, null=True, blank=True)
     option_C = models.CharField(max_length=128, null=True, blank=True)
     option_D = models.CharField(max_length=128, null=True, blank=True)
+    explanation_text = models.TextField(null=True, blank=True)  # 題目解釋文字
     Ai_answer = models.CharField(max_length=1,
         choices=[
             ('A', 'A'),

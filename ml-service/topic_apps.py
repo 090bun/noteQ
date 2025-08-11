@@ -52,7 +52,7 @@ def generate_questions_with_ai(topic, difficulty, count):
     1. 題目描述 (title) - 請使用繁體中文
     2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
     3. 正確答案 (correct_answer: A/B/C/D)
-
+    4. 題目解析 (explanation_text) - 請使用繁體中文
     請回傳json format, do not use markdown syntax only text，格式如下：
     [
         {{
@@ -61,7 +61,8 @@ def generate_questions_with_ai(topic, difficulty, count):
             "option_B": "選項B", 
             "option_C": "選項C",
             "option_D": "選項D",
-            "correct_answer": "A"
+            "correct_answer": "A",
+            "explanation_text": "這是題目的解析"
         }}
     ]
     """
@@ -114,6 +115,7 @@ def parse_ai_response(ai_text, count=1):
                 "option_D": q.get("option_D", "選項D"),
                 "correct_answer": q.get("correct_answer", "A"),
                 "User_answer": "",  # 預設空值
+                "explanation_text": q.get("explanation_text", "這是題目的解析"),
                 "Ai_answer": q.get("correct_answer", "A")
             }
             formatted_questions.append(formatted_q)
@@ -138,7 +140,8 @@ def generate_mock_questions(topic, count):
             "option_D": "選項 D",
             "correct_answer": "A",
             "User_answer": "",
-            "Ai_answer": "A"
+            "Ai_answer": "A",
+            "explanation_text": "這是題目的解析"
         }
         mock_questions.append(mock_q)
     
@@ -423,6 +426,8 @@ def retest():
 
 
 # GPT 解析題目
+# 目前整合在一起 暫時保留
+# -----------------------------------
 @app.route('/api/parse_answer', methods=['POST'])
 def parse_answer():
     print("=== 開始解析答案 ===")
@@ -465,7 +470,9 @@ def parse_answer():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+# -----------------------------------
+# 目前整合在一起 暫時保留
+# GPT 解析題目
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

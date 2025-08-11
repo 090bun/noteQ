@@ -83,7 +83,8 @@ class QuizViewSet(APIView):
                     option_B=q.get('option_B'),
                     option_C=q.get('option_C'),
                     option_D=q.get('option_D'),
-                    Ai_answer=q.get('Ai_answer')
+                    Ai_answer=q.get('Ai_answer'),
+                    explanation_text=q.get('explanation_text')
                 )
                 topics.append(topic)
                 new_topic_ids.append(topic.id)
@@ -138,6 +139,7 @@ class QuizViewSet(APIView):
                         'title': topic.title,
                         'User_answer': topic.User_answer,
                         'Ai_answer': topic.Ai_answer,
+                        'explanation_text': topic.explanation_text,
                         'created_at': topic.created_at.isoformat() if topic.created_at else None
                     }
                     quiz_data['topics'].append(topic_data)
@@ -173,6 +175,7 @@ class TopicDetailViewSet(APIView):
                 'option_C': topic.option_C,
                 'option_D': topic.option_D,
                 'User_answer': topic.User_answer,
+                'explanation_text': topic.explanation_text,
                 'Ai_answer': topic.Ai_answer,
                 'created_at': topic.created_at.isoformat() if topic.created_at else None,
                 'quiz': {
@@ -230,7 +233,8 @@ class QuizTopicsViewSet(APIView):
                     'option_D': topic.option_D,
                     'User_answer': topic.User_answer,
                     'Ai_answer': topic.Ai_answer,
-                    'created_at': topic.created_at.isoformat() if topic.created_at else None
+                    'created_at': topic.created_at.isoformat() if topic.created_at else None,
+                    'explanation_text': topic.explanation_text
                 }
                 quiz_data['topics'].append(topic_data)
             
@@ -491,7 +495,8 @@ class ChatContentToNoteView(APIView):
                     "quiz_topic": topic_instance.quiz_topic.id,
                     "topic": topic_instance.id,
                     "user": user_instance.id,
-                    "content": f"題目: {topic_instance.title}\n正確答案: {ai_answer_text}\n\n=== 聊天記錄 ===\n{chat_instance.content}",
+                    "explanation_text": topic_instance.explanation_text,
+                    "content": f"題目: {topic_instance.title}\n正確答案: {ai_answer_text}\n解析: {topic_instance.explanation_text}\n=== 聊天記錄 ===\n{chat_instance.content}",
                     "is_retake": False
                 })
                 serializer.is_valid(raise_exception=True)
@@ -709,7 +714,8 @@ class RetestView(APIView):
 
 
 # GPT 解析題目
-
+# 目前整合在一起 暫時保留
+# -----------------------------------
 class ParseAnswerView(APIView):
     permission_classes = [IsAuthenticated]
     # 輸入要解析的題目&答案
@@ -755,3 +761,7 @@ class ParseAnswerView(APIView):
             return Response({"message": "Parsing successful", "data": flask_data}, status=200)
         except Exception as e:
             return Response({'error': f'Error occurred while parsing: {str(e)}'}, status=500)
+        
+# -----------------------------------
+# 目前整合在一起 暫時保留
+# GPT 解析題目
