@@ -78,9 +78,9 @@ const DecryptedText = ({
     <div className={`${styles.decryptedText} ${className}`}>
       {/* 故障背景，保持不動 */}
       <div className={styles.glitchBackground}>
-        {Array.from({ length: 15 }, (_, i) => (
+        {Array.from({ length: 20 }, (_, i) => (
           <div key={i} className={styles.glitchLine}>
-            {Array.from({ length: 30 }, (_, j) => (
+            {Array.from({ length: 40 }, (_, j) => (
               <span key={j} className={styles.glitchChar}>
                 {characters[Math.floor(Math.random() * characters.length)]}
               </span>
