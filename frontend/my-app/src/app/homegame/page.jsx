@@ -9,12 +9,16 @@ import { safeAlert, safeConfirm } from "../utils/dialogs";
 import Header from "../components/Header";
 import { safeLogout } from "../utils/auth";
 import Menu from "../components/Menu";
+import DecryptedText from "../components/DecryptedText";
 
 export default function HomeGamePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [topic, setTopic] = useState("");
   const [questionCount, setQuestionCount] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showDecryption, setShowDecryption] = useState(false);
+  const [decryptionStep, setDecryptionStep] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // 初始化路由器
   const router = useRouter();
@@ -100,7 +104,26 @@ export default function HomeGamePage() {
       return;
     }
 
+    // 開始解密動畫
+    setShowDecryption(true);
+    setIsGenerating(true);
+    setDecryptionStep(0);
+  };
+
+  // 解密動畫步驟控制
+  const handleDecryptionComplete = () => {
+    if (decryptionStep < 3) {
+      setDecryptionStep(prev => prev + 1);
+    } else {
+      // 所有動畫完成後，開始生成題目
+      generateQuestions();
+    }
+  };
+
+  // 生成題目
+  const generateQuestions = async () => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch("http://127.0.0.1:8000/api/quiz/", {
         method: "POST",
         headers: {
@@ -111,7 +134,7 @@ export default function HomeGamePage() {
           user_id: localStorage.getItem("userId"),
           topic: topic.trim(),
           difficulty: selectedDifficulty,
-          question_count: count,
+          question_count: parseInt(questionCount, 10),
         }),
       });
 
@@ -126,13 +149,17 @@ export default function HomeGamePage() {
         JSON.stringify({
           quiz: result.quiz, // 單題形式
           topics: result.topics || [], // 多題陣列形式
-          question_count: count, // 設定題數
+          question_count: parseInt(questionCount, 10), // 設定題數
         })
       );
-      router.push("/game"); // 跳轉至 game 頁面
+      
+      // 跳轉到遊戲頁面
+      router.push("/game");
     } catch (err) {
       console.error("發送題目失敗:", err);
       safeAlert("題目發送失敗，請稍後再試");
+      setShowDecryption(false);
+      setIsGenerating(false);
     }
   };
 
@@ -247,6 +274,46 @@ export default function HomeGamePage() {
           </div>
         </div>
       </main>
+
+      {/* 解密動畫覆蓋層 */}
+      {showDecryption && (
+        <div className={styles.decryptionOverlay}>
+          <div className={styles.decryptionContainer}>
+            {decryptionStep === 0 && (
+              <DecryptedText
+                text="正在初始化題目生成系統..."
+                onComplete={handleDecryptionComplete}
+                speed={80}
+                className={styles.decryptionText}
+              />
+            )}
+            {decryptionStep === 1 && (
+              <DecryptedText
+                text="正在分析難度等級和主題內容..."
+                onComplete={handleDecryptionComplete}
+                speed={60}
+                className={styles.decryptionText}
+              />
+            )}
+            {decryptionStep === 2 && (
+              <DecryptedText
+                text="正在生成個性化題目，請稍候..."
+                onComplete={handleDecryptionComplete}
+                speed={70}
+                className={styles.decryptionText}
+              />
+            )}
+            {decryptionStep === 3 && (
+              <DecryptedText
+                text="題目生成完成！準備開始..."
+                onComplete={handleDecryptionComplete}
+                speed={50}
+                className={styles.decryptionText}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 選單 */}
       <Menu isOpen={isMenuOpen} onClose={closeMenu} onLogout={safeLogout} />
