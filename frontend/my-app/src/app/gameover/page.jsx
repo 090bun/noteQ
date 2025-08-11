@@ -81,14 +81,34 @@ export default function GameOverPage() {
       return;
     }
 
-    const question = questionData[questionNumber];
-    if (question) {
-      setCurrentQuestionData({
-        number: questionNumber,
-        ...question,
-      });
-      setIsFavoriteModalOpen(true);
-    }
+    const idx = Number.isInteger(questionNumber)
+      ? questionNumber - 1
+      : questionNumber;
+    const q = questions[idx];
+    if (!q) return;
+
+    // 準備選項
+    const options = q.options ?? {
+      A: q.option_A,
+      B: q.option_B,
+      C: q.option_C,
+      D: q.option_D,
+    };
+
+    // 轉成選項文字
+    const userAnsText = q.userSelected
+      ? options[q.userSelected] ?? q.userSelected
+      : "";
+    const correctAnsText = q.aiAnswer ? options[q.aiAnswer] ?? q.aiAnswer : "";
+
+    setCurrentQuestionData({
+      number: q.number,
+      ...q,
+      options,
+      userAnswerText: userAnsText,
+      correctAnswerText: correctAnsText,
+    });
+    setIsFavoriteModalOpen(true);
   };
 
   const handleCloseFavoriteModal = () => {
@@ -163,7 +183,7 @@ export default function GameOverPage() {
         aiAnswer: t.Ai_answer,
         userSelected,
         isCorrect,
-        status: isCorrect ? 'correct' : 'wrong'
+        status: isCorrect ? "correct" : "wrong",
       };
     });
     const correct = merged.filter((q) => q.isCorrect).length;
@@ -232,12 +252,12 @@ export default function GameOverPage() {
       });
 
       // 檢查用（不影響畫面）
-      console.log("quizMeta:", quiz);
-      console.log("questions:", merged);
-      console.log("stats:", {
-        total: Number.isFinite(question_count) ? question_count : merged.length,
-        ...summary,
-      });
+      // console.log("quizMeta:", quiz);
+      // console.log("questions:", merged);
+      // console.log("stats:", {
+      //   total: Number.isFinite(question_count) ? question_count : merged.length,
+      //   ...summary,
+      // });
     } catch (e) {
       console.error("初始化 gameover 資料失敗：", e);
     }
