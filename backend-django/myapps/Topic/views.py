@@ -255,20 +255,21 @@ class AddFavoriteViewSet(APIView):
     def post(self, request):
         try:
             user = request.data.get('user_id')  # 從請求中獲取當前使用者
+            content = request.data.get('content')
             topic = request.data.get('topic_id')
-            print(f"~~~~~ 使用者: {user} 要收藏的題目ID: {topic} ~~~~~")
+            print(f"~~~~~ 使用者: {user} ,回傳內容: {content}  , 使用題目: {topic} ~~~~~")
             if not user:
                 return Response({'error': 'User is not authenticated'}, status=401)
+            if not content:
+                return Response({'error': 'content is required'}, status=400)
             if not topic:
                 return Response({'error': 'Topic ID is required'}, status=400)
-            
             
             # 獲取 User 實例
             try:
                 user_instance = User.objects.get(id=user)
             except User.DoesNotExist:
                 return Response({'error': f'User with ID {user} not found'}, status=404)
-
 
             # 檢查 Topic 是否存在
             try:
@@ -290,29 +291,24 @@ class AddFavoriteViewSet(APIView):
             ).first()
             if existing_favorite:
                 return Response({'message': 'This topic is already in your favorites'}, status=200) 
-            # 創建 UserFavorite 實例
-            # 定義 ai_answer_text
-            ai_answer_text = getattr(topic_instance, f"option_{topic_instance.Ai_answer}", "選項不存在")
-            
+
             # 先創建 Note 實例
             note_instance = Note.objects.create(
                 quiz_topic=topic_instance.quiz_topic,
                 topic=topic_instance,  # 設定 topic 欄位
+                title=topic_instance.title,
                 user=user_instance,
-                content=f"""
-題目: {topic_instance.title}
-正確答案: {ai_answer_text}
-解析: {topic_instance.explanation_text}
-                """.strip(),
+                content=content,
                 is_retake=False
             )
             
-            # 然後創建 UserFavorite 實例
+            # 然後創建 UserFavorite 實例  note id
             user_favorite = UserFavorite.objects.create(
                 user=user_instance,
                 topic=topic_instance,
-                note=note_instance,
+                note=note_instance
             )
+
             # 序列化返回資料
             serializer = UserFavoriteSerializer(user_favorite)
             return Response(serializer.data, status=201)
