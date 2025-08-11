@@ -62,7 +62,7 @@ class QuizViewSet(APIView):
             # 返回結果 寫回資料庫
             # 先判斷 quiz_topic 是否有未軟刪除的 Quiz，有則不再新建
             quiz_topic_name = result.get('quiz_topic')
-            quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
+            quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, user_id=user_instance.id, deleted_at__isnull=True).first()
             if quiz:
                 print(f"Found existing Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
             else:
@@ -521,10 +521,11 @@ class NoteEdit(APIView):
         try:
             # 直接使用 URL 參數中的 note_id，不需要從 request.data 獲取
             new_content = request.data.get('content')
-
+            new_title = request.data.get('title')
             if not new_content:
                 return Response({'error': 'content is required'}, status=400)
-
+            if not new_title:
+                return Response({'error': 'title is required'}, status=400)
             try:
                 note_instance = Note.objects.get(
                     id=note_id,
@@ -534,6 +535,7 @@ class NoteEdit(APIView):
                 return Response({'error': f'Note with ID {note_id} not found'}, status=404)
 
             # 簡單直接更新，不使用 select_for_update 和複雜的序列化
+            note_instance.title = new_title
             note_instance.content = new_content
             note_instance.updated_at = timezone.now()
             note_instance.save()
@@ -541,6 +543,7 @@ class NoteEdit(APIView):
             return Response({
                 'message': 'Note updated successfully',
                 'note_id': note_instance.id,
+                'title': note_instance.title,
                 'content': note_instance.content
             }, status=200)
 
@@ -596,18 +599,23 @@ class NoteListView(APIView):
     # 手動新增空白筆記
     def post(self, request):
         try:
+            title = request.data.get('title')
             quiz_topic = request.data.get('quiz_topic')
             content = request.data.get('content')
             if not quiz_topic or not content:
                 return Response({'error': 'quiz_topic and content are required'}, status=400)
+            if not quiz_topic_instance:
+                return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
             try:
                 quiz_topic_instance = Quiz.objects.get(id=quiz_topic, deleted_at__isnull=True)
+                
             except Quiz.DoesNotExist:
                 return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
 
                 # 創建新的 Note
             note = Note.objects.create(
                 user=request.user,
+                title=title,
                 quiz_topic=quiz_topic_instance,
                 content=content
             )
