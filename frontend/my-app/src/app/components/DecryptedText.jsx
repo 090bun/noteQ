@@ -26,6 +26,31 @@ const DecryptedText = ({
     return result;
   };
 
+  // 當文字改變時重置解密狀態
+  useEffect(() => {
+    if (text) {
+      setDisplayText("");
+      setIsComplete(false);
+    }
+  }, [text]);
+
+  // 亂碼文字一直跑動效果 - 只在組件掛載時初始化一次
+  useEffect(() => {
+    // 立即生成一次亂碼
+    setScrambleText(generateFullScrambleText());
+    
+    // 持續更新亂碼，不管動畫是否完成
+    scrambleIntervalRef.current = setInterval(() => {
+      setScrambleText(generateFullScrambleText());
+    }, scrambleSpeed);
+
+    return () => {
+      if (scrambleIntervalRef.current) {
+        clearInterval(scrambleIntervalRef.current);
+      }
+    };
+  }, []); // 空依賴數組，只在組件掛載時執行一次
+
   useEffect(() => {
     if (!text) return;
 
@@ -49,30 +74,8 @@ const DecryptedText = ({
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-      if (scrambleIntervalRef.current) {
-        clearInterval(scrambleIntervalRef.current);
-      }
     };
   }, [text, speed, onComplete]);
-
-  // 亂碼文字一直跑動效果
-  useEffect(() => {
-    if (isComplete) return;
-
-    // 立即生成一次亂碼
-    setScrambleText(generateFullScrambleText());
-    
-    // 持續更新亂碼
-    scrambleIntervalRef.current = setInterval(() => {
-      setScrambleText(generateFullScrambleText());
-    }, scrambleSpeed);
-
-    return () => {
-      if (scrambleIntervalRef.current) {
-        clearInterval(scrambleIntervalRef.current);
-      }
-    };
-  }, [isComplete, text, scrambleSpeed]);
 
   return (
     <div className={`${styles.decryptedText} ${className}`}>
@@ -81,7 +84,11 @@ const DecryptedText = ({
         {Array.from({ length: 20 }, (_, i) => (
           <div key={i} className={styles.glitchLine}>
             {Array.from({ length: 40 }, (_, j) => (
-              <span key={j} className={styles.glitchChar}>
+              <span 
+                key={j} 
+                className={styles.glitchChar}
+                style={{ '--char-index': j }}
+              >
                 {characters[Math.floor(Math.random() * characters.length)]}
               </span>
             ))}

@@ -104,20 +104,25 @@ export default function HomeGamePage() {
       return;
     }
 
-    // 開始解密動畫
+    // 開始解密動畫和生題同時進行
     setShowDecryption(true);
     setIsGenerating(true);
     setDecryptionStep(0);
+    
+    // 立即開始生題
+    generateQuestions();
   };
 
   // 解密動畫步驟控制
   const handleDecryptionComplete = () => {
-    if (decryptionStep < 3) {
+    // 在生題進行中，動畫持續循環前3步
+    if (isGenerating && decryptionStep < 3) {
       setDecryptionStep(prev => prev + 1);
-    } else {
-      // 所有動畫完成後，開始生成題目
-      generateQuestions();
+    } else if (isGenerating && decryptionStep === 3) {
+      // 循環回到第0步
+      setDecryptionStep(0);
     }
+    // 第4步（完成文字）由生題完成後手動設置，不自動推進
   };
 
   // 生成題目
@@ -153,8 +158,16 @@ export default function HomeGamePage() {
         })
       );
       
-      // 跳轉到遊戲頁面
-      router.push("/game");
+      // 生題完成，顯示完成文字
+      setDecryptionStep(4);
+      
+      // 等待1.5秒後跳轉
+      setTimeout(() => {
+        setShowDecryption(false);
+        setIsGenerating(false);
+        router.push("/game");
+      }, 1500);
+      
     } catch (err) {
       console.error("發送題目失敗:", err);
       safeAlert("題目發送失敗，請稍後再試");
@@ -279,38 +292,20 @@ export default function HomeGamePage() {
       {showDecryption && (
         <div className={styles.decryptionOverlay}>
           <div className={styles.decryptionContainer}>
-            {decryptionStep === 0 && (
-              <DecryptedText
-                text="正在初始化題目生成系統..."
-                onComplete={handleDecryptionComplete}
-                speed={30}
-                className={styles.decryptionText}
-              />
-            )}
-            {decryptionStep === 1 && (
-              <DecryptedText
-                text="正在分析難度等級和主題內容..."
-                onComplete={handleDecryptionComplete}
-                speed={30}
-                className={styles.decryptionText}
-              />
-            )}
-            {decryptionStep === 2 && (
-              <DecryptedText
-                text="正在生成個性化題目，請稍候..."
-                onComplete={handleDecryptionComplete}
-                speed={30}
-                className={styles.decryptionText}
-              />
-            )}
-            {decryptionStep === 3 && (
-              <DecryptedText
-                text="題目生成完成！準備開始..."
-                onComplete={handleDecryptionComplete}
-                speed={30}
-                className={styles.decryptionText}
-              />
-            )}
+            <DecryptedText
+              text={
+                decryptionStep === 0 ? "正在初始化題目生成系統..." :
+                decryptionStep === 1 ? "正在分析難度等級和主題內容..." :
+                decryptionStep === 2 ? "正在生成個性化題目，請稍候..." :
+                decryptionStep === 3 ? "正在優化題目內容..." :
+                decryptionStep === 4 ? "題目生成完成！準備開始..." :
+                ""
+              }
+              onComplete={handleDecryptionComplete}
+              speed={80}
+              className={styles.decryptionText}
+              key="decryption-text" // 固定key，避免重新创建组件
+            />
           </div>
         </div>
       )}

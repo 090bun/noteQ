@@ -38,7 +38,7 @@
 .glitchLine {
   display: flex;
   justify-content: space-between;
-  animation: glitchLine 8s infinite;
+  animation: glitchLine 4s infinite;
   width: 100%;
   opacity: 0.8;
 }
@@ -47,9 +47,10 @@
   font-family: 'Courier New', monospace;
   font-size: 2.5rem;
   color: var(--accent-color-2, #57588c);
-  animation: glitchChar 2s infinite;
+  animation: glitchChar 1.5s infinite;
   opacity: 0.4;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  animation-delay: calc(var(--char-index, 0) * 0.1s);
 }
 
 .textContainer {
@@ -101,26 +102,50 @@
 }
 
 
+@keyframes glitchLine {
+  0%, 100% {
+    transform: translateX(0);
+    opacity: 0.8;
+  }
+  25% {
+    transform: translateX(-2px);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(2px);
+    opacity: 0.7;
+  }
+  75% {
+    transform: translateX(-1px);
+    opacity: 0.85;
+  }
+}
+
 @keyframes glitchChar {
   0%, 100% {
     opacity: 0.8;
     color: var(--accent-color-2, #57588c);
-    transform: scale(1);
+    transform: scale(1) translateY(0);
   }
-  25% {
+  20% {
     opacity: 0.9;
     color: #8a9cff;
-    transform: scale(1.05);
+    transform: scale(1.05) translateY(-1px);
   }
-  50% {
-    opacity: 0.8;
+  40% {
+    opacity: 0.7;
     color: #7b68ee;
-    transform: scale(0.95);
+    transform: scale(0.95) translateY(1px);
   }
-  75% {
+  60% {
     opacity: 0.9;
     color: #9370db;
-    transform: scale(1.02);
+    transform: scale(1.02) translateY(-0.5px);
+  }
+  80% {
+    opacity: 0.8;
+    color: #6a5acd;
+    transform: scale(1.03) translateY(0.5px);
   }
 }
 
