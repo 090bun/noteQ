@@ -54,6 +54,7 @@ class Topic(models.Model):
             ('B', 'B'),
             ('C', 'C'),
             ('D', 'D'),
+            ('X', 'X')
         ], null=True, blank=True)  
     User_answer = models.CharField(max_length=1 , null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
