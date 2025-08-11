@@ -6,6 +6,7 @@ import Image from "next/image";
 import Header from "../components/Header";
 import styles from "../styles/LoginPage.module.css";
 import { initSplineViewer, optimizeSplineLoading } from "../utils/spline";
+import { safeAlert } from "../utils/dialogs";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -49,7 +50,7 @@ export default function LoginPage() {
 
       window.location.href = '/homegame'; // 登入後跳轉
     } catch (err) {
-      setMessage("登入失敗，請確認帳號密碼");
+      safeAlert("登入失敗，請確認帳號密碼");
     }
   };
 
@@ -75,11 +76,11 @@ export default function LoginPage() {
       }
 
       const data = await res.json();
-      setSignupMessage("註冊成功，請登入");
+      safeAlert("註冊成功，請登入");
       // 可選：註冊成功後自動切換到登入頁
       // setIsLoginForm(true);
     } catch (err) {
-      setSignupMessage("註冊失敗，請確認資料是否正確或已被註冊");
+      safeAlert("註冊失敗，請確認資料是否正確或已被註冊");
     }
   };
 
