@@ -14,7 +14,12 @@ class UserFavoriteSerializer(serializers.ModelSerializer):
 class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
-        fields = ['id', 'quiz_topic', 'title', 'User_answer', 'Ai_answer', 'created_at', 'deleted_at', 'option_A', 'option_B', 'option_C', 'option_D']
+        fields = ['id', 'quiz_topic', 'title', 'User_answer','explanation_text','Ai_answer', 'created_at', 'deleted_at', 'option_A', 'option_B', 'option_C', 'option_D']
+        extra_kwargs = {
+            'explanation_text': {'required': False, 'allow_null': True},
+            'deleted_at': {'required': False, 'allow_null': True}
+        }
+
 class QuizSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     
@@ -53,7 +58,7 @@ class ChatSerializer(serializers.ModelSerializer):
 class NoteSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     topic = TopicSerializer(read_only=True)
-    chat = ChatSerializer(read_only=True)
+    quiz_topic = QuizSerializer(read_only=True)
 
     class Meta:
         model = Note

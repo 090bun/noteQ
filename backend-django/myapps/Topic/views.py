@@ -83,7 +83,8 @@ class QuizViewSet(APIView):
                     option_B=q.get('option_B'),
                     option_C=q.get('option_C'),
                     option_D=q.get('option_D'),
-                    Ai_answer=q.get('Ai_answer')
+                    Ai_answer=q.get('Ai_answer'),
+                    explanation_text=q.get('explanation_text')
                 )
                 topics.append(topic)
                 new_topic_ids.append(topic.id)
@@ -138,6 +139,7 @@ class QuizViewSet(APIView):
                         'title': topic.title,
                         'User_answer': topic.User_answer,
                         'Ai_answer': topic.Ai_answer,
+                        'explanation_text': topic.explanation_text,
                         'created_at': topic.created_at.isoformat() if topic.created_at else None
                     }
                     quiz_data['topics'].append(topic_data)
@@ -173,6 +175,7 @@ class TopicDetailViewSet(APIView):
                 'option_C': topic.option_C,
                 'option_D': topic.option_D,
                 'User_answer': topic.User_answer,
+                'explanation_text': topic.explanation_text,
                 'Ai_answer': topic.Ai_answer,
                 'created_at': topic.created_at.isoformat() if topic.created_at else None,
                 'quiz': {
@@ -230,7 +233,8 @@ class QuizTopicsViewSet(APIView):
                     'option_D': topic.option_D,
                     'User_answer': topic.User_answer,
                     'Ai_answer': topic.Ai_answer,
-                    'created_at': topic.created_at.isoformat() if topic.created_at else None
+                    'created_at': topic.created_at.isoformat() if topic.created_at else None,
+                    'explanation_text': topic.explanation_text
                 }
                 quiz_data['topics'].append(topic_data)
             
@@ -491,7 +495,8 @@ class ChatContentToNoteView(APIView):
                     "quiz_topic": topic_instance.quiz_topic.id,
                     "topic": topic_instance.id,
                     "user": user_instance.id,
-                    "content": f"題目: {topic_instance.title}\n正確答案: {ai_answer_text}\n\n=== 聊天記錄 ===\n{chat_instance.content}",
+                    "explanation_text": topic_instance.explanation_text,
+                    "content": f"題目: {topic_instance.title}\n正確答案: {ai_answer_text}\n解析: {topic_instance.explanation_text}\n=== 聊天記錄 ===\n{chat_instance.content}",
                     "is_retake": False
                 })
                 serializer.is_valid(raise_exception=True)
@@ -554,4 +559,209 @@ class NoteEdit(APIView):
                 return Response({'message': 'Note deleted successfully'}, status=204)
         except Note.DoesNotExist:
             return Response({'error': f'Note with ID {note_id} not found'}, status=404)
+
+class NoteListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """獲取使用者的所有筆記"""
+        try:
+            if 'quiz_topic' in request.data:
+                quiz_topic = request.data.get('quiz_topic')
+                notes = Note.objects.filter(
+                    quiz_topic=quiz_topic,
+                    user=request.user,
+                    deleted_at__isnull=True,
+                    quiz_topic__deleted_at__isnull=True
+                ).order_by('-created_at')  # 按創建時間倒序排列
+            else:
+                # 使用 filter 而不是 get，獲取多個筆記
+                notes = Note.objects.filter(
+                    user=request.user,
+                    deleted_at__isnull=True,
+                    quiz_topic__deleted_at__isnull=True
+                ).order_by('-created_at')  # 按創建時間倒序排列
+            
+            return Response({
+                'notes': NoteSerializer(notes, many=True).data,
+                'count': notes.count()
+            }, status=200)
+            
+        except Exception as e:
+            return Response({
+                'error': f'Error fetching notes: {str(e)}'
+            }, status=500)
+    
+    # 手動新增空白筆記
+    def post(self, request):
+        try:
+            quiz_topic = request.data.get('quiz_topic')
+            content = request.data.get('content')
+            if not quiz_topic or not content:
+                return Response({'error': 'quiz_topic and content are required'}, status=400)
+            try:
+                quiz_topic_instance = Quiz.objects.get(id=quiz_topic, deleted_at__isnull=True)
+            except Quiz.DoesNotExist:
+                return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
+
+                # 創建新的 Note
+            note = Note.objects.create(
+                user=request.user,
+                quiz_topic=quiz_topic_instance,
+                content=content
+            )
+            return Response({
+                'message': 'Note created successfully',
+                'note_id': note.id
+            }, status=201)
+
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+
+
+class CreateQuizTopicView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 創建新的 QuizTopic (自創筆記的部分)
+        try:
+            # 從請求中獲取 quiz_topic 名稱
+            quiz_topic_name = request.data.get('quiz_topic')
+            user = request.user
+            if not quiz_topic_name:
+                return Response({'error': 'quiz_topic is required'}, status=400)
+            
+            # 檢查是否已經存在同名的 Quiz
+            existing_quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
+            if existing_quiz:
+                return Response({'error': f'Quiz with topic "{quiz_topic_name}" already exists'}, status=400)
+            
+            # 創建新的 QuizTopic
+            serializer = QuizSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            quiz_topic_instance = serializer.save(user=user)  # 在保存時設定 user
+            return Response({
+                "message": "QuizTopic created successfully.",
+                "quiz_topic_id": quiz_topic_instance.id
+            }, status=201)
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
+
+class UserQuizView(APIView):
+    permission_classes = [IsAuthenticated]
+    # 取得所有 Quiz
+    def get(self, request):
+        quizzes = Quiz.objects.filter(user=request.user, deleted_at__isnull=True).order_by('-created_at')
+        serializer = QuizSerializer(quizzes, many=True)
+        return Response(serializer.data)
+
+
+class RetestView(APIView):
+    permission_classes = [IsAuthenticated]
+    # 在下重新測驗後 筆記內容傳至flask  GPT處理整理筆記內容 再由用戶選擇難度 題數重新測驗
+    def post(self, request):
+        note_id = request.data.get("note_id")
+        if not note_id:
+            return Response({'error': 'note_id is required'}, status=400)
         
+        # 查出要重測的用戶筆記內容
+        note = get_object_or_404(
+            Note.objects.select_related("quiz_topic"), id=note_id,
+            user=request.user,
+            deleted_at__isnull=True,
+            quiz_topic__deleted_at__isnull=True
+        )
+        # 資料傳輸給flask
+        note_data = NoteSerializer(note).data
+        try:
+            response = requests.post(
+                'http://localhost:5000/api/retest',
+                json=note_data
+            )
+            if response.status_code == 200:
+                flask_data = response.json()
+                raw_content = flask_data.get('content', '')
+                
+                # 解析 Flask 回傳的 JSON 字串
+                try:
+                    import json
+                    # 嘗試解析 GPT 回傳的 JSON 格式
+                    parsed_content = json.loads(raw_content)
+                    if isinstance(parsed_content, list) and len(parsed_content) > 0:
+                        # 提取實際的 content
+                        processed_content = parsed_content[0].get('content', raw_content)
+                    else:
+                        processed_content = raw_content
+                except (json.JSONDecodeError, AttributeError, KeyError):
+                    # 如果解析失敗，直接使用原始內容
+                    processed_content = raw_content
+                
+                note.is_retake = True
+                # 只更新is_retake欄位
+                note.save(update_fields=['is_retake'])
+                
+                return Response({
+                    'message': 'Re-testing successful', 
+                    'original_content': note.content,
+                    'processed_content': processed_content,
+                    'raw_flask_response': flask_data
+                })
+            else:
+                return Response({'error': f'Error occurred while re-testing: {response.text}'}, status=response.status_code)
+
+        except Exception as e:
+            return Response({'error': f'Error fetching notes: {str(e)}'}, status=500)
+
+
+# GPT 解析題目
+# 目前整合在一起 暫時保留
+# -----------------------------------
+class ParseAnswerView(APIView):
+    permission_classes = [IsAuthenticated]
+    # 輸入要解析的題目&答案
+    def post(self, request):
+        topic_id = request.data.get("topic_id")
+        if not topic_id:
+            return Response({'error': 'topic_id is required'}, status=400)
+        topic = get_object_or_404(Topic, id=topic_id, deleted_at__isnull=True)
+
+        title = topic.title
+        Ai_answer = topic.Ai_answer
+        option_A = topic.option_A
+        option_B = topic.option_B
+        option_C = topic.option_C
+        option_D = topic.option_D
+
+        def switch(Ai_answer):
+            if Ai_answer == 'A':
+                return option_A
+            elif Ai_answer == 'B':
+                return option_B
+            elif Ai_answer == 'C':
+                return option_C
+            elif Ai_answer == 'D':
+                return option_D
+            else:
+                return "選項不存在"
+
+        # 傳給flask處理 解析
+        flask_data = {
+            "title": title,
+            "Ai_answer": switch(Ai_answer),
+        }
+        print(f"傳送給 Flask 的資料: {flask_data}")
+        try:
+            response = requests.post(
+                'http://localhost:5000/api/parse_answer',
+                json=flask_data
+            )
+            if response.status_code != 200:
+                return Response({'error': f'Error occurred while parsing: {response.text}'}, status=response.status_code)
+            flask_data.update(response.json())
+            return Response({"message": "Parsing successful", "data": flask_data}, status=200)
+        except Exception as e:
+            return Response({'error': f'Error occurred while parsing: {str(e)}'}, status=500)
+        
+# -----------------------------------
+# 目前整合在一起 暫時保留
+# GPT 解析題目

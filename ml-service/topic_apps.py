@@ -118,6 +118,7 @@ def parse_ai_response(ai_text, count=1):
                 "option_D": q.get("option_D", "選項D"),
                 "correct_answer": q.get("correct_answer", "A"),
                 "User_answer": "",  # 預設空值
+                "explanation_text": q.get("explanation_text", "這是題目的解析"),
                 "Ai_answer": q.get("correct_answer", "A")
             }
             formatted_questions.append(formatted_q)
@@ -142,7 +143,8 @@ def generate_mock_questions(topic, count):
             "option_D": "選項 D",
             "correct_answer": "A",
             "User_answer": "",
-            "Ai_answer": "A"
+            "Ai_answer": "A",
+            "explanation_text": "這是題目的解析"
         }
         mock_questions.append(mock_q)
     
@@ -365,5 +367,116 @@ def generate_smart_response(user_content, chat_history):
     return responses.get(response_type, f"我理解您關於「{user_content}」的問題，讓我為您提供相關的資訊和建議。")
 
 
+
+# GPT統整note content 資料
+
+def parse_note_content(content):
+    print("----content內容------")
+    print(content)
+    print("----content內容------")
+    api_key = os.getenv('OPENAI_API_KEY', '')
+    if api_key == '' or not api_key:
+        print("API key is missing.")
+        return content  # 直接返回原始內容
+
+    print("~~~~~~~~~~~~~~~~~")
+    try:
+        client = OpenAI(api_key=api_key)
+        prompt = f"""
+        1. 分析文章內容，提取關鍵主題。
+        2. 根據主題，設計一個測驗標題。
+        3. 測驗標題需簡短、有吸引力，且字數不超過30字。
+        4. 只輸出測驗標題，不需要多餘解釋。
+        需整理內容：{content}
+
+        請直接回傳整理後的內容，不要使用任何格式標記。
+        """
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8
+        )
+        
+        processed_content = response.choices[0].message.content.strip()
+        print("----以下GPT彙整content內容----")
+        print(processed_content)
+        print("----以上GPT彙整content內容 END------")
+
+        return processed_content  # 返回處理後的純文字內容
+        
+    except Exception as e:
+        print(f"GPT 處理錯誤: {str(e)}")
+        return content  # 如果出錯，返回原始內容
+
+
+@app.route('/api/retest',methods=['POST'])
+def retest():
+    # 取出django輸入的 content
+    try:
+        data=request.json
+        content = data.get('content', '內容未提供')
+
+        if content =="內容未提供" :
+            return jsonify({"error": "內容未提供"}), 400
+
+        # 進行重新測試的content整理
+        parse_content = parse_note_content(content)
+        return jsonify({"content": parse_content}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# GPT 解析題目
+# 目前整合在一起 暫時保留
+# -----------------------------------
+@app.route('/api/parse_answer', methods=['POST'])
+def parse_answer():
+    print("=== 開始解析答案 ===")
+    data = request.json
+    title = data.get('title')
+    Ai_answer = data.get('Ai_answer')
+    print(f"接收到 {title} {Ai_answer}")
+    if not title or not Ai_answer:
+        return jsonify({"error": "Title and AI answer are required"}), 400
+
+    # Call OpenAI API to parse the question
+    api_key = os.getenv('OPENAI_API_KEY', '')
+    if not api_key:
+        return jsonify({"error": "API key is missing"}), 400
+
+    try:
+        client = OpenAI(api_key=api_key)
+        prompt = f"""
+        你是一個題目解析專家，請根據以下內容進行詳細解釋：
+        題目:{title},解答:{Ai_answer}
+        直接回傳整理後的內容，不要使用任何格式標記。
+        """
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "user", 
+                    "content":
+                      f"""
+                        題目:{title}
+                        解答:{Ai_answer}
+                        解析:{prompt}
+                    """
+                }
+            ]
+        )
+
+        parsed_answer = response.choices[0].message.content.strip()
+        return jsonify({"parsed_answer": parsed_answer}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+# -----------------------------------
+# 目前整合在一起 暫時保留
+# GPT 解析題目
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
