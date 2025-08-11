@@ -51,11 +51,14 @@ export default function FavoriteModal({
 
       // 組合內容：正確答案 + 解析
       const content = `## 題目解析\n${explanation}\n\n**正確答案：** ${correctAnsText}`;
+      // 從 sessionStorage 取得 quiz_topic
+      const title = quizData?.quiz?.quiz_topic || "題目收藏";
+
       setQuestionContent(content);
       setNoteTitle(`收藏題目 - 第${questionData.number}題`);
 
       // 重置選擇器
-      setCurrentSubject("數學");
+      setCurrentSubject(title);
       setCurrentNoteId(null);
     }
   }, [isOpen, questionData]);
