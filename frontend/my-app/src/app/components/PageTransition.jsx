@@ -59,10 +59,10 @@ export const usePageTransition = () => {
       transform: translate(-50%, -50%);
       z-index: 10000;
       pointer-events: none;
-      box-shadow: 0 0 0 9999px rgba(12, 11, 55, 1);
+      box-shadow: 0 0 0 2300px rgba(12, 11, 55, 1);
+      filter: blur(10px);
       will-change: width, height;
       backface-visibility: hidden;
-      perspective: 1000px;
     `;
     
     // 創建動畫內容（已移除文字和圖片）
@@ -117,11 +117,11 @@ export const usePageTransition = () => {
           if (document.body.contains(contentElement)) {
             document.body.removeChild(contentElement);
           }
-        }, 800); // 展開動畫時間
+        }, 600); // 展開動畫時間
         
       }, 200); // 跳轉後等待時間
       
-    }, 800); // 第一階段動畫時間
+    }, 1000); // 第一階段動畫時間
   };
 
   return { navigateWithTransition };
