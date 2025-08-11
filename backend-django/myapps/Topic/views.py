@@ -60,13 +60,17 @@ class QuizViewSet(APIView):
                     }, status=400)
             
             # 返回結果 寫回資料庫
-            # 每次都創建新的 Quiz（避免重用舊的導致題目被軟刪除）
-            quiz = Quiz.objects.create(
-                quiz_topic=result.get('quiz_topic'),
-                user=user_instance
-            )
-            
-            print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
+            # 先判斷 quiz_topic 是否有未軟刪除的 Quiz，有則不再新建
+            quiz_topic_name = result.get('quiz_topic')
+            quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
+            if quiz:
+                print(f"Found existing Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
+            else:
+                quiz = Quiz.objects.create(
+                    quiz_topic=quiz_topic_name,
+                    user=user_instance
+                )
+                print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
             
             # 然後創建 Topic，並關聯到 Quiz
             topics = []
@@ -762,3 +766,21 @@ class ParseAnswerView(APIView):
 # -----------------------------------
 # 目前整合在一起 暫時保留
 # GPT 解析題目
+
+
+# 取得用戶的所有quiz 和 note
+class UsersQuizAndNote(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        quizzes = Quiz.objects.filter(user=user)
+        notes = Note.objects.filter(user=user)
+
+        quiz_data = QuizSerializer(quizzes, many=True).data
+        note_data = NoteSerializer(notes, many=True).data
+
+        return Response({
+            'quizzes': quiz_data,
+            'notes': note_data
+        })
