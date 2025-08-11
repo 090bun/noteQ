@@ -77,8 +77,7 @@ export default function LoginPage() {
 
       const data = await res.json();
       safeAlert("註冊成功，請登入");
-      // 可選：註冊成功後自動切換到登入頁
-      // setIsLoginForm(true);
+      setIsLoginForm(true);
     } catch (err) {
       safeAlert("註冊失敗，請確認資料是否正確或已被註冊");
     }
