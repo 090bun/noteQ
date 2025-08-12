@@ -133,6 +133,17 @@ export default function AnalysisOverlay({
     return lines.join("\n");
   };
 
+  // 處理收藏解析內容 (收藏AI回覆對話)
+  const handleOpenFavoriteWithText = (text) => {
+    if (typeof window !== "undefined") {
+      window.__analysisSelectedContent = {
+        content: text || "",
+        title: `解析內容收藏 - ${new Date().toLocaleDateString("zh-TW")}`,
+      };
+    }
+    onOpenAnalysisFavoriteModal();
+  };
+
   // 處理收藏完整對話
   const handleOpenFullFavorite = () => {
     const content = buildFullContent();
@@ -209,9 +220,18 @@ export default function AnalysisOverlay({
                       m.role === "user" ? styles.user : styles.ai
                     }`}
                   >
-                    {m.content}
+                    {m.role === "ai" && (
+                      <div
+                        className={styles["placeholder-icon"]}
+                        onClick={() => handleOpenFavoriteWithText(m.content)}
+                      >
+                        +
+                      </div>
+                    )}
+                    <span>{m.content}</span>
                   </div>
                 ))}
+
                 {isLoading && (
                   <div className={`${styles.message} ${styles.placeholder}`}>
                     正在思考中…
