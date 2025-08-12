@@ -11,6 +11,12 @@ class UserSerializer(serializers.ModelSerializer):
             'email': {'required': True},
             'password': {'write_only': True ,"required": True}
         }
+
+class UserSimplifiedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username']
+
 class AuthTokenSerializer(serializers.ModelSerializer):
     user_id = serializers.PrimaryKeyRelatedField(
         source='user',  # ✅ 指向 model 的 ForeignKey 名稱

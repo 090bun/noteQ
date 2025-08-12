@@ -1,7 +1,7 @@
 import requests
 from django.shortcuts import render , get_object_or_404
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer
 from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz , UserFamiliarity, DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
 from myapps.Authorization.models import User
@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny , IsAuthenticated
 from rest_framework.decorators import api_view , permission_classes
 from django.utils import timezone
 from rest_framework.response import Response
-
+from .familiarity_views import record_answer_mixed
 # Create your views here.
 
 # flask api接口
@@ -284,7 +284,7 @@ class AddFavoriteViewSet(APIView):
             # 檢查該 Topic 的 Quiz 是否屬於該使用者
             if topic_instance.quiz_topic.user != user_instance:
                 return Response({
-                    'error': 'You can only favorite topics from your own quizzes'
+                    'error': f'You can only favorite topics from your own quizzes,你是{user_instance.username} , 不是{topic_instance.quiz_topic.user.username}'
                 }, status=403)
             
             # 檢查是否已經收藏過
@@ -785,10 +785,45 @@ class UsersQuizAndNote(APIView):
         quizzes = Quiz.objects.filter(user=user)
         notes = Note.objects.filter(user=user)
 
-        quiz_data = QuizSerializer(quizzes, many=True).data
-        note_data = NoteSerializer(notes, many=True).data
+        quiz_data = QuizSimplifiedSerializer(quizzes, many=True).data
+        note_data = NoteSimplifiedSerializer(notes, many=True).data
 
         return Response({
             'quizzes': quiz_data,
             'notes': note_data
         })
+    
+
+
+# 計算熟悉度
+class SubmitAnswerMixedView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        """
+        body: {
+          "quiz_topic_id": 123,
+          "is_correct": true,
+          "difficulty_level": "advanced"
+        }
+        """
+        user = request.user
+        quiz_topic_id = request.data.get("quiz_topic_id")
+        is_correct = bool(request.data.get("is_correct", False))
+        level_name = request.data.get("difficulty_level")
+
+        if not quiz_topic_id or not level_name:
+            return Response({"error": "quiz_topic_id and difficulty_level are required"}, status=400)
+
+        quiz_topic = get_object_or_404(Quiz, id=quiz_topic_id, deleted_at__isnull=True)
+        uf = record_answer_mixed(user=user, quiz_topic=quiz_topic, is_correct=is_correct, level_name=level_name)
+
+        return Response({
+            "quiz_topic_id": quiz_topic.id,
+            "total_questions": uf.total_questions,
+            "correct_answers": uf.correct_answers,
+            "weighted_total": float(uf.weighted_total),
+            "weighted_correct": float(uf.weighted_correct),
+            "familiarity": float(uf.familiarity),          # 0~1
+            "familiarity_percent": float(uf.familiarity) * 100.0,  # %
+            "last_level": uf.difficulty_level.level_name if uf.difficulty_level else None,
+        }, status=200)
