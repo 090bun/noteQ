@@ -144,9 +144,9 @@ export default function HomeGamePage() {
         }),
       });
 
-      if (!res.ok) {
-        throw new Error("後端回傳錯誤");
-      }
+      // if (!res.ok) {
+      //   throw new Error("後端回傳錯誤");
+      // }
 
       const result = await res.json();
       console.log("題目已送出，回傳結果:", result);

@@ -16,7 +16,8 @@ const Game = () => {
   const [questions, setQuestions] = useState([]);
   const [userAnswers, setUserAnswers] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isOptionDisabled, setIsOptionDisabled] = useState(false); // 新增防連點狀態
+  const [isOptionDisabled, setIsOptionDisabled] = useState(false); // 防連點狀態
+  const [isSubmitting, setIsSubmitting] = useState(false); // 防重複提交
 
   // 初始化資料
   useEffect(() => {
@@ -45,41 +46,76 @@ const Game = () => {
     document.body.style.overflow = "auto";
   };
 
-const handleOptionClick = (index) => {
-  if (isOptionDisabled) return;
+  const handleOptionClick = (index) => {
+    if (isOptionDisabled) return;
 
-  const currentTopic = questions[currentQuestion - 1];
-  if (!currentTopic) return;
+    const currentTopic = questions[currentQuestion - 1];
+    if (!currentTopic) return;
 
-  const optionLetter = ["A", "B", "C", "D"][index];
+    const optionLetter = ["A", "B", "C", "D"][index];
 
-  setIsOptionDisabled(true);
+    setIsOptionDisabled(true);
 
-  setUserAnswers((prev) => {
-    const filtered = prev.filter((ans) => ans.topicId !== currentTopic.id);
-    return [...filtered, { topicId: currentTopic.id, selected: optionLetter }];
-  });
+    setUserAnswers((prev) => {
+      const filtered = prev.filter((ans) => ans.topicId !== currentTopic.id);
+      return [
+        ...filtered,
+        { topicId: currentTopic.id, selected: optionLetter },
+      ];
+    });
 
-  setSelectedOption(index);
+    setSelectedOption(index);
 
-  if (currentQuestion === totalQuestions) {
-    // 最後一題選完後才顯示完成按鈕，且不跳題
-    setShowCompleteButton(true);
-    setIsOptionDisabled(false);
-    return;
-  }
+    if (currentQuestion === totalQuestions) {
+      // 最後一題選完後才顯示完成按鈕，且不跳題
+      setShowCompleteButton(true);
+      setIsOptionDisabled(false);
+      return;
+    }
 
-  setTimeout(() => {
-    setCurrentQuestion((prev) => prev + 1);
-    setSelectedOption(null);
-    setIsOptionDisabled(false);
-  }, 300);
-};
+    setTimeout(() => {
+      setCurrentQuestion((prev) => prev + 1);
+      setSelectedOption(null);
+      setIsOptionDisabled(false);
+    }, 300);
+  };
 
+  const handleCompleteChallenge = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-  const handleCompleteChallenge = () => {
-    sessionStorage.setItem("userAnswers", JSON.stringify(userAnswers));
-    window.location.href = "/gameover";
+    try {
+      // 組成後端需要的資料格式
+      const payload = {
+        updates: userAnswers.map(({ topicId, selected }) => ({
+          id: topicId,
+          user_answer: selected,
+        })),
+      };
+
+      const token = localStorage.getItem("token");
+
+      // POST 到後端
+      const res = await fetch("http://127.0.0.1:8000/api/submit_answer/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // 附上 token
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // 簡單錯誤處理（不中斷原流程）
+      if (!res.ok) {
+        console.error("提交答案失敗：", res.status, await res.text());
+      }
+    } catch (err) {
+      console.error("提交答案發生錯誤：", err);
+    } finally {
+      // 寫入 sessionStorage 並導向 /gameover
+      sessionStorage.setItem("userAnswers", JSON.stringify(userAnswers));
+      window.location.href = "/gameover";
+    }
   };
 
   const options = questions.length
