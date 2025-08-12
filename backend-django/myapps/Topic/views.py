@@ -11,7 +11,8 @@ from rest_framework.permissions import AllowAny , IsAuthenticated
 from rest_framework.decorators import api_view , permission_classes
 from django.utils import timezone
 from rest_framework.response import Response
-#from .familiarity_views import record_answer_mixed
+from .familiarity_views import record_answer_mixed
+from django.db import transaction
 # Create your views here.
 
 # flask api接口
@@ -87,6 +88,7 @@ class QuizViewSet(APIView):
                     option_B=q.get('option_B'),
                     option_C=q.get('option_C'),
                     option_D=q.get('option_D'),
+                    difficulty_id=q.get('difficulty_id', 5),
                     Ai_answer=q.get('Ai_answer'),
                     explanation_text=q.get('explanation_text')
                 )
@@ -144,6 +146,7 @@ class QuizViewSet(APIView):
                         'User_answer': topic.User_answer,
                         'Ai_answer': topic.Ai_answer,
                         'explanation_text': topic.explanation_text,
+                        'difficulty_id': topic.difficulty_id,
                         'created_at': topic.created_at.isoformat() if topic.created_at else None
                     }
                     quiz_data['topics'].append(topic_data)
@@ -180,6 +183,7 @@ class TopicDetailViewSet(APIView):
                 'option_D': topic.option_D,
                 'User_answer': topic.User_answer,
                 'explanation_text': topic.explanation_text,
+                'difficulty_id': topic.difficulty_id,
                 'Ai_answer': topic.Ai_answer,
                 'created_at': topic.created_at.isoformat() if topic.created_at else None,
                 'quiz': {
@@ -236,9 +240,10 @@ class QuizTopicsViewSet(APIView):
                     'option_C': topic.option_C,
                     'option_D': topic.option_D,
                     'User_answer': topic.User_answer,
+                    'explanation_text': topic.explanation_text,
                     'Ai_answer': topic.Ai_answer,
                     'created_at': topic.created_at.isoformat() if topic.created_at else None,
-                    'explanation_text': topic.explanation_text
+                    'difficulty_id': topic.difficulty_id
                 }
                 quiz_data['topics'].append(topic_data)
             
@@ -793,6 +798,61 @@ class UsersQuizAndNote(APIView):
             'notes': note_data
         })
     
+# 前端回傳 用戶答案
+class SubmitAnswerView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        from django.db import transaction
+        
+        with transaction.atomic():
+            user = request.user
+            topic_id = request.data.get("topic")
+            user_answer = request.data.get("user_answer")
+            updates = request.data.get("updates", [])
+
+            # 處理單一題目更新
+            if topic_id and user_answer is not None:
+                topic = get_object_or_404(Topic, id=topic_id, deleted_at__isnull=True)
+                topic.User_answer = user_answer
+                topic.save()
+                return Response({"message": "Answer submitted successfully"}, status=201)
+            
+            # 處理批次更新 (支援兩種格式)
+            elif updates:
+                updated_topics = []
+                for item in updates:
+                    topic = get_object_or_404(Topic, id=item.get("id"), deleted_at__isnull=True)
+                    topic.User_answer = item.get("user_answer")
+                    topic.save()
+                    updated_topics.append({
+                        "id": topic.id,
+                        "User_answer": topic.User_answer,
+                        "title": topic.title
+                    })
+                return Response({
+                    "message": "Batch answers submitted successfully",
+                    "updated_topics": updated_topics
+                }, status=201)
+            
+            # 處理直接傳陣列的格式 [{"id": 276, "user_answer": "A"}]
+            elif isinstance(request.data, list):
+                updated_topics = []
+                for item in request.data:
+                    topic = get_object_or_404(Topic, id=item.get("id"), deleted_at__isnull=True)
+                    topic.User_answer = item.get("user_answer")
+                    topic.save()
+                    updated_topics.append({
+                        "id": topic.id,
+                        "User_answer": topic.User_answer,
+                        "title": topic.title
+                    })
+                return Response({
+                    "message": "Batch answers submitted successfully",
+                    "updated_topics": updated_topics
+                }, status=201)
+            
+            else:
+                return Response({"error": "Either 'topic' and 'user_answer' or 'updates' are required"}, status=400)
 
 
 # 計算熟悉度
