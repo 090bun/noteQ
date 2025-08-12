@@ -21,9 +21,64 @@ export default function AnalysisFavoriteModal({
   const [content, setContent] = useState("");
   const [isPreviewMode, setIsPreviewMode] = useState(true);
 
-  // 供 API 載入的主題與筆記（不影響父層傳入的 props）
-  const [apiSubjects, setApiSubjects] = useState([]);
-  const [apiNotes, setApiNotes] = useState([]);
+  // 從 API 拉回來的主題與筆記（成功時覆蓋 props，失敗時用原 props 當後備）
+  const [apiSubjects, setApiSubjects] = useState(null);
+  const [apiNotes, setApiNotes] = useState(null);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+
+  // 從 sessionStorage.quizData 取預設 subject / noteId / title
+  function getQuizSessionDefaults() {
+    try {
+      const raw =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("quizData")
+          : null;
+      if (!raw) return { subject: null, noteId: null, title: null };
+      const data = JSON.parse(raw);
+
+      // ★ 若 quizData 結構調整，只要改下列對應欄位 ★
+      const subject =
+        data?.quiz?.quiz_topic ??
+        (Array.isArray(data?.quizzes) && data.quizzes[0]?.quiz_topic) ??
+        (Array.isArray(data?.topics) && data.topics[0]?.subject) ??
+        null;
+
+      const noteId = (Array.isArray(data?.notes) && data.notes[0]?.id) ?? null;
+
+      const title =
+        (Array.isArray(data?.notes) && data.notes[0]?.title) ??
+        (Array.isArray(data?.topics) && data.topics[0]?.title) ??
+        null;
+
+      return { subject, noteId, title };
+    } catch {
+      return { subject: null, noteId: null, title: null };
+    }
+  }
+
+  // 集中改這裡以適配未來 API
+  // API → subjects 的映射
+  function mapApiToSubjects(apiData) {
+    // ★ 未來 API 變更時，改這裡即可
+    // 允許 data.subjects: ["數學","英文"] 或 [{name:"數學"}] 或從 quizzes 推導
+    const rawSubjects = apiData?.subjects ?? apiData?.quizzes ?? [];
+    return rawSubjects.map((s) =>
+      typeof s === "string" ? s : s.name ?? s.quiz_topic ?? s.title ?? "未分類"
+    );
+  }
+
+  // API → notes 的映射
+  function mapApiToNotes(apiData) {
+    // ★ 未來 API 變更時，改這裡即可
+    // 允許 notes item: { id, title, subject } 或 subject 欄位名為 subject_name/topic/quiz_topic
+    const rawNotes = apiData?.notes ?? [];
+    return rawNotes.map((n) => ({
+      id: n.id,
+      title: n.title ?? n.name ?? `未命名筆記 ${n.id}`,
+      subject:
+        n.subject ?? n.subject_name ?? n.topic ?? n.quiz_topic ?? "未分類",
+    }));
+  }
 
   // 初始化筆記標題
   useEffect(() => {
@@ -34,15 +89,64 @@ export default function AnalysisFavoriteModal({
         window.__analysisSelectedContent?.content
       ) {
         analysisContent = window.__analysisSelectedContent.content;
-        delete window.__analysisSelectedContent; // 用完清掉
+        delete window.__analysisSelectedContent;
       }
       const formattedContent = `## ${analysisContent}`;
       setContent(formattedContent);
       setNoteTitle(`解析內容收藏 - ${new Date().toLocaleDateString("zh-TW")}`);
       setCurrentSubject("數學");
       setCurrentNoteId(null);
+
+      // ★ 追加：用 quizData 覆蓋預設（若有）
+      const { subject, noteId, title } = getQuizSessionDefaults();
+      if (subject) setCurrentSubject(subject);
+      if (noteId !== null && noteId !== undefined) setCurrentNoteId(noteId);
+      if (title) setNoteTitle(title);
     }
   }, [isOpen]);
+
+  // 打 API 取得選項（在 isOpen 時觸發）
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        setIsLoadingOptions(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+        const data = await res.json();
+
+        // ★ 未來 API 變更，請只改 mapApiToSubjects / mapApiToNotes
+        const subjectsFromApi = mapApiToSubjects(data);
+        const notesFromApi = mapApiToNotes(data);
+
+        setApiSubjects(subjectsFromApi);
+        setApiNotes(notesFromApi);
+
+        // 若 currentSubject 不在新清單中，回退到第一個
+        if (
+          subjectsFromApi.length > 0 &&
+          !subjectsFromApi.includes(currentSubject)
+        ) {
+          setCurrentSubject(subjectsFromApi[0]);
+        }
+      } catch (e) {
+        console.error("取得主題/筆記選項失敗：", e);
+        setApiSubjects(null);
+        setApiNotes(null);
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    })();
+  }, [isOpen]); // 只在開啟時抓一次（或你可改依需求）
 
   // 處理收藏確認
   const handleConfirm = () => {
@@ -100,7 +204,12 @@ ${content}`;
     }
   };
 
-  const filteredNotes = notes.filter((note) => note.subject === currentSubject);
+  const effectiveSubjects = apiSubjects ?? subjects;
+  const effectiveNotes = apiNotes ?? notes;
+
+  const filteredNotes = effectiveNotes.filter(
+    (note) => note.subject === currentSubject
+  );
 
   return (
     <div
@@ -134,7 +243,7 @@ ${content}`;
           </div>
 
           <SubjectSelector
-            subjects={subjects}
+            subjects={effectiveSubjects}
             currentSubject={currentSubject}
             onSubjectChange={setCurrentSubject}
             onShowCustomPrompt={onShowCustomPrompt}

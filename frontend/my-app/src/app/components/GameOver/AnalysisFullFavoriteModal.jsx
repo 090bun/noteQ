@@ -20,10 +20,64 @@ export default function AnalysisFullFavoriteModal({
   const [noteTitle, setNoteTitle] = useState("");
   const [content, setContent] = useState("");
   const [isPreviewMode, setIsPreviewMode] = useState(true);
+  const [apiSubjects, setApiSubjects] = useState(null);
+  const [apiNotes, setApiNotes] = useState(null);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
+  // quizData 中的預設值
+  function getQuizSessionDefaults() {
+    try {
+      const raw =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("quizData")
+          : null;
+      if (!raw) return { subject: null, noteId: null, title: null };
+      const data = JSON.parse(raw);
+
+      // ★ quizData 結構調整時，改這裡
+      const subject =
+        data?.quiz?.quiz_topic ??
+        (Array.isArray(data?.quizzes) && data.quizzes[0]?.quiz_topic) ??
+        (Array.isArray(data?.topics) && data.topics[0]?.subject) ??
+        null;
+
+      const noteId = (Array.isArray(data?.notes) && data.notes[0]?.id) ?? null;
+
+      const title =
+        (Array.isArray(data?.notes) && data.notes[0]?.title) ??
+        (Array.isArray(data?.topics) && data.topics[0]?.title) ??
+        null;
+
+      return { subject, noteId, title };
+    } catch {
+      return { subject: null, noteId: null, title: null };
+    }
+  }
+
+  // API → subjects 的映射
+  function mapApiToSubjects(apiData) {
+    // ★ 未來 API 變更時，改這裡
+    const rawSubjects = apiData?.subjects ?? apiData?.quizzes ?? [];
+    return rawSubjects.map((s) =>
+      typeof s === "string" ? s : s.name ?? s.quiz_topic ?? s.title ?? "未分類"
+    );
+  }
+
+  // API → notes 的映射
+  function mapApiToNotes(apiData) {
+    // ★ 未來 API 變更時，改這裡
+    const rawNotes = apiData?.notes ?? [];
+    return rawNotes.map((n) => ({
+      id: n.id,
+      title: n.title ?? n.name ?? `未命名筆記 ${n.id}`,
+      subject:
+        n.subject ?? n.subject_name ?? n.topic ?? n.quiz_topic ?? "未分類",
+    }));
+  }
+
+  // 初始化時套用 quizData 預設值
   useEffect(() => {
     if (isOpen) {
-      // 優先採用 AnalysisOverlay 事先暫存的完整對話內容
       const ext =
         typeof window !== "undefined" ? window.__analysisFullContent : null;
       const fullContent =
@@ -41,11 +95,57 @@ export default function AnalysisFullFavoriteModal({
       setCurrentSubject("數學");
       setCurrentNoteId(null);
 
-      // 用過就清掉，避免殘留舊資料
       if (typeof window !== "undefined") {
         window.__analysisFullContent = null;
       }
+
+      // ★ 追加：quizData 覆蓋預設
+      const { subject, noteId, title } = getQuizSessionDefaults();
+      if (subject) setCurrentSubject(subject);
+      if (noteId !== null && noteId !== undefined) setCurrentNoteId(noteId);
+      if (title) setNoteTitle(title);
     }
+  }, [isOpen]);
+
+  // 打 API 取得選項（在 isOpen 時觸發）
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        setIsLoadingOptions(true);
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+        const data = await res.json();
+
+        const subjectsFromApi = mapApiToSubjects(data);
+        const notesFromApi = mapApiToNotes(data);
+
+        setApiSubjects(subjectsFromApi);
+        setApiNotes(notesFromApi);
+
+        if (
+          subjectsFromApi.length > 0 &&
+          !subjectsFromApi.includes(currentSubject)
+        ) {
+          setCurrentSubject(subjectsFromApi[0]);
+        }
+      } catch (e) {
+        console.error("取得主題/筆記選項失敗：", e);
+        setApiSubjects(null);
+        setApiNotes(null);
+      } finally {
+        setIsLoadingOptions(false);
+      }
+    })();
   }, [isOpen]);
 
   const handleConfirm = () => {
@@ -103,8 +203,12 @@ ${content}`;
     }
   };
 
-  const filteredNotes = notes.filter((note) => note.subject === currentSubject);
+  const effectiveSubjects = apiSubjects ?? subjects;
+  const effectiveNotes = apiNotes ?? notes;
 
+  const filteredNotes = effectiveNotes.filter(
+    (note) => note.subject === currentSubject
+  );
   return (
     <div
       className={`${styles["analysis-full-favorite-modal"]} ${
@@ -137,7 +241,7 @@ ${content}`;
           </div>
 
           <SubjectSelector
-            subjects={subjects}
+            subjects={effectiveSubjects}
             currentSubject={currentSubject}
             onSubjectChange={setCurrentSubject}
             onShowCustomPrompt={onShowCustomPrompt}
