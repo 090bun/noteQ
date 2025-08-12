@@ -58,6 +58,14 @@ export default function NotePage() {
     }
   }, []);
 
+  // subjects 更新後，自動選定可用主題，避免初次進頁 currentSubject 為空而不渲染
+  useEffect(() => {
+    if (subjects.length === 0) return;
+    setCurrentSubject((prev) =>
+      prev && subjects.includes(prev) ? prev : subjects[0]
+    );
+  }, [subjects]);
+
   // 從後端載入主題
   useEffect(() => {
     (async () => {
@@ -136,14 +144,27 @@ export default function NotePage() {
                 String(n?.content || "").split("\n")[0] ||
                 "未命名筆記";
 
+              // 嘗試解析 content
+              let parsedContent = "";
+              if (typeof n?.content === "string") {
+                try {
+                  const obj = JSON.parse(n.content.replace(/'/g, '"'));
+                  // 只取 explanation_text
+                  parsedContent = obj.explanation_text || "";
+                } catch {
+                  parsedContent = n.content;
+                }
+              } else if (
+                typeof n?.content === "object" &&
+                n?.content !== null
+              ) {
+                parsedContent = n.content.explanation_text || "";
+              }
+
               return {
                 id: Number(n?.id) || Date.now() + Math.random(),
                 title,
-                content:
-                  typeof n?.content === "string"
-                    ? n.content
-                    : String(n?.content ?? ""),
-                // 後端目前未提供 subject，先歸到第一個主題，讓現有 UI 可正常渲染
+                content: parsedContent,
                 subject: defaultSubject,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -223,6 +244,7 @@ export default function NotePage() {
     setShowModal(true);
   };
 
+  // 確認新增主題
   const confirmAddSubject = () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
