@@ -191,7 +191,7 @@ export default function UserPage() {
                     height={80}
                     style={{ 
                       objectFit: "contain",
-                      mixBlendMode: "multiply"
+                      mixBlendMode: "difference"
                     }}
                   />
       <h1
