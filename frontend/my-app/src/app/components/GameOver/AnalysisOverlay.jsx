@@ -14,8 +14,25 @@ export default function AnalysisOverlay({
 }) {
   const [inputValue, setInputValue] = useState("");
   const [currentTopic, setCurrentTopic] = useState(null);
-  const [messages, setMessages] = useState([]); // 動態對話訊息
   const [isLoading, setIsLoading] = useState(false); // 送出後等待回覆
+  
+  // 為每個題目創建獨立的聊天室
+  const [chatRooms, setChatRooms] = useState({});
+  
+  // 獲取當前題目的聊天記錄
+  const getCurrentChatRoom = () => {
+    if (!currentTopic?.id) return [];
+    return chatRooms[currentTopic.id] || [];
+  };
+  
+  // 更新當前題目的聊天記錄
+  const updateCurrentChatRoom = (newMessages) => {
+    if (!currentTopic?.id) return;
+    setChatRooms(prev => ({
+      ...prev,
+      [currentTopic.id]: newMessages
+    }));
+  };
 
   useEffect(() => {
     if (!isOpen || topicIndex == null) return;
@@ -24,6 +41,8 @@ export default function AnalysisOverlay({
     const data = JSON.parse(raw);
     if (Array.isArray(data.topics) && data.topics[topicIndex]) {
       setCurrentTopic(data.topics[topicIndex]);
+      // 切換題目時清空輸入框
+      setInputValue("");
     }
   }, [isOpen, topicIndex]);
 
@@ -32,8 +51,12 @@ export default function AnalysisOverlay({
     const text = inputValue.trim();
     if (!text || isLoading) return;
 
-    // 先把使用者訊息推到畫面
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    // 獲取當前聊天室
+    const currentMessages = getCurrentChatRoom();
+    
+    // 先把使用者訊息推到當前聊天室
+    const newMessages = [...currentMessages, { role: "user", content: text }];
+    updateCurrentChatRoom(newMessages);
     setInputValue("");
     setIsLoading(true);
 
@@ -72,13 +95,17 @@ export default function AnalysisOverlay({
         data?.content ??
         "（沒有收到 AI 內容）";
 
-      setMessages((prev) => [...prev, { role: "ai", content: aiText }]);
+      // 將AI回覆添加到當前聊天室
+      const updatedMessages = [...newMessages, { role: "ai", content: aiText }];
+      updateCurrentChatRoom(updatedMessages);
     } catch (err) {
       console.error("AI 論述請求失敗：", err);
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" },
-      ]);
+      // 將錯誤訊息添加到當前聊天室
+      const updatedMessages = [...newMessages, { 
+        role: "ai", 
+        content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" 
+      }];
+      updateCurrentChatRoom(updatedMessages);
     } finally {
       setIsLoading(false);
     }
@@ -113,47 +140,68 @@ export default function AnalysisOverlay({
 
         <div className={styles["analysis-content"]}>
           <div className={styles["chat-messages"]}>
-            <div className={`${styles.message} ${styles.ai}`}>
-              {currentTopic?.explanation_text || "正在載入解析..."}
-            </div>
-            <div className={`${styles.message} ${styles.ai}`}>
-              {"對於題目：" + (currentTopic?.title || "") + "還有什麼問題嗎？"}{" "}
-            </div>
+                         <div className={`${styles.message} ${styles.ai}`}>
+               <div
+                 className={styles["placeholder-icon"]}
+                 onClick={onOpenAnalysisFavoriteModal}
+               >
+                 +
+               </div>
+               <span>{currentTopic?.explanation_text || "正在載入解析..."}</span>
+             </div>
+             <div className={`${styles.message} ${styles.ai}`}>
+               {"對於題目：" + (currentTopic?.title || "") + "還有什麼問題嗎？"}{" "}
+             </div>
 
-            {messages.length === 0 ? (
-              <>
-                <div className={`${styles.message} ${styles.user}`}>
-                  你打的問題會在這裡
-                </div>
-                <div className={`${styles.message} ${styles.placeholder}`}>
-                  <div
-                    className={styles["placeholder-icon"]}
-                    onClick={onOpenAnalysisFavoriteModal}
-                  >
-                    +
-                  </div>
-                  AI的回答在這裡
-                </div>
-              </>
-            ) : (
-              <>
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`${styles.message} ${
-                      m.role === "user" ? styles.user : styles.ai
-                    }`}
-                  >
-                    {m.content}
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className={`${styles.message} ${styles.placeholder}`}>
-                    正在思考中…
-                  </div>
-                )}
-              </>
-            )}
+            {(() => {
+              const currentMessages = getCurrentChatRoom();
+              if (currentMessages.length === 0) {
+                return (
+                  <>
+                    <div className={`${styles.message} ${styles.user}`}>
+                      你打的問題會在這裡
+                    </div>
+                    <div className={`${styles.message} ${styles.placeholder}`}>
+                      <div
+                        className={styles["placeholder-icon"]}
+                        onClick={onOpenAnalysisFavoriteModal}
+                      >
+                        +
+                      </div>
+                      AI的回答在這裡
+                    </div>
+                  </>
+                );
+              } else {
+                return (
+                  <>
+                                         {currentMessages.map((m, i) => (
+                       <div
+                         key={i}
+                         className={`${styles.message} ${
+                           m.role === "user" ? styles.user : styles.ai
+                         }`}
+                       >
+                         {m.role === "ai" && (
+                           <div
+                             className={styles["placeholder-icon"]}
+                             onClick={onOpenAnalysisFavoriteModal}
+                           >
+                             +
+                           </div>
+                         )}
+                         <span>{m.content}</span>
+                       </div>
+                     ))}
+                    {isLoading && (
+                      <div className={`${styles.message} ${styles.placeholder}`}>
+                        正在思考中…
+                      </div>
+                    )}
+                  </>
+                );
+              }
+            })()}
           </div>
         </div>
 
