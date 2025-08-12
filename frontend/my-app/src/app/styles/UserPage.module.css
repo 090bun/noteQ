@@ -33,10 +33,10 @@
 
 .profileIcon {
     position: absolute;
-    top: 15px;
-    left: 55px;
-    width: 120px;
-    height: 90px;
+    top: 13px;
+    left: 70px;
+    width: 21%;
+    height: auto;
     z-index: 1;
 }
 
@@ -580,9 +580,8 @@
 
     .profileIcon {
         top: 10px;
-        left: 35px;
-        width: 120px;
-        height: 80px;
+        left: 50px;
+        width: 23%;
     }
 
     .profileName {
