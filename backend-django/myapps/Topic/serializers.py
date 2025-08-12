@@ -14,7 +14,7 @@ class UserFavoriteSerializer(serializers.ModelSerializer):
 class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
-        fields = ['id', 'quiz_topic', 'title', 'User_answer','explanation_text','Ai_answer', 'created_at', 'deleted_at', 'option_A', 'option_B', 'option_C', 'option_D']
+        fields = ['id', 'quiz_topic', 'difficulty','title', 'User_answer','explanation_text','Ai_answer', 'created_at', 'deleted_at', 'option_A', 'option_B', 'option_C', 'option_D']
         extra_kwargs = {
             'explanation_text': {'required': False, 'allow_null': True},
             'deleted_at': {'required': False, 'allow_null': True}

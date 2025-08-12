@@ -81,6 +81,14 @@ class QuizViewSet(APIView):
             
             for i, q in enumerate(result.get('questions', []), 1):
                 print(f"創建第 {i} 個 Topic: {q.get('title', 'No title')}")
+                
+                # 處理難度等級
+                difficulty_id = q.get('difficulty_id', 1)
+                try:
+                    difficulty_instance = DifficultyLevels.objects.get(id=difficulty_id)
+                except DifficultyLevels.DoesNotExist:
+                    difficulty_instance = DifficultyLevels.objects.get(id=1)  # 預設 beginner
+                
                 topic = Topic.objects.create(
                     quiz_topic=quiz,  # 關聯到 Quiz 實例
                     title=q.get('title'),
@@ -88,7 +96,7 @@ class QuizViewSet(APIView):
                     option_B=q.get('option_B'),
                     option_C=q.get('option_C'),
                     option_D=q.get('option_D'),
-                    difficulty_id=q.get('difficulty_id', 5),
+                    difficulty=difficulty_instance,  # 使用 difficulty 外鍵
                     Ai_answer=q.get('Ai_answer'),
                     explanation_text=q.get('explanation_text')
                 )
@@ -124,8 +132,11 @@ class QuizViewSet(APIView):
     def get(self, request):
         # 直接從 Django 資料庫獲取資料，不調用 Flask
         try:
-            # 獲取所有 Quiz 和相關的 Topic
-            quizzes = Quiz.objects.filter(deleted_at__isnull=True)
+            # 獲取當前用戶的所有 Quiz 和相關的 Topic
+            quizzes = Quiz.objects.filter(user=request.user, deleted_at__isnull=True)
+            print(f"=== GET 方法除錯 ===")
+            print(f"用戶: {request.user}")
+            print(f"找到 {quizzes.count()} 個 Quiz")
             
             quiz_list = []
             for quiz in quizzes:
