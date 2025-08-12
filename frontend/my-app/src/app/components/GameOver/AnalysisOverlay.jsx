@@ -14,26 +14,30 @@ export default function AnalysisOverlay({
 }) {
   const [inputValue, setInputValue] = useState("");
   const [currentTopic, setCurrentTopic] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // 送出後等待回覆
-  
+
   // 為每個題目創建獨立的聊天室
   const [chatRooms, setChatRooms] = useState({});
-  
+
+  // 即時對話訊息狀態
+  const [messages, setMessages] = useState([]); // 即時對話訊息
+  const [isLoading, setIsLoading] = useState(false); // 等待 AI 回覆中
+
   // 獲取當前題目的聊天記錄
   const getCurrentChatRoom = () => {
     if (!currentTopic?.id) return [];
     return chatRooms[currentTopic.id] || [];
   };
-  
+
   // 更新當前題目的聊天記錄
   const updateCurrentChatRoom = (newMessages) => {
     if (!currentTopic?.id) return;
-    setChatRooms(prev => ({
+    setChatRooms((prev) => ({
       ...prev,
-      [currentTopic.id]: newMessages
+      [currentTopic.id]: newMessages,
     }));
   };
 
+  // 當題目索引變更時，更新當前題目
   useEffect(() => {
     if (!isOpen || topicIndex == null) return;
     const raw = sessionStorage.getItem("quizData");
@@ -51,25 +55,16 @@ export default function AnalysisOverlay({
     const text = inputValue.trim();
     if (!text || isLoading) return;
 
-    // 獲取當前聊天室
-    const currentMessages = getCurrentChatRoom();
-    
-    // 先把使用者訊息推到當前聊天室
-    const newMessages = [...currentMessages, { role: "user", content: text }];
-    updateCurrentChatRoom(newMessages);
+    // 先把使用者訊息丟進對話
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setInputValue("");
     setIsLoading(true);
 
     try {
-      // 依後端調整這個路徑
-      const API_URL = "http://127.0.0.1:8000/api/chat/";
-
-      // 取得 sessionStorge 資料
-      const quizData = JSON.parse(sessionStorage.getItem("quizData"));
-      const sender = quizData.quiz.user.username;
-
-      // 若有 token，會自動帶上
+      const API_URL = "http://127.0.0.1:8000/api/chat/"; // 依你的後端實際路徑調整
       const token = localStorage.getItem("token");
+      const quizData = JSON.parse(sessionStorage.getItem("quizData") || "{}");
+      const user = quizData.quiz.user.username;
 
       const res = await fetch(API_URL, {
         method: "POST",
@@ -78,39 +73,77 @@ export default function AnalysisOverlay({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          // 送到後端的基本欄位（可依需求擴充）
           user_id: localStorage.getItem("userId") || null,
+          sender: user,
           message: text,
-          sender: sender,
           topic_id: currentTopic?.id ?? null,
         }),
       });
 
       const data = await res.json();
 
-      // 兼容 data.ai-response.content / data.ai_response.content / data.content
+      // 兼容 data.ai-response.content、data.ai_response.content、data.content、data.reply
       const aiText =
         data?.ai_response?.content ??
         data?.["ai-response"]?.content ??
         data?.content ??
+        data?.reply ??
         "（沒有收到 AI 內容）";
 
-      // 將AI回覆添加到當前聊天室
-      const updatedMessages = [...newMessages, { role: "ai", content: aiText }];
-      updateCurrentChatRoom(updatedMessages);
+      setMessages((prev) => [...prev, { role: "ai", content: aiText }]);
     } catch (err) {
-      console.error("AI 論述請求失敗：", err);
-      // 將錯誤訊息添加到當前聊天室
-      const updatedMessages = [...newMessages, { 
-        role: "ai", 
-        content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" 
-      }];
-      updateCurrentChatRoom(updatedMessages);
+      console.error("AI 對話錯誤：", err);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 將目前題目與對話整理成可收藏的 Markdown
+  const buildFullContent = () => {
+    const lines = [];
+    lines.push("# 完整對話記錄");
+
+    if (currentTopic?.explanation_text) {
+      lines.push("");
+      lines.push(currentTopic.explanation_text);
+    }
+
+    lines.push("");
+    lines.push(`對於題目:${currentTopic?.title || ""}還有什麼問題嗎?`);
+
+    if (messages.length > 0) {
+      lines.push("");
+      messages.forEach((m) => {
+        const who = m.role === "user" ? "你" : "AI";
+        lines.push(`### ${who}：`);
+        lines.push(m.content || "");
+        lines.push("");
+      });
+    } else {
+      lines.push("");
+      lines.push("你的問題會在這裡");
+      lines.push("");
+      lines.push("AI的回答在這裡");
+    }
+
+    return lines.join("\n");
+  };
+
+  // 處理收藏完整對話
+  const handleOpenFullFavorite = () => {
+    const content = buildFullContent();
+    const title = `完整對話收藏 - ${new Date().toLocaleDateString("zh-TW")}`;
+    if (typeof window !== "undefined") {
+      window.__analysisFullContent = { content, title };
+    }
+    onOpenAnalysisFullFavoriteModal();
+  };
+
+  // 處理按鍵事件，Enter 鍵送出訊息
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       handleSend();
@@ -140,76 +173,57 @@ export default function AnalysisOverlay({
 
         <div className={styles["analysis-content"]}>
           <div className={styles["chat-messages"]}>
-                         <div className={`${styles.message} ${styles.ai}`}>
-               <div
-                 className={styles["placeholder-icon"]}
-                 onClick={onOpenAnalysisFavoriteModal}
-               >
-                 +
-               </div>
-               <span>{currentTopic?.explanation_text || "正在載入解析..."}</span>
-             </div>
-             <div className={`${styles.message} ${styles.ai}`}>
-               {"對於題目：" + (currentTopic?.title || "") + "還有什麼問題嗎？"}{" "}
-             </div>
-
-            {(() => {
-              const currentMessages = getCurrentChatRoom();
-              if (currentMessages.length === 0) {
-                return (
-                  <>
-                    <div className={`${styles.message} ${styles.user}`}>
-                      你打的問題會在這裡
-                    </div>
-                    <div className={`${styles.message} ${styles.placeholder}`}>
-                      <div
-                        className={styles["placeholder-icon"]}
-                        onClick={onOpenAnalysisFavoriteModal}
-                      >
-                        +
-                      </div>
-                      AI的回答在這裡
-                    </div>
-                  </>
-                );
-              } else {
-                return (
-                  <>
-                                         {currentMessages.map((m, i) => (
-                       <div
-                         key={i}
-                         className={`${styles.message} ${
-                           m.role === "user" ? styles.user : styles.ai
-                         }`}
-                       >
-                         {m.role === "ai" && (
-                           <div
-                             className={styles["placeholder-icon"]}
-                             onClick={onOpenAnalysisFavoriteModal}
-                           >
-                             +
-                           </div>
-                         )}
-                         <span>{m.content}</span>
-                       </div>
-                     ))}
-                    {isLoading && (
-                      <div className={`${styles.message} ${styles.placeholder}`}>
-                        正在思考中…
-                      </div>
-                    )}
-                  </>
-                );
-              }
-            })()}
+            <div className={`${styles.message} ${styles.ai}`}>
+              <div
+                className={styles["placeholder-icon"]}
+                onClick={onOpenAnalysisFavoriteModal}
+              >
+                +
+              </div>
+              <span>{currentTopic?.explanation_text || "正在載入解析..."}</span>
+            </div>
+            <div className={`${styles.message} ${styles.ai}`}>
+              {"對於題目：" + (currentTopic?.title || "") + "還有什麼問題嗎？"}{" "}
+            </div>
+            {messages.length === 0 ? (
+              <>
+                <div className={`${styles.message} ${styles.user}`}>
+                  你打的問題會在這裡
+                </div>
+                <div className={`${styles.message} ${styles.placeholder}`}>
+                  <div
+                    className={styles["placeholder-icon"]}
+                    onClick={onOpenAnalysisFavoriteModal}
+                  >
+                    +
+                  </div>
+                  AI的回答在這裡
+                </div>
+              </>
+            ) : (
+              <>
+                {messages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`${styles.message} ${
+                      m.role === "user" ? styles.user : styles.ai
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className={`${styles.message} ${styles.placeholder}`}>
+                    正在思考中…
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
         <div className={styles["analysis-input"]}>
-          <span
-            className={styles["add-icon"]}
-            onClick={onOpenAnalysisFullFavoriteModal}
-          >
+          <span className={styles["add-icon"]} onClick={handleOpenFullFavorite}>
             +
           </span>
           <input
