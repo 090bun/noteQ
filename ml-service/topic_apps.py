@@ -12,6 +12,26 @@ load_dotenv()
 app = Flask(__name__)
 
 
+def generate_mock_questions(topic, count):
+    """生成模擬題目（當 AI 服務不可用時使用）"""
+    mock_questions = []
+    for i in range(count):
+        mock_q = {
+            "title": f"伺服器維修中",
+            "option_A": "錯誤",
+            "option_B": "錯誤", 
+            "option_C": "錯誤",
+            "option_D": "錯誤",
+            "User_answer": "",
+            "Ai_answer": "A",
+            "explanation_text": "錯誤",
+            "difficulty_id": 1  
+        }
+        mock_questions.append(mock_q)
+    
+    return mock_questions
+
+
 def generate_questions_with_ai(topic, difficulty, count):
     """使用 AI 生成題目"""
     print(f"=== 開始生成題目 ===")
@@ -27,50 +47,58 @@ def generate_questions_with_ai(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-你是一位擁有跨領域知識的「全能出題專家」，精通各式各樣的領域。你能根據任何主題快速理解核心概念，並創造出貼近該主題、具有啟發性與準確性的題目。題目必須知識正確、邏輯嚴謹、無語病。
-請根據以下條件生成 {count} 道選擇題：
+    你是一位擁有跨領域知識的「全能出題專家」，精通各式各樣的領域。你能根據任何主題快速理解核心概念，並創造出貼近該主題、具有啟發性與準確性的題目。題目必須知識正確、邏輯嚴謹、無語病。
+    請根據以下條件生成 {count} 道選擇題：
 
-特殊規則：
-1. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
-2. 如果主題為如果主題為無意義字串（與任何已知領域無關），請直接回傳：
-"主題無法產生合理題目。"
-不要輸出其他內容。
-3. 答案不能是疑問句
-4. 題數必須精確為 {count} 題，不可少於或多於該數量。
-5. 如果{topic}是數學題的話請務必先計算出正確答案，再將正確答案填入 correct_answer 欄位。請勿猜測或隨意填寫，必保證答案正確。
+    特殊規則：
+    1. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
+    2. 如果主題為如果主題為無意義字串（與任何已知領域無關），請直接回傳：
+    "主題無法產生合理題目。"
+    不要輸出其他內容。
+    3. 答案不能是疑問句
+    4. 題數必須精確為 {count} 題，不可少於或多於該數量。
+    5. 如果{topic}是數學題的話請務必先計算出正確答案，再將正確答案填入 Ai_answer 欄位。請勿猜測或隨意填寫，必保證答案正確。
 
-難度說明：
-題目必須與設定的難度相符，避免過於簡單或過於困難。
-- beginner: 基礎概念，適合初學者
-- intermediate: 中等難度，需要一定理解力  
-- advanced: 進階內容，需要深入思考
-- master: 專家級別，需要精熟此{topic}主題才能回答得出來
-- test: 測試題目，由beginner intermediate advanced master四種難度平均組成
+    難度說明：
+    題目必須與設定的難度相符，避免過於簡單或過於困難。
+    - beginner: 基礎概念，適合初學者,difficulty 回傳 beginner
+    - intermediate: 中等難度，需要一定理解力 difficulty 回傳 intermediate
+    - advanced: 進階內容，需要深入思考 difficulty 回傳 advanced
+    - master: 專家級別，需要精熟此{topic}主題才能回答得出來 difficulty 回傳 master
+    - test: 測試題目，由beginner intermediate advanced master四種難度平均組成，根據題目的難度回傳對應的數值
 
-輸入參數：
-主題：{topic} 
-難度：{difficulty}
-題目數量：{count} 題（必須生成完整的 {count} 題，且不會有重複的題目）
+    輸入參數：
+    主題：{topic} 
+    難度：{difficulty}
+    題目數量：{count} 題（必須生成完整的 {count} 題，且不會有重複的題目）
 
 
-每道題目需包含：
-1. 題目描述 (title) - 請使用繁體中文
-2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
-3. 正確答案 (correct_answer: A/B/C/D)
-4. 題目解析 (explanation_text) - 請使用繁體中文
-請回傳json format, do not use markdown syntax only text，格式如下：
-[
-    {{
-        "title": "題目描述（繁體中文）",
-        "option_A": "選項A",
-        "option_B": "選項B", 
-        "option_C": "選項C",
-        "option_D": "選項D",
-        "correct_answer": "A",
-        "explanation_text": "這是題目的解析"(繁體中文)
-    }}
-]
-"""
+    每道題目需包含：
+    1. 題目描述 (title) - 請使用繁體中文
+    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
+    3. 正確答案 (Ai_answer: A/B/C/D)
+    4. 題目解析 (explanation_text) - 請使用繁體中文
+    請回傳json format, do not use markdown syntax only text，格式如下：
+    [
+        {{
+            "title": "題目描述（繁體中文）",
+            "option_A": "選項A",
+            "option_B": "選項B", 
+            "option_C": "選項C",
+            "option_D": "選項D",
+            "Ai_answer":"A",
+            "difficulty_id": 1,
+            "explanation_text": "這是題目的解析"(繁體中文)
+        }}
+    ]
+    
+    難度等級對應的 difficulty_id：
+    - beginner: 1
+    - intermediate: 2  
+    - advanced: 3
+    - master: 4
+    """
+
 
     try:
         # 使用新版 API 語法
@@ -90,7 +118,7 @@ def generate_questions_with_ai(topic, difficulty, count):
         print(f"完成原因: {response.choices[0].finish_reason if hasattr(response.choices[0], 'finish_reason') else '未知'}")
         print(f"回應長度: {len(ai_response)} 字元")
         print(f"AI 回應: {ai_response}")
-
+        print(f"===+++++++++++++++++++===")
         return parse_ai_response(ai_response, count)
 
     except Exception as e:
@@ -108,23 +136,34 @@ def parse_ai_response(ai_text, count=1):
 
         # 嘗試直接解析 JSON
         questions = json.loads(ai_text)
-
+        print(f"解析出的題目數量: {len(questions)} , 內容: {questions}")
         # 驗證格式並補充缺失欄位
         formatted_questions = []
         for q in questions:
+            # 處理 difficulty_id 轉換
+            difficulty_id = q.get("difficulty_id", 1)
+            if isinstance(difficulty_id, str):
+                difficulty_mapping = {
+                    'beginner': 1,
+                    'intermediate': 2,
+                    'advanced': 3,
+                    'master': 4
+                }
+                difficulty_id = difficulty_mapping.get(difficulty_id, 1)
+            
             formatted_q = {
-                "title": q.get("title", "預設題目"),
-                "option_A": q.get("option_A", "選項A"),
-                "option_B": q.get("option_B", "選項B"),
-                "option_C": q.get("option_C", "選項C"),
-                "option_D": q.get("option_D", "選項D"),
-                "correct_answer": q.get("correct_answer", "A"),
-                "User_answer": "",  # 預設空值
-                "explanation_text": q.get("explanation_text", "這是題目的解析"),
-                "Ai_answer": q.get("correct_answer", "A")
+            "title": q.get("title", "預設題目"),
+            "option_A": q.get("option_A", "選項A"),
+            "option_B": q.get("option_B", "選項B"),
+            "option_C": q.get("option_C", "選項C"),
+            "option_D": q.get("option_D", "選項D"),
+            "User_answer": "",  # 預設空值
+            "explanation_text": q.get("explanation_text", "這是題目的解析"),
+            "Ai_answer": q.get("Ai_answer", "A"),
+            "difficulty_id": difficulty_id
             }
             formatted_questions.append(formatted_q)
-
+        print(f"格式化後的題目formatted_questions: {formatted_questions}")
         return formatted_questions
 
     except json.JSONDecodeError as e:
@@ -143,13 +182,12 @@ def generate_mock_questions(topic, count):
             "option_B": "錯誤", 
             "option_C": "錯誤",
             "option_D": "錯誤",
-            "correct_answer": "錯誤",
             "User_answer": "",
             "Ai_answer": "X",
-            "explanation_text": "錯誤"
+            "explanation_text": "錯誤",
+            "difficulty_id": 1  # 統一回傳數字型態
         }
         mock_questions.append(mock_q)
-    
     return mock_questions
     
 
@@ -196,7 +234,7 @@ def create_quiz():
         
         # 呼叫 AI 生成題目
         generated_questions = generate_questions_with_ai(topic, difficulty, question_count)
-        
+        print(f"生成的題目數量: {len(generated_questions)}, 內容: {generated_questions}")
         # 直接返回生成的題目，讓 Django 處理儲存
         return jsonify({
             "quiz_topic": topic,
@@ -291,6 +329,13 @@ def chat_with_ai():
                 {
                     "role": "system", 
                     "content": "你是一個有用的學習助手，專門協助學生理解題目和相關知識。請用繁體中文回答，並根據對話歷史提供連貫的回應。"
+                    "這是題目的敘述與選項：\n"
+                    "題目: {題目內容}\n"
+                    "選項:\n"
+                    "A. {選項A}\n"
+                    "B. {選項B}\n"
+                    "C. {選項C}\n"
+                    "D. {選項D}\n"
                 }
             ]
             

@@ -59,7 +59,7 @@ class Topic(models.Model):
     User_answer = models.CharField(max_length=1 , null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
-    difficultyLevels = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
+    difficulty= models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
     # 管理器
     objects = SoftDeleteManager()  # 預設只顯示未刪除的
     all_objects = AllObjectsManager()  # 顯示所有記錄（包含已刪除）
