@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import styles from "../styles/LoginPage.module.css";
 import { initSplineViewer, optimizeSplineLoading } from "../utils/spline";
 import { safeAlert } from "../utils/dialogs";
+import { usePageTransition } from "../components/PageTransition";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const splineViewerRef = useRef(null);
+  const { navigateWithTransition } = usePageTransition();
 
   //註冊欄位綁定狀態
   const [signupUsername, setSignupUsername] = useState("");
@@ -29,6 +31,9 @@ export default function LoginPage() {
   //新增登入功能
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    // 立即開始頁面過渡動畫
+    navigateWithTransition('/homegame', 'right');
 
     try {
       const res = await fetch("http://127.0.0.1:8000/login/", {
@@ -47,9 +52,11 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("userId", data.user_id);
       //setMessage("登入成功");
-
-      window.location.href = '/homegame'; // 登入後跳轉
+      
+      // 動畫已經開始，不需要再次調用
     } catch (err) {
+      // 如果登入失敗，需要回到登入頁面
+      window.history.back();
       safeAlert("登入失敗，請確認帳號密碼");
     }
   };
