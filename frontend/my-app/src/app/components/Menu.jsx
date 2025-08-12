@@ -2,13 +2,21 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { safeLogout } from '../utils/auth';
 
 export default function Menu({ 
     isOpen = false, 
-    onClose = null,
-    onLogout = null 
+    onClose = null
 }) {
+    const pathname = usePathname();
+
+    const menuItems = [
+        { href: '/homegame', icon: '/img/Vector-16.png', label: '首頁' },
+        { href: '/note', icon: '/img/Vector-15.png', label: '筆記' },
+        { href: '/user', icon: '/img/Vector-33.png', label: '使用者' }
+    ];
+
     return (
         <>
             {/* 選單背景 */}
@@ -21,20 +29,16 @@ export default function Menu({
             <div className={`menu-dropdown ${isOpen ? 'active' : ''}`}>
                 <div className="menu-header"></div>
 
-                <Link href="/homegame" className="menu-item">
-                    <Image src="/img/Vector-16.png" alt="" className="menu-item-icon" width={24} height={24} />
-                    <span>首頁</span>
-                </Link>
-
-                <Link href="/note" className="menu-item">
-                    <Image src="/img/Vector-15.png" alt="" className="menu-item-icon" width={24} height={24} />
-                    <span>筆記</span>
-                </Link>
-
-                <Link href="/user" className="menu-item">
-                    <Image src="/img/Vector-33.png" alt="" className="menu-item-icon" width={24} height={24} />
-                    <span>使用者</span>
-                </Link>
+                {menuItems.map(item => (
+                    <Link 
+                        key={item.href} 
+                        href={item.href} 
+                        className={`menu-item ${pathname === item.href ? 'active' : ''}`}
+                    >
+                        <Image src={item.icon} alt="" className="menu-item-icon" width={24} height={24} />
+                        <span>{item.label}</span>
+                    </Link>
+                ))}
 
                 <button 
                     className="menu-item" 
@@ -47,4 +51,4 @@ export default function Menu({
             </div>
         </>
     );
-} 
+}

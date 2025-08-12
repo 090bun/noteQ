@@ -6,6 +6,8 @@ import Image from "next/image";
 import Header from "../components/Header";
 import styles from "../styles/LoginPage.module.css";
 import { initSplineViewer, optimizeSplineLoading } from "../utils/spline";
+import { safeAlert } from "../utils/dialogs";
+import { usePageTransition } from "../components/PageTransition";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -13,6 +15,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const splineViewerRef = useRef(null);
+  const { navigateWithTransition } = usePageTransition();
 
   //註冊欄位綁定狀態
   const [signupUsername, setSignupUsername] = useState("");
@@ -29,6 +32,9 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    // 立即開始頁面過渡動畫
+    navigateWithTransition('/homegame', 'right');
+
     try {
       const res = await fetch("http://127.0.0.1:8000/login/", {
         method: "POST",
@@ -44,11 +50,14 @@ export default function LoginPage() {
 
       const data = await res.json();
       localStorage.setItem("token", data.token);
-      setMessage("登入成功");
-
-      window.location.href = '/homegame'; // 登入後跳轉
+      localStorage.setItem("userId", data.user_id);
+      //setMessage("登入成功");
+      
+      // 動畫已經開始，不需要再次調用
     } catch (err) {
-      setMessage("登入失敗，請確認帳號密碼");
+      // 如果登入失敗，需要回到登入頁面
+      window.history.back();
+      safeAlert("登入失敗，請確認帳號密碼");
     }
   };
 
@@ -74,11 +83,10 @@ export default function LoginPage() {
       }
 
       const data = await res.json();
-      setSignupMessage("註冊成功，請登入");
-      // 可選：註冊成功後自動切換到登入頁
-      // setIsLoginForm(true);
+      safeAlert("註冊成功，請登入");
+      setIsLoginForm(true);
     } catch (err) {
-      setSignupMessage("註冊失敗，請確認資料是否正確或已被註冊");
+      safeAlert("註冊失敗，請確認資料是否正確或已被註冊");
     }
   };
 

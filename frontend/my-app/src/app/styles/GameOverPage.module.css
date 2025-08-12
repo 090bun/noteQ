@@ -63,7 +63,7 @@
     margin: 0;
     font-weight: 700;
     font-size: 16px;
-    color: var(--color-text-dark);
+    color: #f0f0f0;
   }
 
   .status-tag {
@@ -84,7 +84,7 @@
   }
 
   .card-body {
-    color: var(--color-text-dark);
+    color: #f0f0f0;
     font-size: 16px;
     line-height: 1.2;
     margin: 6px 0;
