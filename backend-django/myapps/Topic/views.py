@@ -416,9 +416,21 @@ class ChatViewSet(APIView):
             ).order_by('created_at').values('content', 'sender')
             
             # 準備傳送給 Flask 的資料，包含歷史對話
+            topic_data = {
+                'id': topic_instance.id,
+                'title': topic_instance.title,
+                'option_A': topic_instance.option_A,
+                'option_B': topic_instance.option_B,
+                'option_C': topic_instance.option_C,
+                'option_D': topic_instance.option_D,
+                'Ai_answer': topic_instance.Ai_answer,
+                'explanation_text': topic_instance.explanation_text
+            }
+
             flask_data = {
                 'user_id': user_id,
                 'topic_id': topic_id,
+                'topic_data': topic_data,
                 'content': content,
                 'chat_history': list(chat_history)  # 包含歷史對話供 AI 參考
             }
