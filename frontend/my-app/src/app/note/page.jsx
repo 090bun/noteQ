@@ -835,7 +835,7 @@ const handleAddNote = () => {
                     ) : subjects.length === 0 ? (
                         <div className={styles.emptyState}>
                             <div className={styles.emptyIcon}>
-                                <Image src="/img/Vector-32.png" alt="主題" width={64} height={64} />
+                                <Image src="/img/folder2.gif" alt="主題" width={64} height={64} />
                             </div>
                             <h3>還沒有主題</h3>
                             <p>點擊「新增主題」開始創建你的學習主題吧！</p>
@@ -843,7 +843,7 @@ const handleAddNote = () => {
                     ) : getCurrentSubjectNotes().length === 0 ? (
                         <div className={styles.emptyState}>
                             <div className={styles.emptyIcon}>
-                                <Image src="/img/Vector-32.png" alt="筆記" width={64} height={64} />
+                                <Image src="/img/folder2.gif" alt="筆記" width={64} height={64} />
                             </div>
                             <h3>還沒有筆記</h3>
                             <p>點擊「新增筆記」開始記錄你的學習筆記吧！</p>
