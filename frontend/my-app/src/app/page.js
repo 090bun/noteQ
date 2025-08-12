@@ -7,14 +7,12 @@ import Header from "./components/Header";
 import styles from "./styles/HomePage.module.css";
 import { Orb, orbConfig } from "./utils/orb";
 import { Typewriter } from "./utils/typewriter";
-import { usePageTransition } from "./components/PageTransition";
 
 export default function HomePage() {
   const canvasRef = useRef(null);
   const typewriterRef = useRef(null);
   const orbRef = useRef(null);
   const typewriterInstanceRef = useRef(null);
-  const { navigateWithTransition } = usePageTransition();
 
   useEffect(() => {
     // 檢測是否為移動設備
@@ -65,9 +63,9 @@ export default function HomePage() {
   const handleStart = () => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigateWithTransition("/homegame", "right");
+      window.location.href = "/homegame";
     } else {
-      navigateWithTransition("/login", "right");
+      window.location.href = "/login";
     }
   };
 

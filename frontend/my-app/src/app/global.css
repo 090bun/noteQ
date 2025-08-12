@@ -1131,7 +1131,3 @@ button{
 .custom-select::-ms-expand {
   display: none;
 }
-.menu-item.active span {
-    text-decoration: underline;
-    text-underline-offset: 10px;
-}
