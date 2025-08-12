@@ -50,7 +50,7 @@ export default function QuestionsGrid({
               number={number}
               question={question}
               onOpenFavoriteModal={() => onOpenFavoriteModal(number)}
-              onOpenAnalysis={onOpenAnalysis}
+              onOpenAnalysis={() => onOpenAnalysis(number)}
               styles={styles}
               isPlusSubscribed={isPlusSubscribed}
             />

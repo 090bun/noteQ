@@ -63,11 +63,14 @@ export default function GameOverPage() {
     setIsMenuOpen(false);
   };
 
-  const handleOpenAnalysis = () => {
+  const [analysisIndex, setAnalysisIndex] = useState(null);
+
+  const handleOpenAnalysis = (questionNumber) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
     }
+    setAnalysisIndex(questionNumber - 1);
     setIsAnalysisOpen(true);
   };
 
@@ -294,6 +297,7 @@ export default function GameOverPage() {
         onOpenAnalysisFavoriteModal={handleOpenAnalysisFavoriteModal}
         onOpenAnalysisFullFavoriteModal={handleOpenAnalysisFullFavoriteModal}
         styles={styles}
+        topicIndex={analysisIndex}
       />
 
       <FavoriteModal
