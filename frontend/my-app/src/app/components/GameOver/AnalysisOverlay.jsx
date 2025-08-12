@@ -174,12 +174,12 @@ export default function AnalysisOverlay({
         <div className={styles["analysis-content"]}>
           <div className={styles["chat-messages"]}>
             <div className={`${styles.message} ${styles.ai}`}>
-              <div
+              {/* <div
                 className={styles["placeholder-icon"]}
                 onClick={onOpenAnalysisFavoriteModal}
               >
                 +
-              </div>
+              </div> */}
               <span>{currentTopic?.explanation_text || "正在載入解析..."}</span>
             </div>
             <div className={`${styles.message} ${styles.ai}`}>
