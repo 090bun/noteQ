@@ -99,6 +99,7 @@ const handleOptionClick = (index) => {
         showMenu={true}
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
+        enableNoteQLink={true}
       />
       <Menu isOpen={isMenuOpen} onClose={closeMenu} onLogout={safeLogout} />
 

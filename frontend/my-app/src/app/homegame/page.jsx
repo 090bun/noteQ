@@ -230,6 +230,7 @@ export default function HomeGamePage() {
         showMenu={true}
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
+        enableNoteQLink={true}
       />
 
       {/* 主要內容 */}

@@ -272,6 +272,7 @@ export default function GameOverPage() {
         showMenu={true}
         isMenuOpen={isMenuOpen}
         onToggleMenu={handleToggleMenu}
+        enableNoteQLink={true}
       />
 
       <main>

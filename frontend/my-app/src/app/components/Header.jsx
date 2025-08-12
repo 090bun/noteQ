@@ -7,13 +7,20 @@ export default function Header({
     showMenu = false, 
     isMenuOpen = false, 
     onToggleMenu = null,
-    showAuthNav = false 
+    showAuthNav = false,
+    enableNoteQLink = false 
 }) {
     return (
         <section id="header">
             <header className="site-header">
                 <div className="container header-container">
+                    {enableNoteQLink ? (
+                    <Link href="/homegame" className="brand-name" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        NoteQ
+                    </Link>
+                ) : (
                     <div className="brand-name">NoteQ</div>
+                )}
                     
                     {showAuthNav && (
                         <nav className="auth-nav">
