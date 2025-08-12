@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import UserFavorite , Topic , Note , Chat , AiPrompt , AiInteraction , Quiz , UserFamiliarity , DifficultyLevels
-from myapps.Authorization.serializers import UserSerializer
+from myapps.Authorization.serializers import UserSerializer , UserSimplifiedSerializer
 
 class UserFavoriteSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -84,3 +84,28 @@ class AiInteractionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AiInteraction
         fields = ['id', 'user','feedback','feedback_score', 'prompt', 'created_at']
+
+# 簡化回傳內容----------------------------------
+class UserFamiliaritySimplifiedSerializer(serializers.ModelSerializer):
+    user = UserSimplifiedSerializer(read_only=True)
+
+    class Meta:
+        model = UserFamiliarity
+        fields = ['id', 'familiarity_score','user', 'difficulty_level']
+
+
+class QuizSimplifiedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Quiz
+        fields = ['id', 'quiz_topic']
+
+class TopicSimplifiedSerializer(serializers.ModelSerializer):
+    quiz = QuizSerializer(read_only=True)
+    class Meta:
+        model = Topic
+        fields = ['id', 'title', 'quiz']
+
+class NoteSimplifiedSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Note
+        fields = ['id', 'title','content']
