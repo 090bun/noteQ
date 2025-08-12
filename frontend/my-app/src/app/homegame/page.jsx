@@ -250,6 +250,7 @@ export default function HomeGamePage() {
               className={styles.hubOutline}
               width={600}
               height={500}
+              priority={true}
             />
             <h2 className={styles.hubTitle}>難度選擇</h2>
 
