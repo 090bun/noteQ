@@ -99,6 +99,77 @@ export default function NotePage() {
     })();
   }, []);
 
+  // 從後端載入筆記（僅準備 renderNoteCard 需要的欄位）
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(
+          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          console.error("載入筆記失敗：", res.status, await res.text());
+          return;
+        }
+
+        const data = await res.json();
+
+        // 取得主題清單（與先前載入主題一致，這裡只用來決定預設 subject）
+        const apiSubjects = Array.isArray(data?.quizzes)
+          ? data.quizzes.map((q) => q?.quiz_topic).filter(Boolean)
+          : [];
+        const defaultSubject = apiSubjects[0] || "";
+
+        // 將後端 notes 轉為筆記卡片所需結構
+        const apiNotes = Array.isArray(data?.notes)
+          ? data.notes.map((n) => {
+              const rawTitle = n?.title ?? "";
+              const title =
+                (rawTitle && String(rawTitle).trim()) ||
+                String(n?.content || "").split("\n")[0] ||
+                "未命名筆記";
+
+              return {
+                id: Number(n?.id) || Date.now() + Math.random(),
+                title,
+                content:
+                  typeof n?.content === "string"
+                    ? n.content
+                    : String(n?.content ?? ""),
+                // 後端目前未提供 subject，先歸到第一個主題，讓現有 UI 可正常渲染
+                subject: defaultSubject,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+            })
+          : [];
+
+        // 灌入本地暫存（避免重複由 addNote 自行判斷）
+        apiNotes.forEach((noteObj) => {
+          addNote(noteObj);
+        });
+
+        // 同步到畫面使用的 state（維持你原本的渲染邏輯）
+        setNotes(getNotes());
+
+        // 若尚未有 currentSubject，補上預設主題；若 subjects 尚未填入，也一併補上
+        if (defaultSubject) {
+          setSubjects((prev) => (prev && prev.length ? prev : apiSubjects));
+          setCurrentSubject((prev) => (prev ? prev : defaultSubject));
+        }
+      } catch (err) {
+        console.error("載入筆記發生錯誤：", err);
+      }
+    })();
+  }, []);
+
   // 檢查是否為Plus用戶
   const checkPlusSubscription = () => {
     return isPlusSubscribed;
