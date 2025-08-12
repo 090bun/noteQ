@@ -41,7 +41,6 @@ def generate_questions_with_ai(topic, difficulty, count):
 
 難度說明：
 題目必須與設定的難度相符，避免過於簡單或過於困難。
-題目必須與設定的難度相符，避免過於簡單或過於困難。
 - beginner: 基礎概念，適合初學者
 - intermediate: 中等難度，需要一定理解力  
 - advanced: 進階內容，需要深入思考
@@ -59,7 +58,6 @@ def generate_questions_with_ai(topic, difficulty, count):
 2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
 3. 正確答案 (correct_answer: A/B/C/D)
 4. 題目解析 (explanation_text) - 請使用繁體中文
-4. 題目解析 (explanation_text) - 請使用繁體中文
 請回傳json format, do not use markdown syntax only text，格式如下：
 [
     {{
@@ -68,8 +66,6 @@ def generate_questions_with_ai(topic, difficulty, count):
         "option_B": "選項B", 
         "option_C": "選項C",
         "option_D": "選項D",
-        "correct_answer": "A",
-        "explanation_text": "這是題目的解析"(繁體中文)
         "correct_answer": "A",
         "explanation_text": "這是題目的解析"(繁體中文)
     }}
