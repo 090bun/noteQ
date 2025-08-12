@@ -26,6 +26,26 @@ const TargetCursor = ({
     return false;
   }, [windowWidth]);
 
+  // 检测是否有 DecryptedText 组件在运行
+  const [isDecryptionRunning, setIsDecryptionRunning] = useState(false);
+
+  useEffect(() => {
+    const checkDecryptionStatus = () => {
+      // 检查页面上是否有 DecryptedText 组件的元素
+      const decryptionElements = document.querySelectorAll('[class*="decryption"]');
+      const hasDecryption = decryptionElements.length > 0;
+      setIsDecryptionRunning(hasDecryption);
+    };
+
+    // 初始检查
+    checkDecryptionStatus();
+
+    // 设置定时器定期检查
+    const interval = setInterval(checkDecryptionStatus, 100);
+
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
@@ -354,8 +374,8 @@ const TargetCursor = ({
     }
   }, [spinDuration]);
 
-  // 如果是移动设备，不渲染光标
-  if (isMobile) {
+  // 如果是移动设备或解密动画正在运行，不渲染光标
+  if (isMobile || isDecryptionRunning) {
     return null;
   }
 
