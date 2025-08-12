@@ -10,6 +10,7 @@ import Header from "../components/Header";
 import { safeLogout } from "../utils/auth";
 import Menu from "../components/Menu";
 import DecryptedText from "../components/DecryptedText";
+import TargetCursor from "../components/TargetCursor";
 
 export default function HomeGamePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
@@ -218,6 +219,12 @@ export default function HomeGamePage() {
 
   return (
     <>
+      {/* TargetCursor 组件 */}
+      <TargetCursor 
+        spinDuration={2}
+        hideDefaultCursor={true}
+      />
+
       {/* 頭部 */}
       <Header
         showMenu={true}
@@ -228,13 +235,13 @@ export default function HomeGamePage() {
       {/* 主要內容 */}
       <main id="game-select" className={styles.gameSelectSection}>
         <div className={styles.pageContainer}>
-          <input
-            type="text"
-            className={styles.topicInput}
-            placeholder="輸入主題"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-          />
+                      <input
+              type="text"
+              className={`${styles.topicInput} cursor-target`}
+              placeholder="輸入主題"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+            />
 
           <div className={styles.difficultyHub}>
             <Image
@@ -251,7 +258,7 @@ export default function HomeGamePage() {
                 key={option.id}
                 className={`${styles.difficultyButton} ${
                   styles[option.className]
-                } ${selectedDifficulty === option.id ? styles.selected : ""}`}
+                } ${selectedDifficulty === option.id ? styles.selected : ""} cursor-target`}
                 onClick={() => selectDifficulty(option.id)}
               >
                 <Image
@@ -268,14 +275,14 @@ export default function HomeGamePage() {
           <div className={styles.challengeStartForm}>
             <input
               type="number"
-              className={styles.questionCountInput}
+              className={`${styles.questionCountInput} cursor-target`}
               placeholder="輸入題數"
               min="1"
               max="50"
               value={questionCount}
               onChange={(e) => setQuestionCount(e.target.value)}
             />
-            <button className={styles.startButton} onClick={startChallenge}>
+            <button className={`${styles.startButton} cursor-target`} onClick={startChallenge}>
               <span>開始挑戰&nbsp;</span>
               <Image
                 src="/img/Vector-12.png"
