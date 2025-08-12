@@ -14,6 +14,8 @@ export default function AnalysisOverlay({
 }) {
   const [inputValue, setInputValue] = useState("");
   const [currentTopic, setCurrentTopic] = useState(null);
+  const [messages, setMessages] = useState([]); // 動態對話訊息
+  const [isLoading, setIsLoading] = useState(false); // 送出後等待回覆
 
   useEffect(() => {
     if (!isOpen || topicIndex == null) return;
@@ -25,11 +27,60 @@ export default function AnalysisOverlay({
     }
   }, [isOpen, topicIndex]);
 
-  const handleSend = () => {
-    if (inputValue.trim()) {
-      // 處理發送邏輯
-      console.log("發送:", inputValue);
-      setInputValue("");
+  // 處理訊息發送
+  const handleSend = async () => {
+    const text = inputValue.trim();
+    if (!text || isLoading) return;
+
+    // 先把使用者訊息推到畫面
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setInputValue("");
+    setIsLoading(true);
+
+    try {
+      // 依後端調整這個路徑
+      const API_URL = "http://127.0.0.1:8000/api/chat/";
+
+      // 取得 sessionStorge 資料
+      const quizData = JSON.parse(sessionStorage.getItem("quizData"));
+      const sender = quizData.quiz.user.username;
+
+      // 若有 token，會自動帶上
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          // 送到後端的基本欄位（可依需求擴充）
+          user_id: localStorage.getItem("userId") || null,
+          message: text,
+          sender: sender,
+          topic_id: currentTopic?.id ?? null,
+        }),
+      });
+
+      const data = await res.json();
+
+      // 兼容 data.ai-response.content / data.ai_response.content / data.content
+      const aiText =
+        data?.ai_response?.content ??
+        data?.["ai-response"]?.content ??
+        data?.content ??
+        "（沒有收到 AI 內容）";
+
+      setMessages((prev) => [...prev, { role: "ai", content: aiText }]);
+    } catch (err) {
+      console.error("AI 論述請求失敗：", err);
+      setMessages((prev) => [
+        ...prev,
+        { role: "ai", content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -68,18 +119,41 @@ export default function AnalysisOverlay({
             <div className={`${styles.message} ${styles.ai}`}>
               {"對於題目：" + (currentTopic?.title || "") + "還有什麼問題嗎？"}{" "}
             </div>
-            <div className={`${styles.message} ${styles.user}`}>
-              你打的問題會在這裡
-            </div>
-            <div className={`${styles.message} ${styles.placeholder}`}>
-              <div
-                className={styles["placeholder-icon"]}
-                onClick={onOpenAnalysisFavoriteModal}
-              >
-                +
-              </div>
-              AI的回答在這裡
-            </div>
+
+            {messages.length === 0 ? (
+              <>
+                <div className={`${styles.message} ${styles.user}`}>
+                  你打的問題會在這裡
+                </div>
+                <div className={`${styles.message} ${styles.placeholder}`}>
+                  <div
+                    className={styles["placeholder-icon"]}
+                    onClick={onOpenAnalysisFavoriteModal}
+                  >
+                    +
+                  </div>
+                  AI的回答在這裡
+                </div>
+              </>
+            ) : (
+              <>
+                {messages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`${styles.message} ${
+                      m.role === "user" ? styles.user : styles.ai
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className={`${styles.message} ${styles.placeholder}`}>
+                    正在思考中…
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
