@@ -91,13 +91,15 @@ export default function UserPage() {
     };
 
     const token = localStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
     if (!token) {
       console.error("找不到 token");
       return;
     }
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/users/", {
+      const res = await fetch(`http://127.0.0.1:8000/users/${userId}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -109,14 +111,12 @@ export default function UserPage() {
       }
 
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const user = data[0]; // 假設只取第一筆資料
-        setUserData({
-          name: user.username,
-          email: user.email,
-          registerDate: formatDate(user.created_at),
-        });
-      }
+      // 根據 API 回應格式更新 userData
+      setUserData({
+        name: data.username || "未知",
+        email: data.email || "未知",
+        registerDate: formatDate(data.created_at || new Date()),
+      });
     } catch (error) {
       console.error("取得使用者資料失敗:", error);
     }
@@ -148,6 +148,15 @@ export default function UserPage() {
     };
   }, []);
 
+  const name = userData.name || "";
+  const isChinese = /[^\x00-\x7F]/.test(name);
+  const fontSize = isChinese
+    ? name.length > 5
+      ? "1rem"
+      : "1.5rem"
+    : name.length > 6
+    ? "1.3rem"
+    : "2.3rem";
   return (
     <>
       {/* 頭部 */}
@@ -173,15 +182,27 @@ export default function UserPage() {
                 style={{ objectFit: "cover" }}
               />
 
-              <header className={styles.profileHeader}>
-                <Image
-                  src="/img/Vector-35.png"
-                  alt="Chart Icon"
-                  className={styles.profileIcon}
-                  width={75}
-                  height={60}
-                />
-                <h1 className={styles.profileName}>{userData.name}</h1>
+                <header className={styles.profileHeader}>
+                  <Image
+                    src="/img/social-page2.gif"
+                    alt="Chart Icon"
+                    className={styles.profileIcon}
+                    width={100}
+                    height={80}
+                    style={{ 
+                      objectFit: "contain",
+                      mixBlendMode: "difference"
+                    }}
+                  />
+      <h1
+        className={styles.profileName}
+        title={name}
+        style={{ fontSize }}
+      >
+        {name}
+      </h1>
+
+
               </header>
 
               {/* 標籤頁容器 */}

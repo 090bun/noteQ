@@ -25,14 +25,16 @@ import { safeLogout } from '../utils/auth';
 export default function NotePage() {
     const [notes, setNotes] = useState([]);
     const [subjects, setSubjects] = useState([]);
-    const [currentSubject, setCurrentSubject] = useState('數學');
+    const [currentSubject, setCurrentSubject] = useState('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isMoveDropdownOpen, setIsMoveDropdownOpen] = useState(false);
     const [selectedMoveSubject, setSelectedMoveSubject] = useState('');
+    const [newSubjectName, setNewSubjectName] = useState('');
     const [activeActionBar, setActiveActionBar] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [modalContent, setModalContent] = useState('');
+    const [modalContent, setModalContent] = useState(null);
+    const [modalTextContent, setModalTextContent] = useState('');
     const [modalType, setModalType] = useState(''); // 'add', 'edit', 'view', 'move', 'addSubject', 'deleteSubject'
     const [editingNote, setEditingNote] = useState(null);
     const [movingNote, setMovingNote] = useState(null);
@@ -115,13 +117,17 @@ export default function NotePage() {
             return;
         }
         if (modalContent.trim()) {
-            addSubject(modalContent.trim());
-            const updatedSubjects = getSubjects();
-            setSubjects(updatedSubjects);
-            setCurrentSubject(modalContent.trim());
-            setShowModal(false);
-            setModalContent('');
-            safeAlert('主題新增成功！');
+            const result = addSubject(modalContent.trim());
+            if (result.success) {
+                const updatedSubjects = getSubjects();
+                setSubjects(updatedSubjects);
+                setCurrentSubject(modalContent.trim());
+                setShowModal(false);
+                setModalContent('');
+                safeAlert(result.message);
+            } else {
+                safeAlert(result.message);
+            }
         }
     };
 
@@ -159,37 +165,50 @@ export default function NotePage() {
         safeAlert('主題刪除成功！');
     };
 
-    // 新增筆記
-    const handleAddNote = () => {
-        if (!checkPlusSubscription()) {
-            showUpgradeAlert();
-            return;
-        }
-        setModalType('add');
-        setModalContent('');
-        setShowModal(true);
-    };
+// 新增筆記
+const handleAddNote = () => {
+    if (!checkPlusSubscription()) {
+        showUpgradeAlert();
+        return;
+    }
+    if (subjects.length === 0) {
+        safeAlert('請先新增主題！');
+        return;
+    }
+    setModalType('add');
+    setModalContent(null);
+    setModalTextContent('');
+    setShowModal(true);
+};
+
 
     const confirmAddNote = () => {
         if (!checkPlusSubscription()) {
             showUpgradeAlert();
             return;
         }
-        if (modalContent.trim()) {
+        if (modalTextContent.trim()) {
             const newNote = {
                 id: Date.now(),
-                title: modalContent.split('\n')[0],
-                content: modalContent,
+                title: modalTextContent.split('\n')[0],
+                content: modalTextContent,
                 subject: currentSubject,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
-            addNote(newNote);
-            const updatedNotes = getNotes();
-            setNotes(updatedNotes);
-            setShowModal(false);
-            setModalContent('');
-            safeAlert('筆記新增成功！');
+            const result = addNote(newNote);
+            if (result.success) {
+                const updatedNotes = getNotes();
+                const updatedSubjects = getSubjects();
+                setNotes(updatedNotes);
+                setSubjects(updatedSubjects);
+                setShowModal(false);
+                setModalContent(null);
+                setModalTextContent('');
+                safeAlert(result.message);
+            } else {
+                safeAlert(result.message);
+            }
         }
     };
 
@@ -200,7 +219,9 @@ export default function NotePage() {
             return;
         }
         setModalType('edit');
-        setModalContent(note.content);
+        setModalContent(note);
+        // 設置正確的格式：標題---內容
+        setModalTextContent(`${note.title}\n---\n${note.content}`);
         setEditingNote(note);
         setShowModal(true);
     };
@@ -210,20 +231,38 @@ export default function NotePage() {
             showUpgradeAlert();
             return;
         }
-        if (modalContent.trim() && editingNote) {
+        if (modalTextContent.trim() && editingNote) {
+            // 從 modalTextContent 中提取標題和內容
+            const parts = modalTextContent.split('\n---\n');
+            const title = parts[0] || '';
+            const content = parts[1] || '';
+            
+            if (!title.trim()) {
+                safeAlert('請輸入筆記標題！');
+                return;
+            }
+            
             const updatedNote = {
                 ...editingNote,
-                title: modalContent.split('\n')[0],
-                content: modalContent,
+                title: title.trim(),
+                content: content.trim(),
                 updatedAt: new Date().toISOString()
             };
-            updateNote(updatedNote);
-            const updatedNotes = getNotes();
-            setNotes(updatedNotes);
-            setShowModal(false);
-            setModalContent('');
-            setEditingNote(null);
-            safeAlert('筆記更新成功！');
+            
+            const result = updateNote(editingNote.id, updatedNote);
+            if (result.success) {
+                const updatedNotes = getNotes();
+                setNotes(updatedNotes);
+                setShowModal(false);
+                setModalContent(null);
+                setModalTextContent('');
+                setEditingNote(null);
+                safeAlert('筆記更新成功！');
+            } else {
+                safeAlert(result.message || '筆記更新失敗！');
+            }
+        } else {
+            safeAlert('請輸入筆記內容！');
         }
     };
 
@@ -234,7 +273,8 @@ export default function NotePage() {
             return;
         }
         setModalType('view');
-        setModalContent(note.content);
+        setModalContent(note);
+        setModalTextContent(note.content);
         setShowModal(true);
     };
 
@@ -263,7 +303,12 @@ export default function NotePage() {
         }
         setModalType('move');
         setMovingNote(note);
-        setSelectedMoveSubject(currentSubject);
+        // 重置選擇的主題，讓用戶重新選擇
+        setSelectedMoveSubject('');
+        // 重置新主題名稱
+        setNewSubjectName('');
+        // 確保下拉選單是關閉的
+        setIsMoveDropdownOpen(false);
         setShowModal(true);
     };
 
@@ -272,19 +317,40 @@ export default function NotePage() {
             showUpgradeAlert();
             return;
         }
-        if (movingNote && selectedMoveSubject) {
-            const updatedNote = {
-                ...movingNote,
-                subject: selectedMoveSubject,
-                updatedAt: new Date().toISOString()
-            };
-            moveNote(updatedNote);
+        
+        // 確定要搬移到的主題
+        let targetSubject = '';
+        if (selectedMoveSubject && selectedMoveSubject !== currentSubject) {
+            targetSubject = selectedMoveSubject;
+        } else if (newSubjectName && newSubjectName.trim() !== '') {
+            targetSubject = newSubjectName.trim();
+        }
+        
+        if (!targetSubject) {
+            safeAlert('請選擇現有主題或輸入新主題名稱！');
+            return;
+        }
+        
+        if (targetSubject === currentSubject) {
+            safeAlert('筆記已經在當前主題中！');
+            return;
+        }
+        
+        // 調用 moveNote 函數，傳遞 noteId 和 newSubject
+        const result = moveNote(movingNote.id, targetSubject);
+        
+        if (result.success) {
             const updatedNotes = getNotes();
+            const updatedSubjects = getSubjects();
             setNotes(updatedNotes);
+            setSubjects(updatedSubjects);
             setShowModal(false);
             setMovingNote(null);
             setSelectedMoveSubject('');
-            safeAlert('筆記移動成功！');
+            setNewSubjectName('');
+            safeAlert(result.message);
+        } else {
+            safeAlert(result.message);
         }
     };
 
@@ -311,11 +377,14 @@ export default function NotePage() {
     // 關閉模態框
     const closeModal = () => {
         setShowModal(false);
-        setModalContent('');
+        setModalContent(null);
+        setModalTextContent('');
         setModalType('');
         setEditingNote(null);
         setMovingNote(null);
         setSelectedMoveSubject('');
+        setNewSubjectName('');
+        setIsMoveDropdownOpen(false);
     };
 
     // 鍵盤事件處理
@@ -444,10 +513,10 @@ export default function NotePage() {
                                         type="text" 
                                         placeholder="請輸入筆記名稱" 
                                         style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }}
-                                        value={modalContent.split('\n---\n')[0] || ''}
+                                        value={modalTextContent.split('\n---\n')[0] || ''}
                                         onChange={(e) => {
-                                            const [_, content] = modalContent.split('\n---\n');
-                                            setModalContent(`${e.target.value}\n---\n${content || ''}`);
+                                            const [_, content] = modalTextContent.split('\n---\n');
+                                            setModalTextContent(`${e.target.value}\n---\n${content || ''}`);
                                         }}
                                     />
                                 </div>
@@ -458,11 +527,13 @@ export default function NotePage() {
                                     <p style={{ marginBottom: '10px', color: '#666', fontSize: '14px' }}>支援 Markdown 語法</p>
                                     <textarea 
                                         className={styles.modalTextarea}
-                                        placeholder="請輸入筆記內容..."
-                                        value={modalContent.split('\n---\n')[1] || ''}
+                                        placeholder={
+                                            "請輸入筆記內容...\n範例格式：**\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`\n- 分隔線：---"
+                                        }
+                                        value={modalTextContent.split('\n---\n')[1] || ''}
                                         onChange={(e) => {
-                                            const [title] = modalContent.split('\n---\n');
-                                            setModalContent(`${title || ''}\n---\n${e.target.value}`);
+                                            const [title] = modalTextContent.split('\n---\n');
+                                            setModalTextContent(`${title || ''}\n---\n${e.target.value}`);
                                         }}
                                     />
                                 </div>
@@ -492,10 +563,10 @@ export default function NotePage() {
                                     <input 
                                         type="text" 
                                         style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }}
-                                        value={modalContent.split('\n---\n')[0] || ''}
+                                        value={modalTextContent.split('\n---\n')[0] || ''}
                                         onChange={(e) => {
-                                            const [_, content] = modalContent.split('\n---\n');
-                                            setModalContent(`${e.target.value}\n---\n${content || ''}`);
+                                            const [_, content] = modalTextContent.split('\n---\n');
+                                            setModalTextContent(`${e.target.value}\n---\n${content || ''}`);
                                         }}
                                     />
                                 </div>
@@ -506,10 +577,10 @@ export default function NotePage() {
                                     <p style={{ marginBottom: '10px', color: '#666', fontSize: '14px' }}>支援 Markdown 語法</p>
                                     <textarea 
                                         className={styles.modalTextarea}
-                                        value={modalContent.split('\n---\n')[1] || ''}
+                                        value={modalTextContent.split('\n---\n')[1] || ''}
                                         onChange={(e) => {
-                                            const [title] = modalContent.split('\n---\n');
-                                            setModalContent(`${title || ''}\n---\n${e.target.value}`);
+                                            const [title] = modalTextContent.split('\n---\n');
+                                            setModalTextContent(`${title || ''}\n---\n${e.target.value}`);
                                         }}
                                     />
                                 </div>
@@ -533,10 +604,10 @@ export default function NotePage() {
                             </div>
                             <div className={styles.modalBody}>
                                 <div style={{ marginBottom: '20px' }}>
-                                    <p><strong>{modalContent.title}</strong></p>
+                                    <p><strong>{modalContent ? modalContent.title : ''}</strong></p>
                                 </div>
                                 <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', lineHeight: '1.6' }}
-                                     dangerouslySetInnerHTML={{ __html: parseMarkdown(cleanTextContent(modalContent.content)) }}>
+                                     dangerouslySetInnerHTML={{ __html: parseMarkdown(cleanTextContent(modalContent ? modalContent.content : '')) }}>
                                 </div>
                             </div>
                             <div className={styles.modalFooter}>
@@ -560,23 +631,31 @@ export default function NotePage() {
                                         className={styles.moveCustomSelect} 
                                         onClick={() => setIsMoveDropdownOpen(!isMoveDropdownOpen)}
                                     >
-                                        <span>{selectedMoveSubject}</span>
+                                        <span>{selectedMoveSubject || '請選擇主題'}</span>
                                         <Image src="/img/Vector-17.png" alt="Arrow" width={16} height={16} />
                                     </div>
                                     {isMoveDropdownOpen && (
                                         <div className={styles.moveCustomDropdown}>
-                                            {subjects.map(subject => (
-                                                <button
-                                                    key={subject}
-                                                    className={`${styles.moveDropdownOption} ${subject === selectedMoveSubject ? styles.selected : ''}`}
-                                                    onClick={() => {
-                                                        setSelectedMoveSubject(subject);
-                                                        setIsMoveDropdownOpen(false);
-                                                    }}
-                                                >
-                                                    <span className={styles.moveOptionText}>{subject}</span>
-                                                </button>
-                                            ))}
+                                            {subjects.length === 0 ? (
+                                                <div style={{ padding: '10px', color: '#666', textAlign: 'center' }}>
+                                                    暫無其他主題，請輸入新主題名稱
+                                                </div>
+                                            ) : (
+                                                subjects.filter(subject => subject !== currentSubject).map(subject => (
+                                                    <button
+                                                        key={subject}
+                                                        className={`${styles.moveDropdownOption} ${subject === selectedMoveSubject ? styles.selected : ''}`}
+                                                        onClick={() => {
+                                                            setSelectedMoveSubject(subject);
+                                                            setIsMoveDropdownOpen(false);
+                                                            // 清空新主題名稱，因為選擇了現有主題
+                                                            setNewSubjectName('');
+                                                        }}
+                                                    >
+                                                        <span className={styles.moveOptionText}>{subject}</span>
+                                                    </button>
+                                                ))
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -585,8 +664,12 @@ export default function NotePage() {
                                     type="text" 
                                     placeholder="輸入新主題名稱" 
                                     style={{ width: '100%', padding: '15px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px' }}
-                                    value={selectedMoveSubject}
-                                    onChange={(e) => setSelectedMoveSubject(e.target.value)}
+                                    value={newSubjectName}
+                                    onChange={(e) => {
+                                        setNewSubjectName(e.target.value);
+                                        // 清空現有主題選擇，因為輸入了新主題
+                                        setSelectedMoveSubject('');
+                                    }}
                                 />
                             </div>
                             <div className={styles.modalFooter}>
@@ -610,9 +693,9 @@ export default function NotePage() {
                                 <p style={{ marginBottom: '15px' }}>請輸入新主題名稱：</p>
                                 <input 
                                     type="text" 
-                                    placeholder="例如：程式設計、英文、數學..." 
+                                    placeholder="例如：程式設計、英文、歷史..." 
                                     style={{ width: '100%', padding: '15px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px' }}
-                                    value={modalContent}
+                                    value={modalContent || ''}
                                     onChange={(e) => setModalContent(e.target.value)}
                                 />
                             </div>
