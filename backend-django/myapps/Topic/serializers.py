@@ -103,9 +103,16 @@ class TopicSimplifiedSerializer(serializers.ModelSerializer):
     quiz = QuizSerializer(read_only=True)
     class Meta:
         model = Topic
-        fields = ['id', 'title', 'quiz']
+        fields = ['title', 'quiz']
+class AddFavoriteTopicSerializer(serializers.ModelSerializer):
+    quiz = QuizSerializer(read_only=True)
+    class Meta:
+        model = Topic
+        fields = ['id','title', 'quiz']
 
 class NoteSimplifiedSerializer(serializers.ModelSerializer):
+    topic = TopicSimplifiedSerializer(read_only=True)
+    # quiz = QuizSerializer(read_only=True)
     class Meta:
         model = Note
-        fields = ['id', 'title','content']
+        fields = ['id', 'title','content','topic']

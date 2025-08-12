@@ -297,6 +297,7 @@ def chat_with_ai():
         topic_id = data.get('topic_id')
         user_id = data.get('user_id')
         content = data.get('content')
+        topic_data = data.get('topic_data', {})
         chat_history = data.get('chat_history', [])
 
         if not topic_id or not user_id or not content:
@@ -330,12 +331,14 @@ def chat_with_ai():
                     "role": "system", 
                     "content": "你是一個有用的學習助手，專門協助學生理解題目和相關知識。請用繁體中文回答，並根據對話歷史提供連貫的回應。"
                     "這是題目的敘述與選項：\n"
-                    "題目: {題目內容}\n"
-                    "選項:\n"
-                    "A. {選項A}\n"
-                    "B. {選項B}\n"
-                    "C. {選項C}\n"
-                    "D. {選項D}\n"
+                    f"題目: {topic_data.get('title', '未知題目')}\n"
+                    f"選項:\n"
+                    f"A. {topic_data.get('option_A', '未知選項')}\n"
+                    f"B. {topic_data.get('option_B', '未知選項')}\n"
+                    f"C. {topic_data.get('option_C', '未知選項')}\n"
+                    f"D. {topic_data.get('option_D', '未知選項')}\n"
+                    f"AI 答案: {topic_data.get('Ai_answer', '未知答案')}\n"
+                    f"解釋: {topic_data.get('explanation_text', '未知解釋')}\n"
                 }
             ]
             

@@ -1,7 +1,7 @@
 import requests
 from django.shortcuts import render , get_object_or_404
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer , AddFavoriteTopicSerializer
 from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz , UserFamiliarity, DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
 from myapps.Authorization.models import User
@@ -416,9 +416,21 @@ class ChatViewSet(APIView):
             ).order_by('created_at').values('content', 'sender')
             
             # 準備傳送給 Flask 的資料，包含歷史對話
+            topic_data = {
+                'id': topic_instance.id,
+                'title': topic_instance.title,
+                'option_A': topic_instance.option_A,
+                'option_B': topic_instance.option_B,
+                'option_C': topic_instance.option_C,
+                'option_D': topic_instance.option_D,
+                'Ai_answer': topic_instance.Ai_answer,
+                'explanation_text': topic_instance.explanation_text
+            }
+
             flask_data = {
                 'user_id': user_id,
                 'topic_id': topic_id,
+                'topic_data': topic_data,
                 'content': content,
                 'chat_history': list(chat_history)  # 包含歷史對話供 AI 參考
             }
@@ -798,15 +810,19 @@ class UsersQuizAndNote(APIView):
 
     def get(self, request):
         user = request.user
-        quizzes = Quiz.objects.filter(user=user)
-        notes = Note.objects.filter(user=user)
+        # 取得該用戶所有有效收藏
+        favorites = UserFavorite.objects.filter(user=user, deleted_at__isnull=True)
+        # 取得所有被收藏的主題（Topic）
+        favor_topics = Topic.objects.filter(id__in=favorites.values_list('topic_id', flat=True), deleted_at__isnull=True)
+        # 取得這些主題的筆記（Note）
+        favor_notes = Note.objects.filter(topic_id__in=favor_topics.values_list('id', flat=True), user=user, deleted_at__isnull=True)
 
-        quiz_data = QuizSimplifiedSerializer(quizzes, many=True).data
-        note_data = NoteSimplifiedSerializer(notes, many=True).data
+        topic_data = AddFavoriteTopicSerializer(favor_topics, many=True).data
+        note_data = NoteSimplifiedSerializer(favor_notes, many=True).data
 
         return Response({
-            'quizzes': quiz_data,
-            'notes': note_data
+            'favorite_topics': topic_data,
+            'favorite_notes': note_data
         })
     
 # 前端回傳 用戶答案
