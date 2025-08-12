@@ -35,6 +35,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -46,10 +47,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "myapps.Authorization",  # 加入使用者models
     "myapps.Ecpay",  # 加入綠界金流models
-    "myapps.Toipc",  # 加入題目models
+    "myapps.Topic",  # 加入題目models
     "rest_framework",  # 加入 Django REST framework
     "rest_framework.authtoken",  # 加入 JWT 認證
     "corsheaders",  # 加入 CORS 支援
+    'drf_yasg',
 ]
 
 AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
@@ -89,6 +91,7 @@ WSGI_APPLICATION = "myapps.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# 開發環境使用 SQLite（暫時）
 DATABASES = {
     "default": {
         "ENGINE": os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
@@ -101,22 +104,24 @@ DATABASES = {
 }
 
 
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+# 為了提升登入性能，簡化密碼驗證器
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 6,  # 最小長度為6位
+        }
     },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+]
+
+# 為了提升登入性能，使用更快的密碼加密算法（僅用於開發環境）
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.MD5PasswordHasher',  # 快速但不太安全，僅用於開發
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',  # 預設的安全算法
 ]
 
 
@@ -172,3 +177,14 @@ CSRF_EXEMPT_URLS = [
     r'^/login',
     r'^/register',
 ]
+
+# 郵件發送設定：Gmail SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# 如果需要在開發環境中使用控制台輸出郵件，則可以使用以下行
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') 
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
