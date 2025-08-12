@@ -60,13 +60,17 @@ class QuizViewSet(APIView):
                     }, status=400)
             
             # 返回結果 寫回資料庫
-            # 每次都創建新的 Quiz（避免重用舊的導致題目被軟刪除）
-            quiz = Quiz.objects.create(
-                quiz_topic=result.get('quiz_topic'),
-                user=user_instance
-            )
-            
-            print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
+            # 先判斷 quiz_topic 是否有未軟刪除的 Quiz，有則不再新建
+            quiz_topic_name = result.get('quiz_topic')
+            quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, user_id=user_instance.id, deleted_at__isnull=True).first()
+            if quiz:
+                print(f"Found existing Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
+            else:
+                quiz = Quiz.objects.create(
+                    quiz_topic=quiz_topic_name,
+                    user=user_instance
+                )
+                print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
             
             # 然後創建 Topic，並關聯到 Quiz
             topics = []
@@ -255,20 +259,21 @@ class AddFavoriteViewSet(APIView):
     def post(self, request):
         try:
             user = request.data.get('user_id')  # 從請求中獲取當前使用者
+            content = request.data.get('content')
             topic = request.data.get('topic_id')
-            print(f"~~~~~ 使用者: {user} 要收藏的題目ID: {topic} ~~~~~")
+            print(f"~~~~~ 使用者: {user} ,回傳內容: {content}  , 使用題目: {topic} ~~~~~")
             if not user:
                 return Response({'error': 'User is not authenticated'}, status=401)
+            if not content:
+                return Response({'error': 'content is required'}, status=400)
             if not topic:
                 return Response({'error': 'Topic ID is required'}, status=400)
-            
             
             # 獲取 User 實例
             try:
                 user_instance = User.objects.get(id=user)
             except User.DoesNotExist:
                 return Response({'error': f'User with ID {user} not found'}, status=404)
-
 
             # 檢查 Topic 是否存在
             try:
@@ -290,28 +295,24 @@ class AddFavoriteViewSet(APIView):
             ).first()
             if existing_favorite:
                 return Response({'message': 'This topic is already in your favorites'}, status=200) 
-            # 創建 UserFavorite 實例
-            # 定義 ai_answer_text
-            ai_answer_text = getattr(topic_instance, f"option_{topic_instance.Ai_answer}", "選項不存在")
-            
+
             # 先創建 Note 實例
             note_instance = Note.objects.create(
                 quiz_topic=topic_instance.quiz_topic,
                 topic=topic_instance,  # 設定 topic 欄位
+                title=topic_instance.title,
                 user=user_instance,
-                content=f"""
-題目: {topic_instance.title}
-正確答案: {ai_answer_text}
-                """.strip(),
+                content=content,
                 is_retake=False
             )
             
-            # 然後創建 UserFavorite 實例
+            # 然後創建 UserFavorite 實例  note id
             user_favorite = UserFavorite.objects.create(
                 user=user_instance,
                 topic=topic_instance,
                 note=note_instance
             )
+
             # 序列化返回資料
             serializer = UserFavoriteSerializer(user_favorite)
             return Response(serializer.data, status=201)
@@ -520,10 +521,11 @@ class NoteEdit(APIView):
         try:
             # 直接使用 URL 參數中的 note_id，不需要從 request.data 獲取
             new_content = request.data.get('content')
-
+            new_title = request.data.get('title')
             if not new_content:
                 return Response({'error': 'content is required'}, status=400)
-
+            if not new_title:
+                return Response({'error': 'title is required'}, status=400)
             try:
                 note_instance = Note.objects.get(
                     id=note_id,
@@ -533,6 +535,7 @@ class NoteEdit(APIView):
                 return Response({'error': f'Note with ID {note_id} not found'}, status=404)
 
             # 簡單直接更新，不使用 select_for_update 和複雜的序列化
+            note_instance.title = new_title
             note_instance.content = new_content
             note_instance.updated_at = timezone.now()
             note_instance.save()
@@ -540,6 +543,7 @@ class NoteEdit(APIView):
             return Response({
                 'message': 'Note updated successfully',
                 'note_id': note_instance.id,
+                'title': note_instance.title,
                 'content': note_instance.content
             }, status=200)
 
@@ -595,18 +599,23 @@ class NoteListView(APIView):
     # 手動新增空白筆記
     def post(self, request):
         try:
+            title = request.data.get('title')
             quiz_topic = request.data.get('quiz_topic')
             content = request.data.get('content')
             if not quiz_topic or not content:
                 return Response({'error': 'quiz_topic and content are required'}, status=400)
+            if not quiz_topic_instance:
+                return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
             try:
                 quiz_topic_instance = Quiz.objects.get(id=quiz_topic, deleted_at__isnull=True)
+                
             except Quiz.DoesNotExist:
                 return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
 
                 # 創建新的 Note
             note = Note.objects.create(
                 user=request.user,
+                title=title,
                 quiz_topic=quiz_topic_instance,
                 content=content
             )
@@ -765,3 +774,21 @@ class ParseAnswerView(APIView):
 # -----------------------------------
 # 目前整合在一起 暫時保留
 # GPT 解析題目
+
+
+# 取得用戶的所有quiz 和 note
+class UsersQuizAndNote(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        quizzes = Quiz.objects.filter(user=user)
+        notes = Note.objects.filter(user=user)
+
+        quiz_data = QuizSerializer(quizzes, many=True).data
+        note_data = NoteSerializer(notes, many=True).data
+
+        return Response({
+            'quizzes': quiz_data,
+            'notes': note_data
+        })

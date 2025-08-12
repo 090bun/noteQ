@@ -51,24 +51,51 @@ def generate_questions_with_ai(topic, difficulty, count):
     3. 每道題目都必須完整包含所有必要欄位**
     
 
-    每道題目需包含：
-    1. 題目描述 (title) - 請使用繁體中文
-    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
-    3. 正確答案 (correct_answer: A/B/C/D)
-    4. 題目解析 (explanation_text) - 請使用繁體中文
-    請回傳json format, do not use markdown syntax only text，格式如下：
-    [
-        {{
-            "title": "題目描述（繁體中文）",
-            "option_A": "選項A",
-            "option_B": "選項B", 
-            "option_C": "選項C",
-            "option_D": "選項D",
-            "correct_answer": "A",
-            "explanation_text": "這是題目的解析"
-        }}
-    ]
-    """
+特殊規則：
+1. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
+2. 如果主題為如果主題為無意義字串（與任何已知領域無關），請直接回傳：
+"主題無法產生合理題目。"
+不要輸出其他內容。
+3. 答案不能是疑問句
+4. 題數必須精確為 {count} 題，不可少於或多於該數量。
+5. 如果{topic}是數學題的話請務必先計算出正確答案，再將正確答案填入 correct_answer 欄位。請勿猜測或隨意填寫，必保證答案正確。
+
+難度說明：
+題目必須與設定的難度相符，避免過於簡單或過於困難。
+題目必須與設定的難度相符，避免過於簡單或過於困難。
+- beginner: 基礎概念，適合初學者
+- intermediate: 中等難度，需要一定理解力  
+- advanced: 進階內容，需要深入思考
+- master: 專家級別，需要精熟此{topic}主題才能回答得出來
+- test: 測試題目，由beginner intermediate advanced master四種難度平均組成
+
+輸入參數：
+主題：{topic} 
+難度：{difficulty}
+題目數量：{count} 題（必須生成完整的 {count} 題，且不會有重複的題目）
+
+
+每道題目需包含：
+1. 題目描述 (title) - 請使用繁體中文
+2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
+3. 正確答案 (correct_answer: A/B/C/D)
+4. 題目解析 (explanation_text) - 請使用繁體中文
+4. 題目解析 (explanation_text) - 請使用繁體中文
+請回傳json format, do not use markdown syntax only text，格式如下：
+[
+    {{
+        "title": "題目描述（繁體中文）",
+        "option_A": "選項A",
+        "option_B": "選項B", 
+        "option_C": "選項C",
+        "option_D": "選項D",
+        "correct_answer": "A",
+        "explanation_text": "這是題目的解析"(繁體中文)
+        "correct_answer": "A",
+        "explanation_text": "這是題目的解析"(繁體中文)
+    }}
+]
+"""
 
     try:
         # 使用新版 API 語法
@@ -136,19 +163,21 @@ def generate_mock_questions(topic, count):
     mock_questions = []
     for i in range(count):
         mock_q = {
-            "title": f"關於 {topic} 的題目 {i+1}",
-            "option_A": "選項 A",
-            "option_B": "選項 B", 
-            "option_C": "選項 C",
-            "option_D": "選項 D",
-            "correct_answer": "A",
+            "title": f"伺服器維修中",
+            "option_A": "錯誤",
+            "option_B": "錯誤", 
+            "option_C": "錯誤",
+            "option_D": "錯誤",
+            "correct_answer": "錯誤",
             "User_answer": "",
-            "Ai_answer": "A",
-            "explanation_text": "這是題目的解析"
+            "Ai_answer": "X",
+            "explanation_text": "錯誤"
         }
         mock_questions.append(mock_q)
     
     return mock_questions
+    
+
 
 @app.route('/api/quiz', methods=['POST'])
 def create_quiz():

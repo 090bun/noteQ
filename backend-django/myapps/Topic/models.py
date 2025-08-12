@@ -54,6 +54,7 @@ class Topic(models.Model):
             ('B', 'B'),
             ('C', 'C'),
             ('D', 'D'),
+            ('X', 'X')
         ], null=True, blank=True)  
     User_answer = models.CharField(max_length=1 , null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -163,6 +164,7 @@ class DifficultyLevels(models.Model):
 # 儲存使用者筆記
 # quiz_topic: 關聯的考題ID
 # topic: 關聯的題目ID (保留可以新增空白筆記)
+# title: 筆記標題 (保留可以新增空白筆記)
 # user: 使用者ID
 # content: 筆記內容 (保留可以新增空白筆記)
 # retake: 是否再次測驗(針對筆記)
@@ -174,6 +176,7 @@ class DifficultyLevels(models.Model):
 class Note(models.Model):
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
     topic = models.ForeignKey("Topic.Topic", on_delete=models.CASCADE, null=True, blank=True)
+    title = models.CharField(max_length=255, null=True, blank=True)
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     content = models.TextField(null=True, blank=True)
     is_retake = models.BooleanField(default=False)
