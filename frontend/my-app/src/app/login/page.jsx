@@ -32,9 +32,6 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    // 立即開始頁面過渡動畫
-    navigateWithTransition('/homegame', 'right');
-
     try {
       const res = await fetch("http://127.0.0.1:8000/login/", {
         method: "POST",
@@ -51,12 +48,12 @@ export default function LoginPage() {
       const data = await res.json();
       localStorage.setItem("token", data.token);
       localStorage.setItem("userId", data.user_id);
-      //setMessage("登入成功");
       
-      // 動畫已經開始，不需要再次調用
+      // 登入成功後才開始頁面過渡動畫
+      navigateWithTransition('/homegame', 'right');
+      
     } catch (err) {
-      // 如果登入失敗，需要回到登入頁面
-      window.history.back();
+      // 如果登入失敗，顯示錯誤訊息
       safeAlert("登入失敗，請確認帳號密碼");
     }
   };
