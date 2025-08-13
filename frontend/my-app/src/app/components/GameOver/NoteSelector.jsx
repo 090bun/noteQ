@@ -1,9 +1,15 @@
 'use client';
 // 筆記本選擇器組件 - 提供下拉選單讓用戶選擇要收藏的筆記本
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { getNotesBySubject } from '../../utils/noteUtils';
+
+// 全局下拉選單狀態管理（與 SubjectSelector 共享）
+let globalDropdownState = {
+  openType: null, // 'subject' 或 'note' 或 null
+  closeCallbacks: new Set()
+};
 
 export default function NoteSelector({ 
   notes, 
@@ -16,6 +22,55 @@ export default function NoteSelector({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedText, setSelectedText] = useState('新增筆記');
   const [filteredNotes, setFilteredNotes] = useState([]);
+
+  // 使用 useCallback 穩定 getStyleClass 函數
+  const getStyleClass = useCallback((baseClass) => {
+    if (type === 'analysis-favorite') {
+      return styles[`analysis-favorite-${baseClass}`];
+    } else if (type === 'analysis-full-favorite') {
+      return styles[`analysis-full-favorite-${baseClass}`];
+    }
+    return styles[`favorite-${baseClass}`];
+  }, [type, styles]);
+
+  // 註冊關閉回調
+  useEffect(() => {
+    const closeCallback = () => {
+      if (isDropdownOpen) {
+        setIsDropdownOpen(false);
+      }
+    };
+    
+    globalDropdownState.closeCallbacks.add(closeCallback);
+    
+    // 添加全局點擊事件監聽器
+    const handleGlobalClick = (event) => {
+      const target = event.target;
+      const selectorContainer = target.closest(`.${getStyleClass('note-select-container')}`);
+      
+      // 如果點擊的不是當前選擇器內部，則關閉下拉選單
+      if (!selectorContainer && isDropdownOpen) {
+        setIsDropdownOpen(false);
+        globalDropdownState.openType = null;
+      }
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      globalDropdownState.closeCallbacks.delete(closeCallback);
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [isDropdownOpen, getStyleClass]);
+
+  // 關閉其他下拉選單
+  const closeOtherDropdowns = () => {
+    globalDropdownState.closeCallbacks.forEach(callback => {
+      if (callback !== (() => setIsDropdownOpen(false))) {
+        callback();
+      }
+    });
+  };
 
   // 根據當前主題過濾筆記
   useEffect(() => {
@@ -63,16 +118,20 @@ export default function NoteSelector({
   const handleNoteSelect = (noteId) => {
     onNoteChange(noteId);
     setIsDropdownOpen(false);
+    globalDropdownState.openType = null;
   };
 
-  // 根據類型選擇正確的樣式類名
-  const getStyleClass = (baseClass) => {
-    if (type === 'analysis-favorite') {
-      return styles[`analysis-favorite-${baseClass}`];
-    } else if (type === 'analysis-full-favorite') {
-      return styles[`analysis-full-favorite-${baseClass}`];
+  const handleToggleDropdown = () => {
+    if (isDropdownOpen) {
+      // 關閉當前下拉選單
+      setIsDropdownOpen(false);
+      globalDropdownState.openType = null;
+    } else {
+      // 關閉其他下拉選單，然後打開當前下拉選單
+      closeOtherDropdowns();
+      setIsDropdownOpen(true);
+      globalDropdownState.openType = 'note';
     }
-    return styles[`favorite-${baseClass}`];
   };
 
   return (
@@ -82,7 +141,7 @@ export default function NoteSelector({
         <div className={getStyleClass('note-select-container')}>
           <div 
             className={getStyleClass('note-select')} 
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            onClick={handleToggleDropdown}
           >
             <span>{selectedText}</span>
             <Image 

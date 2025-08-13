@@ -60,7 +60,12 @@ export default function AnalysisFavoriteModal({
   // API → subjects 的映射
   function mapApiToSubjects(apiData) {
     // ★ 未來 API 變更時，改這裡即可
-    // 允許 data.subjects: ["數學","英文"] 或 [{name:"數學"}] 或從 quizzes 推導
+    // 優先使用 favorite_quiz_topics（與 noteUtils 保持一致）
+    if (apiData?.favorite_quiz_topics && Array.isArray(apiData.favorite_quiz_topics)) {
+      return apiData.favorite_quiz_topics.map((q) => q?.quiz_topic).filter(Boolean);
+    }
+    
+    // 後備方案：允許 data.subjects: ["數學","英文"] 或 [{name:"數學"}] 或從 quizzes 推導
     const rawSubjects = apiData?.subjects ?? apiData?.quizzes ?? [];
     return rawSubjects.map((s) =>
       typeof s === "string" ? s : s.name ?? s.quiz_topic ?? s.title ?? "未分類"
@@ -70,7 +75,36 @@ export default function AnalysisFavoriteModal({
   // API → notes 的映射
   function mapApiToNotes(apiData) {
     // ★ 未來 API 變更時，改這裡即可
-    // 允許 notes item: { id, title, subject } 或 subject 欄位名為 subject_name/topic/quiz_topic
+    // 優先使用 favorite_notes（與 noteUtils 保持一致）
+    if (apiData?.favorite_notes && Array.isArray(apiData.favorite_notes)) {
+      // 建立 id -> 名稱 對照
+      const topics = Array.isArray(apiData?.favorite_quiz_topics)
+        ? apiData.favorite_quiz_topics
+        : [];
+      const topicMap = new Map(
+        topics.map((t) => [Number(t?.id), String(t?.quiz_topic || "").trim()])
+      );
+
+      return apiData.favorite_notes.map((n) => {
+        // 決定標題：優先 title，其次 content 第一行，再不行給預設
+        const rawTitle = n?.title ?? "";
+        const fallbackFromContent = String(n?.content || "").split("\n")[0];
+        const title =
+          String(rawTitle).trim() || fallbackFromContent || "未命名筆記";
+
+        // 獲取主題名稱
+        const quizTopicId = n?.quiz_topic_id;
+        const subject = topicMap.get(Number(quizTopicId)) || "";
+
+        return {
+          id: Number(n?.id),
+          title,
+          subject,
+        };
+      });
+    }
+    
+    // 後備方案：允許 notes item: { id, title, subject } 或 subject 欄位名為 subject_name/topic/quiz_topic
     const rawNotes = apiData?.notes ?? [];
     return rawNotes.map((n) => ({
       id: n.id,
