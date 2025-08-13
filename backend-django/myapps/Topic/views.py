@@ -11,7 +11,6 @@ from rest_framework.permissions import AllowAny , IsAuthenticated
 from rest_framework.decorators import api_view , permission_classes
 from django.utils import timezone
 from rest_framework.response import Response
-from .familiarity_views import record_answer_mixed
 from django.db import transaction
 # Create your views here.
 
@@ -692,6 +691,10 @@ class CreateQuizTopicView(APIView):
             serializer = QuizSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             quiz_topic_instance = serializer.save(user=user)  # 在保存時設定 user
+
+            # 為新創建的 QuizTopic 添加收藏
+            add_favor = UserFavorite.objects.create(user=user, quiz_id=quiz_topic_instance.id)
+
             return Response({
                 "message": "QuizTopic created successfully.",
                 "quiz_topic_id": quiz_topic_instance.id
@@ -831,17 +834,16 @@ class UsersQuizAndNote(APIView):
         # 取得該用戶所有有效收藏
         favorites = UserFavorite.objects.filter(user=user, deleted_at__isnull=True)
         # 取得所有被收藏的主題（quiz）
-        favor_quiz = Topic.objects.filter(id__in=favorites.values_list('topic__quiz_topic', flat=True), deleted_at__isnull=True)
+        favor_quiz = Quiz.objects.filter(id__in=favorites.values_list('quiz_id', flat=True), deleted_at__isnull=True)
 
-        quiz_ids = favorites.values_list('topic__quiz_topic', flat=True).distinct()
+        quiz_ids = favorites.values_list('quiz_id', flat=True).distinct()
         quizzes = Quiz.objects.filter(id__in=quiz_ids, deleted_at__isnull=True).order_by('-created_at')
+        
         topic_data = QuizSimplifiedSerializer(quizzes, many=True).data
 
 
         # 取得這些主題的筆記（Note）
-        favor_quiz = Topic.objects.filter(id__in=favorites.values_list('topic', flat=True), deleted_at__isnull=True)
-    
-        favor_notes = Note.objects.filter(topic_id__in=favor_quiz.values_list('id', flat=True), user=user, deleted_at__isnull=True)
+        favor_notes = Note.objects.filter(id__in=favorites.values_list('note_id', flat=True), user=user, deleted_at__isnull=True)
 
         note_data = NoteSimplifiedSerializer(favor_notes, many=True).data
 
