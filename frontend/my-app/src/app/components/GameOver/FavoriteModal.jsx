@@ -164,7 +164,7 @@ export default function FavoriteModal({
         onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
       } else {
         // 添加到現有筆記
-        const targetNote = notes.find((note) => note.id === currentNoteId);
+        const targetNote = Array.isArray(notes) ? notes.find((note) => note.id === currentNoteId) : null;
 
         if (targetNote) {
           const updatedContent = `${targetNote.content}
@@ -188,7 +188,7 @@ ${questionContent}`;
     }
   };
 
-  const filteredNotes = notes.filter((note) => note.subject === currentSubject);
+  const filteredNotes = Array.isArray(notes) ? notes.filter((note) => note.subject === currentSubject) : [];
 
   return (
     <div

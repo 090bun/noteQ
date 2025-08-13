@@ -114,7 +114,7 @@ export default function NotePage() {
   // 獲取當前主題的筆記
   const getCurrentSubjectNotes = () => {
     // 直接從當前notes state中篩選，避免異步調用
-    return notes.filter(note => note.subject === currentSubject);
+    return Array.isArray(notes) ? notes.filter(note => note.subject === currentSubject) : [];
   };
 
   // 切換下拉選單

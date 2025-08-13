@@ -19,18 +19,27 @@ export default function NoteSelector({
 
   // 根據當前主題過濾筆記
   useEffect(() => {
-    if (currentSubject) {
-      const subjectNotes = getNotesBySubject(currentSubject);
-      setFilteredNotes(subjectNotes);
-    } else {
-      setFilteredNotes([]);
-    }
+    const fetchNotesBySubject = async () => {
+      if (currentSubject) {
+        try {
+          const subjectNotes = await getNotesBySubject(currentSubject);
+          setFilteredNotes(Array.isArray(subjectNotes) ? subjectNotes : []);
+        } catch (error) {
+          console.error('獲取主題筆記失敗:', error);
+          setFilteredNotes([]);
+        }
+      } else {
+        setFilteredNotes([]);
+      }
+    };
+
+    fetchNotesBySubject();
   }, [currentSubject]);
 
   useEffect(() => {
-    if (filteredNotes.length > 0 && currentNoteId === null) {
+    if (Array.isArray(filteredNotes) && filteredNotes.length > 0 && currentNoteId === null) {
       onNoteChange(filteredNotes[0].id);
-    } else if (filteredNotes.length === 0) {
+    } else if (!Array.isArray(filteredNotes) || filteredNotes.length === 0) {
       onNoteChange('add_note');
     }
   }, [filteredNotes, currentNoteId, onNoteChange]);
@@ -39,7 +48,7 @@ export default function NoteSelector({
     if (currentNoteId === 'add_note') {
       setSelectedText('新增筆記');
     } else {
-      const selectedNote = filteredNotes.find(note => note.id === currentNoteId);
+      const selectedNote = Array.isArray(filteredNotes) ? filteredNotes.find(note => note.id === currentNoteId) : null;
       if (selectedNote) {
         const title = selectedNote.title.length > 20 
           ? selectedNote.title.substring(0, 20) + '...' 
@@ -86,7 +95,7 @@ export default function NoteSelector({
           </div>
           
           <div className={`${getStyleClass('note-dropdown')} ${isDropdownOpen ? styles.active : ''}`}>
-            {filteredNotes.length > 0 ? (
+            {Array.isArray(filteredNotes) && filteredNotes.length > 0 ? (
               filteredNotes.map(note => (
                 <button
                   key={note.id}

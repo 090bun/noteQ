@@ -12,17 +12,27 @@ export function useGameoverUtils() {
   const [subjects, setSubjects] = useState([]);
   const [notes, setNotes] = useState([]);
 
-  // 初始化時檢查訂閱狀態和獲取數據
+  // 初始化时检查订阅状态和获取数据
   useEffect(() => {
-    // 從localStorage獲取訂閱狀態
+    // 从localStorage获取订阅状态
     const subscriptionStatus = localStorage.getItem('isPlusSubscribed');
     setIsPlusSubscribed(subscriptionStatus === 'true');
 
-    // 從 noteUtils 獲取真實的主題和筆記數據
-    const subjectsData = getSubjects();
-    const notesData = getNotes();
-    setSubjects(subjectsData);
-    setNotes(notesData);
+    // 从 noteUtils 获取真实的主题和笔记数据
+    const fetchData = async () => {
+      try {
+        const subjectsData = await getSubjects();
+        const notesData = await getNotes();
+        setSubjects(subjectsData);
+        setNotes(notesData);
+      } catch (error) {
+        console.error('获取数据失败:', error);
+        setSubjects([]);
+        setNotes([]);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // 題目數據（模擬從遊戲結果中獲取）
@@ -105,7 +115,7 @@ export function useGameoverUtils() {
   };
 
   // 添加筆記到系統（僅Plus用戶可用）
-  const addNoteToSystem = (note) => {
+  const addNoteToSystem = async (note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -113,12 +123,12 @@ export function useGameoverUtils() {
 
     try {
       // 使用 noteUtils 的 addNote 函數
-      const result = addNote(note);
+      const result = await addNote(note);
       
       if (result.success) {
         // 重新獲取最新的筆記和主題數據
-        const updatedNotes = getNotes();
-        const updatedSubjects = getSubjects();
+        const updatedNotes = await getNotes();
+        const updatedSubjects = await getSubjects();
         setNotes(updatedNotes);
         setSubjects(updatedSubjects);
         

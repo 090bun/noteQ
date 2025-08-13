@@ -177,7 +177,7 @@ export default function AnalysisFavoriteModal({
         onShowCustomAlert(`內容已收藏到「${currentSubject}」主題！`);
       } else {
         // 添加到現有筆記
-        const targetNote = notes.find((note) => note.id === currentNoteId);
+        const targetNote = Array.isArray(notes) ? notes.find((note) => note.id === currentNoteId) : null;
 
         if (targetNote) {
           const updatedContent = `${targetNote.content}
@@ -207,9 +207,9 @@ ${content}`;
   const effectiveSubjects = apiSubjects ?? subjects;
   const effectiveNotes = apiNotes ?? notes;
 
-  const filteredNotes = effectiveNotes.filter(
+  const filteredNotes = Array.isArray(effectiveNotes) ? effectiveNotes.filter(
     (note) => note.subject === currentSubject
-  );
+  ) : [];
 
   return (
     <div
