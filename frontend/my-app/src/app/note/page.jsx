@@ -18,6 +18,7 @@ import {
   generateQuestions,
   cleanTextContent,
   parseMarkdown,
+  loadUserQuizAndNotes,
 } from "../utils/noteUtils";
 import { safeAlert, safeConfirm } from "../utils/dialogs";
 import { safeLogout } from "../utils/auth";
@@ -39,33 +40,29 @@ export default function NotePage() {
   const [editingNote, setEditingNote] = useState(null);
   const [movingNote, setMovingNote] = useState(null);
   const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
-  const [subjectIdMap, setSubjectIdMap] = useState({}); // 主題名稱 -> 主題ID 對照表（供刪除API使用）
 
   // 初始化數據
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const notesData = await getNotes();
-        const subjectsData = await getSubjects();
-        const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+    (async () => {
+      // 先從後端載入，回填到本地 noteUtils 的 notes/subjects
+      await loadUserQuizAndNotes();
 
-        setNotes(notesData);
-        setSubjects(subjectsData);
-        setIsPlusSubscribed(subscriptionStatus === "true");
+      // ✅ 必須 await，否則 notes/subjects 會是 Promise
+      const notesData = await getNotes();
+      const subjectsData = await getSubjects();
+      const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+      setNotes(notesData);
+      setSubjects(subjectsData);
+      setIsPlusSubscribed(subscriptionStatus === "true");
 
-        if (subjectsData.length > 0) {
-          if (!subjectsData.includes(currentSubject)) {
-            setCurrentSubject(subjectsData[0]);
-          }
-        } else {
-          setCurrentSubject(""); // 沒有主題時重置為空字符串
+      if (subjectsData.length > 0) {
+        if (!subjectsData.includes(currentSubject)) {
+          setCurrentSubject(subjectsData[0]);
         }
-      } catch (error) {
-        console.error("初始化數據失敗：", error);
+      } else {
+        setCurrentSubject(""); // 沒有主題時重置為空字符串
       }
-    };
-
-    loadData();
+    })();
   }, []);
 
   // subjects 更新後，自動選定可用主題，避免初次進頁 currentSubject 為空而不渲染
@@ -75,16 +72,6 @@ export default function NotePage() {
       prev && subjects.includes(prev) ? prev : subjects[0]
     );
   }, [subjects]);
-
-  // 從後端載入主題
-  useEffect(() => {
-    // noteUtils.js 統一
-  }, []);
-
-  // 從後端載入筆記
-  useEffect(() => {
-    //  noteUtils.js 統一
-  }, []);
 
   // 檢查是否為Plus用戶
   const checkPlusSubscription = () => {
@@ -176,6 +163,7 @@ export default function NotePage() {
     setShowModal(true);
   };
 
+  /// 確認刪除主題 (軟刪除)
   const confirmDeleteSubject = async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();

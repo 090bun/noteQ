@@ -54,6 +54,14 @@ export async function getNotes() {
 
     const data = await res.json();
 
+    // 新增：建立 id -> 名稱 對照
+    const topics = Array.isArray(data?.favorite_quiz_topics)
+      ? data.favorite_quiz_topics
+      : [];
+    const topicMap = new Map(
+      topics.map((t) => [Number(t?.id), String(t?.quiz_topic || "").trim()])
+    );
+
     // 轉換 favorite_notes 為標準格式
     const apiNotes = Array.isArray(data?.favorite_notes)
       ? data.favorite_notes.map((n) => {
@@ -80,7 +88,7 @@ export async function getNotes() {
             id: Number(n?.id),
             title,
             content: parsedContent,
-            subject: n?.quiz_topic || "",
+            subject: topicMap.get(Number(n?.quiz_topic_id)) || "",// 用 quiz_topic_id 對應名稱
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -343,6 +351,84 @@ export async function deleteSubject(subjectName) {
 export async function getNotesBySubject(subject) {
   const allNotes = await getNotes();
   return allNotes.filter((note) => note.subject === subject);
+}
+
+// 從後端載入使用者的主題與收藏筆記，並同步到本地 notes/subjects
+export async function loadUserQuizAndNotes() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("載入主題/筆記失敗：", res.status, text);
+      return { success: false, message: `載入失敗（${res.status}）` };
+    }
+    const data = await res.json();
+
+    // 1) 建立 topicMap: quiz_topic_id -> quiz_topic
+    const topics = Array.isArray(data?.favorite_quiz_topics)
+      ? data.favorite_quiz_topics
+      : [];
+    const topicMap = new Map(
+      topics.map((t) => [Number(t?.id), String(t?.quiz_topic || "").trim()])
+    );
+
+    // 2) 建立 subjects（字串陣列）
+    subjects = [...topicMap.values()].filter(Boolean);
+
+    // 3) 轉成本地 notes：用 quiz_topic_id 對應成 subject 名稱；content 取 explanation_text
+    const rawNotes = Array.isArray(data?.favorite_notes)
+      ? data.favorite_notes
+      : [];
+    notes = rawNotes.map((n) => {
+      // title：優先 n.title；否則取 content 的第一行；再不行給預設
+      const rawTitle = n?.title ?? "";
+      const fallbackFromContent = String(n?.content || "").split("\n")[0];
+      const title =
+        String(rawTitle).trim() || fallbackFromContent || "未命名筆記";
+
+      // content：優先解析 explanation_text；解析失敗就用原字串
+      let parsedContent = "";
+      if (typeof n?.content === "string") {
+        try {
+          // 你的後端 content 可能是單引號的物件字串，先轉雙引號再 parse
+          const obj = JSON.parse(n.content.replace(/'/g, '"'));
+          parsedContent = obj.explanation_text || n.content;
+        } catch {
+          parsedContent = n.content;
+        }
+      } else if (typeof n?.content === "object" && n?.content !== null) {
+        parsedContent = n.content.explanation_text || "";
+      }
+
+      // subject：用 quiz_topic_id 對應主題文字
+      const subject = topicMap.get(Number(n?.quiz_topic_id)) || "";
+
+      return {
+        id: Number(n?.id) || Date.now() + Math.random(),
+        title,
+        content: parsedContent,
+        subject,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    return {
+      success: true,
+      message: "載入完成",
+      subjectsCount: subjects.length,
+      notesCount: notes.length,
+    };
+  } catch (err) {
+    console.error("載入主題/筆記發生錯誤：", err);
+    return { success: false, message: "載入失敗" };
+  }
 }
 
 // 生成題目
