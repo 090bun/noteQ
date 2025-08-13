@@ -637,7 +637,7 @@ export default function NotePage() {
                   <textarea
                     className={styles.modalTextarea}
                     placeholder={
-                      "請輸入筆記內容...\n範例格式：**\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`\n"
+                      "請輸入筆記內容...\n範例格式：\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`\n- 分隔線：---"
                     }
                     value={
                       modalTextContent
