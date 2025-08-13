@@ -97,22 +97,24 @@ class UserFamiliaritySimplifiedSerializer(serializers.ModelSerializer):
 class QuizSimplifiedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quiz
-        fields = ['id', 'quiz_topic']
+        fields = ['id', 'quiz_topic' ]
 
 class TopicSimplifiedSerializer(serializers.ModelSerializer):
     quiz = QuizSerializer(read_only=True)
+    user = UserSimplifiedSerializer(read_only=True)
     class Meta:
         model = Topic
-        fields = ['title', 'quiz']
+        fields = ['id', 'quiz', 'user']
 class AddFavoriteTopicSerializer(serializers.ModelSerializer):
     quiz = QuizSerializer(read_only=True)
+
     class Meta:
         model = Topic
-        fields = ['id','title', 'quiz']
+        fields = ['id','title', 'quiz_topic']
 
 class NoteSimplifiedSerializer(serializers.ModelSerializer):
-    topic = TopicSimplifiedSerializer(read_only=True)
-    # quiz = QuizSerializer(read_only=True)
+    quiz = QuizSerializer(read_only=True)
     class Meta:
         model = Note
-        fields = ['id', 'title','content','topic']
+        quiz_topic_id = serializers.PrimaryKeyRelatedField(queryset=Quiz.objects.all())
+        fields = ['id', 'title','content','quiz','quiz_topic_id']
