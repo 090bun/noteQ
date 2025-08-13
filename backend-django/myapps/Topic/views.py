@@ -682,12 +682,13 @@ class CreateQuizTopicView(APIView):
             user = request.user
             if not quiz_topic_name:
                 return Response({'error': 'quiz_topic is required'}, status=400)
-            
-            # 檢查是否已經存在同名的 Quiz
-            existing_quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
-            if existing_quiz:
+
+            #檢查使用者是否有建立過Quiz
+            user_quiz = Quiz.objects.filter(user=user, quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
+            if user_quiz:
+                print(f"使用者 {user.username} 已經有 Quiz: {user_quiz.quiz_topic}")
                 return Response({'error': f'Quiz with topic "{quiz_topic_name}" already exists'}, status=400)
-            
+
             # 創建新的 QuizTopic
             serializer = QuizSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
