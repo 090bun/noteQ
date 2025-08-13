@@ -11,7 +11,6 @@ from rest_framework.permissions import AllowAny , IsAuthenticated
 from rest_framework.decorators import api_view , permission_classes
 from django.utils import timezone
 from rest_framework.response import Response
-from .familiarity_views import record_answer_mixed
 from django.db import transaction
 # Create your views here.
 

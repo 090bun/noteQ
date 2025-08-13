@@ -5,11 +5,15 @@ import os
 import json
 from dotenv import load_dotenv  
 import requests
+import re
+from flask_socketio import SocketIO, emit
 
 # 載入 .env 檔案
 load_dotenv()  
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
+
 
 
 def generate_mock_questions(topic, count):
@@ -31,14 +35,28 @@ def generate_mock_questions(topic, count):
     
     return mock_questions
 
+def generate_questions_with_ai(topic, difficulty, count, batch_size=3):
+    """分批使用 AI 生成題目"""
+    all_questions = []
+    total = count
+    while total > 0:
+        curr_batch = min(batch_size, total)
+        print(f"本次生成 {curr_batch} 題，剩餘 {total-curr_batch} 題")
+        # 呼叫原本的 AI 生成邏輯
+        batch_questions = _generate_questions_batch(topic, difficulty, curr_batch)
+        all_questions.extend(batch_questions)
+        total -= curr_batch
+    return all_questions
 
-def generate_questions_with_ai(topic, difficulty, count):
+def _generate_questions_batch(topic, difficulty, count):
+    """單批生成題目（原本的 generate_questions_with_ai 內容搬到這）"""
     """使用 AI 生成題目"""
     print(f"=== 開始生成題目 ===")
     print(f"主題: {topic}, 難度: {difficulty}, 數量: {count}")
 
     # 檢查 API Key
     api_key = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
+    
 
     if api_key == 'your-api-key-here' or not api_key:
         return generate_mock_questions(topic, count)
@@ -133,6 +151,9 @@ def parse_ai_response(ai_text, count=1):
         # 先印出 AI 的原始回應來除錯
         print(f"AI 原始回應: {ai_text}")
         print(f"回應長度: {len(ai_text)} 字元")
+
+        # 移除 markdown code block 標記
+        ai_text = re.sub(r"^```json\s*|```$", "", ai_text.strip(), flags=re.MULTILINE)
 
         # 嘗試直接解析 JSON
         questions = json.loads(ai_text)
@@ -511,7 +532,7 @@ def parse_answer():
                 {
                     "role": "user", 
                     "content":
-                      f"""
+                    f"""
                         題目:{title}
                         解答:{Ai_answer}
                         解析:{prompt}
@@ -529,6 +550,23 @@ def parse_answer():
 # 目前整合在一起 暫時保留
 # GPT 解析題目
 
+@socketio.on('generate_quiz')
+def handle_generate_quiz(data):
+    topic = data.get('topic')
+    difficulty = data.get('difficulty')
+    count = data.get('question_count', 1)
+    batch_size = data.get('batch_size', 3)
+    total = count
+    while total > 0:
+        curr_batch = min(batch_size, total)
+        batch_questions = _generate_questions_batch(topic, difficulty, curr_batch)
+        emit('quiz_batch', batch_questions)  # 推送一批題目給前端
+        total -= curr_batch
+    emit('quiz_done', {'message': 'All questions generated.'})
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    socketio.run(app, debug=True, port=5000)
+
+#if __name__ == '__main__':
+    #app.run(debug=True, port=5000)
 
