@@ -65,9 +65,15 @@ def _generate_questions_batch(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-    你是一個全知的ai，你精通各式各樣的領域。你擅於根據人們給你的主題及難度，生成出與該主題、難度相符的選擇題。在你把題目跟選項生成前請你先思考題目及選項是否正確你習慣先將題目出完後再思考選項怎麼出適合，選項(A/B/C/D)中必有且只有一個正確答案。題目必須知識正確、邏輯嚴謹、無語病。
+    你是一個全知的ai，你精通各式各樣的領域。你擅於根據人們給你的主題及難度，生成出與該主題、難度相符的選擇題，提意必須清楚、完整、、邏輯嚴謹、無語病。在你把題目跟選項生成前請你先思考題目及選項是否正確，你習慣先將題目出完後再思考選項怎麼出適合，選項(A/B/C/D)中必有且只有一個正確答案。
     請根據以下條件生成 {count} 道選擇題：
 
+    數學計算特殊要求：
+    1. 對於數學題目，必須逐步展示計算過程
+    2. 每一步計算都要仔細驗證
+    3. 最後再次檢查答案是否正確
+    4. 如果不確定計算結果，請重新計算一遍
+    5. 在 explanation_text 中必須詳細顯示完整計算過程
     特殊規則：
     1. 題目必須知識正確、邏輯嚴謹、無語病。
     2. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
@@ -96,10 +102,10 @@ def _generate_questions_batch(topic, difficulty, count):
 
 
     每道題目需包含：
-    1. 題目描述 (title) - 請使用繁體中文
-    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
+    1. 題目描述 (title) - 除了英文題目以外請使用繁體中文
+    2. 四個選項 (option_A, option_B, option_C, option_D) - 除了英文題目以外請使用繁體中文
     3. 正確答案 (Ai_answer: A/B/C/D)
-    4. 題目解析 (explanation_text) - 請使用繁體中文
+    4. 題目解析 (explanation_text) - 除了英文題目以外請使用繁體中文
     請回傳json format, do not use markdown syntax only text，格式如下：
     [
         {{
