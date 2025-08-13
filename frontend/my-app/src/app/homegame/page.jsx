@@ -219,11 +219,13 @@ export default function HomeGamePage() {
 
   return (
     <>
-      {/* TargetCursor 组件 */}
-      <TargetCursor 
-        spinDuration={2}
-        hideDefaultCursor={true}
-      />
+      {/* TargetCursor 漢堡關閉時顯示*/}
+      {!isMenuOpen && (
+        <TargetCursor 
+          spinDuration={2}
+          hideDefaultCursor={true}
+        />
+      )}
 
       {/* 頭部 */}
       <Header

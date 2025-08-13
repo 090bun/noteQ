@@ -41,7 +41,7 @@ export default function Menu({
                 ))}
 
                 <button 
-                    className="menu-item" 
+                    className="menu-item logout-button" 
                     onClick={safeLogout}
                     style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
