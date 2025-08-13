@@ -1072,36 +1072,33 @@ class SubmitAnswerView(APIView):
             else:
                 return Response({"error": "Either 'topic' and 'user_answer' or 'updates' are required"}, status=400)
 
+class NoteEditQuizTopicView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# 計算熟悉度
-# class SubmitAnswerMixedView(APIView):
-#     permission_classes = [IsAuthenticated]
-#     def post(self, request):
-#         """
-#         body: {
-#           "quiz_topic_id": 123,
-#           "is_correct": true,
-#           "difficulty_level": "advanced"
-#         }
-#         """
-#         user = request.user
-#         quiz_topic_id = request.data.get("quiz_topic_id")
-#         is_correct = bool(request.data.get("is_correct", False))
-#         level_name = request.data.get("difficulty_level")
+    def patch(self, request, note_id):
+        try:
+            # 從請求中獲取新的 quiz_topic ID
+            user=request.user
+            new_quiz_topic_id = request.data.get("quiz_topic_id")
+            if not new_quiz_topic_id:
+                return Response({"error": "quiz_topic_id is required"}, status=400)
 
-#         if not quiz_topic_id or not level_name:
-#             return Response({"error": "quiz_topic_id and difficulty_level are required"}, status=400)
+            # 確認新的 quiz_topic 是否存在
+            new_quiz_topic = get_object_or_404(Quiz, id=new_quiz_topic_id, user=user)
 
-#         quiz_topic = get_object_or_404(Quiz, id=quiz_topic_id, deleted_at__isnull=True)
-#         uf = record_answer_mixed(user=user, quiz_topic=quiz_topic, is_correct=is_correct, level_name=level_name)
+            # 獲取要修改的筆記
+            note = get_object_or_404(Note, id=note_id, user=user, deleted_at__isnull=True)
 
-#         return Response({
-#             "quiz_topic_id": quiz_topic.id,
-#             "total_questions": uf.total_questions,
-#             "correct_answers": uf.correct_answers,
-#             "weighted_total": float(uf.weighted_total),
-#             "weighted_correct": float(uf.weighted_correct),
-#             "familiarity": float(uf.familiarity),          # 0~1
-#             "familiarity_percent": float(uf.familiarity) * 100.0,  # %
-#             "last_level": uf.difficulty_level.level_name if uf.difficulty_level else None,
-#         }, status=200)
+            # 更新筆記的 quiz_topic
+            note.quiz_topic = new_quiz_topic
+            note.save()
+
+            print(f"Updated topics for note {note.id}: {note.quiz_topic} -> {new_quiz_topic}")
+
+            # 同步更新所有與該 Note 關聯的 Topic 的 topic
+            topic = Topic.objects.filter(id=note.topic.id, deleted_at__isnull=True).update(quiz_topic=new_quiz_topic)
+
+
+            return Response({"message": "Note and related topics topic updated successfully"}, status=200)
+        except Exception as e:
+            return Response({"error": f"Internal server error: {str(e)}"}, status=500)
