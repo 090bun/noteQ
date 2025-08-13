@@ -276,6 +276,24 @@
     margin-left: 8px;
 }
 
+.noTopicsMessage {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.noTopicsMessage p {
+    margin: 8px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.noTopicsMessage p:first-child {
+    font-size: 16px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
 .subscriptionColumn {
     flex: none;
     display: flex;

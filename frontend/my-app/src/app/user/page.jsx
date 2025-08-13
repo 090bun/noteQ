@@ -6,7 +6,7 @@ import Header from "../components/Header";
 import Menu from "../components/Menu";
 import PlusPlanModal from "../components/PlusPlanModal";
 import styles from "../styles/UserPage.module.css";
-import { getUserData, getUserTopics, changePassword } from "../utils/userUtils";
+import { getUserTopics, changePassword } from "../utils/userUtils";
 import {
   safeAlert,
   safeConfirm,
@@ -127,12 +127,23 @@ export default function UserPage() {
     // 確保在客戶端渲染時才執行
     if (typeof window !== "undefined") {
       fetchUserDataFromAPI();
-      const userTopics = getUserTopics();
+      fetchUserTopicsFromAPI();
       const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
-      setTopics(userTopics);
       setIsPlusSubscribed(subscriptionStatus === "true");
     }
   }, []);
+
+  // 從API獲取用戶主題熟悉度
+  const fetchUserTopicsFromAPI = async () => {
+    try {
+      const userTopics = await getUserTopics();
+      setTopics(userTopics);
+    } catch (error) {
+      console.error("獲取用戶主題失敗:", error);
+      // 如果API失敗，設置為空數組
+      setTopics([]);
+    }
+  };
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -265,23 +276,30 @@ export default function UserPage() {
                 }`}
               >
                 <div className={styles.topicsList}>
-                  {topics.map((topic, index) => (
-                    <div key={index} className={styles.topicItem}>
-                      <h2 className={styles.topicTitle}>{topic.name}</h2>
-                      <div className={styles.progressContainer}>
-                        <span className={styles.progressLabel}>熟悉度：</span>
-                        <div className={styles.progressBar}>
-                          <div
-                            className={styles.progress}
-                            style={{ width: `${topic.familiarity}%` }}
-                          ></div>
+                  {topics && topics.length > 0 ? (
+                    topics.map((topic, index) => (
+                      <div key={index} className={styles.topicItem}>
+                        <h2 className={styles.topicTitle}>{topic.name}</h2>
+                        <div className={styles.progressContainer}>
+                          <span className={styles.progressLabel}>熟悉度：</span>
+                          <div className={styles.progressBar}>
+                            <div
+                              className={styles.progress}
+                              style={{ width: `${topic.familiarity}%` }}
+                            ></div>
+                          </div>
+                          <span className={styles.progressPercentage}>
+                            {topic.familiarity}%
+                          </span>
                         </div>
-                        <span className={styles.progressPercentage}>
-                          {topic.familiarity}%
-                        </span>
                       </div>
+                    ))
+                  ) : (
+                    <div className={styles.noTopicsMessage}>
+                      <p>目前您還沒有任何主題熟悉度</p>
+                      
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
