@@ -268,6 +268,21 @@ class QuizTopicsViewSet(APIView):
             return Response({
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
+    def patch(self, request , quiz_id):
+
+        new_quiz_topic = request.data.get('new_quiz_topic')
+        if not new_quiz_topic:
+            return Response({'error': 'new_quiz_topic is required'}, status=400)
+
+        try:
+            quiz = Quiz.objects.get(id=quiz_id, deleted_at__isnull=True)
+            quiz.quiz_topic = new_quiz_topic
+            quiz.save()
+            return Response({'message': 'Quiz updated successfully'}, status=200)
+        except Quiz.DoesNotExist:
+            return Response({'error': f'Quiz with ID {quiz_id} not found'}, status=404)
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
 
 # 前端回傳要收藏的題目 加入到 userfavorites 和 note
 class AddFavoriteViewSet(APIView):
