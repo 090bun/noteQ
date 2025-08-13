@@ -340,7 +340,8 @@ class AddFavoriteViewSet(APIView):
             user_favorite = UserFavorite.objects.create(
                 user=user_instance,
                 topic=topic_instance,
-                note=note_instance
+                note=note_instance,
+                quiz=topic_instance.quiz_topic
             )
 
             # 序列化返回資料
