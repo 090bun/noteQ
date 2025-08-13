@@ -309,8 +309,20 @@
     font-size: 24px;
     line-height: 1.2;
     margin: 0 0 15px 0;
+    position: relative;
   }
   
+  .noteTitle::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--primary-text-dark);
+    border-radius: 1px;
+  }
+
   .noteText {
     font-weight: 400;
     font-size: 16px;
@@ -895,6 +907,18 @@
       .noteTitle {
         font-size: 20px;
         margin-bottom: 12px;
+        position: relative;
+      }
+      
+      .noteTitle::after {
+        content: '';
+        position: absolute;
+        bottom: -4px;
+        left: 0;
+        width: 100%;
+        height: 1.5px;
+        background: var(--primary-text-dark);
+        border-radius: 1px;
       }
 
       .noteText {

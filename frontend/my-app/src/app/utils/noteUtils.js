@@ -48,14 +48,15 @@ export function getSubjects() {
 // 添加筆記
 export function addNote(note) {
     try {
-        // 檢查是否已經存在相同的筆記（基於內容和主題）
+        // 檢查是否已經存在完全相同的筆記（基於標題、內容和主題）
         const existingNote = notes.find(n => 
-            n.content.includes(note.content.split('\n')[0]) && 
+            n.title === note.title && 
+            n.content === note.content && 
             n.subject === note.subject
         );
         
         if (existingNote) {
-            return { success: false, message: '此內容已經收藏過了！' };
+            return { success: false, message: '此筆記已經存在！' };
         }
         
         // 添加新筆記

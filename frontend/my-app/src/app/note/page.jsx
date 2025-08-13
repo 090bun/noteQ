@@ -329,7 +329,7 @@ export default function NotePage() {
     }
     setModalType("add");
     setModalContent(null);
-    setModalTextContent("");
+    setModalTextContent(""); // 初始化為空字符串，格式為 "標題\n---\n內容"
     setShowModal(true);
   };
 
@@ -338,28 +338,43 @@ export default function NotePage() {
       showUpgradeAlert();
       return;
     }
-    if (modalTextContent.trim()) {
-      const newNote = {
-        id: Date.now(),
-        title: modalTextContent.split("\n")[0],
-        content: modalTextContent,
-        subject: currentSubject,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const result = addNote(newNote);
-      if (result.success) {
-        const updatedNotes = getNotes();
-        const updatedSubjects = getSubjects();
-        setNotes(updatedNotes);
-        setSubjects(updatedSubjects);
-        setShowModal(false);
-        setModalContent(null);
-        setModalTextContent("");
-        safeAlert(result.message);
-      } else {
-        safeAlert(result.message);
-      }
+    
+    // 從 modalTextContent 中提取標題和內容
+    const parts = modalTextContent.split("\n---\n");
+    const title = parts[0] || "";
+    const content = parts[1] || "";
+
+    if (!title.trim()) {
+      safeAlert("請輸入筆記標題！");
+      return;
+    }
+
+    if (!content.trim()) {
+      safeAlert("請輸入筆記內容！");
+      return;
+    }
+
+    const newNote = {
+      id: Date.now(),
+      title: title.trim(),
+      content: content.trim(),
+      subject: currentSubject,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    const result = addNote(newNote);
+    if (result.success) {
+      const updatedNotes = getNotes();
+      const updatedSubjects = getSubjects();
+      setNotes(updatedNotes);
+      setSubjects(updatedSubjects);
+      setShowModal(false);
+      setModalContent(null);
+      setModalTextContent("");
+      safeAlert(result.message);
+    } else {
+      safeAlert(result.message);
     }
   };
 
@@ -692,11 +707,12 @@ export default function NotePage() {
                       fontSize: "16px",
                       boxSizing: "border-box",
                     }}
-                    value={modalTextContent.split("\n---\n")[0] || ""}
+                    value={modalTextContent ? modalTextContent.split("\n---\n")[0] || "" : ""}
                     onChange={(e) => {
-                      const [_, content] = modalTextContent.split("\n---\n");
+                      const parts = modalTextContent.split("\n---\n");
+                      const content = parts[1] || "";
                       setModalTextContent(
-                        `${e.target.value}\n---\n${content || ""}`
+                        `${e.target.value}\n---\n${content}`
                       );
                     }}
                   />
@@ -724,13 +740,14 @@ export default function NotePage() {
                   <textarea
                     className={styles.modalTextarea}
                     placeholder={
-                      "請輸入筆記內容...\n範例格式：**\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`\n- 分隔線：---"
+                      "請輸入筆記內容...\n範例格式：**\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`\n"
                     }
-                    value={modalTextContent.split("\n---\n")[1] || ""}
+                    value={modalTextContent ? modalTextContent.split("\n---\n")[1] || "" : ""}
                     onChange={(e) => {
-                      const [title] = modalTextContent.split("\n---\n");
+                      const parts = modalTextContent.split("\n---\n");
+                      const title = parts[0] || "";
                       setModalTextContent(
-                        `${title || ""}\n---\n${e.target.value}`
+                        `${title}\n---\n${e.target.value}`
                       );
                     }}
                   />
