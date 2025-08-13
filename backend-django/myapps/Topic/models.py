@@ -22,7 +22,8 @@ class AllObjectsManager(models.Manager):
 class UserFavorite(models.Model):
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE , null=True, blank=True)
-    topic = models.ForeignKey("Topic.Topic", on_delete=models.CASCADE)
+    topic = models.ForeignKey("Topic.Topic", on_delete=models.CASCADE,null=True, blank=True)
+    quiz = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE,null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     class Meta:
