@@ -39,6 +39,7 @@ export default function NotePage() {
   const [editingNote, setEditingNote] = useState(null);
   const [movingNote, setMovingNote] = useState(null);
   const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
+  const [subjectIdMap, setSubjectIdMap] = useState({}); // 主題名稱 -> 主題ID 對照表（供刪除API使用）
 
   // 初始化數據
   useEffect(() => {
