@@ -12,13 +12,13 @@ export function useGameoverUtils() {
   const [subjects, setSubjects] = useState([]);
   const [notes, setNotes] = useState([]);
 
-  // 初始化时检查订阅状态和获取数据
+  // 初始化檢查訂閱狀態和資料
   useEffect(() => {
-    // 从localStorage获取订阅状态
+    // 从localStorage獲得訂閱狀態
     const subscriptionStatus = localStorage.getItem('isPlusSubscribed');
     setIsPlusSubscribed(subscriptionStatus === 'true');
 
-    // 从 noteUtils 获取真实的主题和笔记数据
+    // 从 noteUtil獲取主題和筆記
     const fetchData = async () => {
       try {
         const subjectsData = await getSubjects();
@@ -26,7 +26,7 @@ export function useGameoverUtils() {
         setSubjects(subjectsData);
         setNotes(notesData);
       } catch (error) {
-        console.error('获取数据失败:', error);
+        console.error('獲取數據失敗:', error);
         setSubjects([]);
         setNotes([]);
       }
