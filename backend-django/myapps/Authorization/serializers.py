@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, AuthToken
+from .models import User, AuthToken , Feedback
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserSerializer(serializers.ModelSerializer):
@@ -64,3 +64,15 @@ class UserTokenSerializer(TokenObtainPairSerializer):
         data['email'] = self.user.email
         data['is_paid'] = self.user.is_paid
         return data
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    user = UserSimplifiedSerializer()
+
+    class Meta:
+        model = Feedback
+        fields = ['user', 'level', 'content']
+        extra_kwargs = {
+            'user': {'required': True},
+            'level': {'required': True},
+            'content': {'required': False}
+        }

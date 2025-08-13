@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet , ChatViewSet , ChatContentToNoteView,NoteEdit , NoteListView , CreateQuizTopicView ,UserQuizView ,RetestView ,ParseAnswerView ,UsersQuizAndNote ,SubmitAnswerMixedView , SubmitAnswerView
+from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet , ChatViewSet , ChatContentToNoteView,NoteEdit , NoteListView , CreateQuizTopicView ,UserQuizView ,RetestView ,ParseAnswerView ,UsersQuizAndNote , SubmitAnswerView 
 from .soft_delete_views import SoftDeleteManagementViewSet
-
+from .familiarity_views import SubmitAttemptView
 urlpatterns = [
     # 創建題目和獲取所有題目
     path('quiz/', QuizViewSet.as_view(), name='quiz'),
@@ -36,6 +36,9 @@ urlpatterns = [
 
     # 取得用戶的所有quiz 和 note
     path('user_quiz_and_notes/', UsersQuizAndNote.as_view(), name='user_quiz_and_notes'),
+
+    # 熟悉度計算
+    path('familiarity/', SubmitAttemptView.as_view(), name='familiarity'),
 
     # 前端回傳用戶答案
     path('submit_answer/', SubmitAnswerView.as_view(), name='submit_answer')

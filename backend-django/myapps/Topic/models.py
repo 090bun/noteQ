@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
-
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 # Create your models here.
 
 # 軟刪除管理器
@@ -67,7 +68,7 @@ class Topic(models.Model):
     
     class Meta:
         db_table = "Topic"
-    
+
     def soft_delete(self):
         """軟刪除 Topic"""
         self.deleted_at = timezone.now()
@@ -137,14 +138,28 @@ class Quiz(models.Model):
 class UserFamiliarity(models.Model):
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     quiz_topic = models.ForeignKey("Topic.Quiz", on_delete=models.CASCADE)
-    note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE , null=True, blank=True)
-    difficultyLevels = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.CASCADE, null=True, blank=True)
-    total_questions = models.IntegerField(default=0)
-    correct_answers = models.IntegerField(default=0)
+    note = models.ForeignKey("Topic.Note", on_delete=models.CASCADE, null=True, blank=True)
+    difficulty_level = models.ForeignKey("Topic.DifficultyLevels", on_delete=models.SET_NULL, null=True, blank=True)
+
+    total_questions = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    correct_answers = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+
+    # ★ 新增：難度加權累積（用 DecimalField 比較穩）
+    weighted_total = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"))
+    weighted_correct = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"))
+    cap_weighted_sum = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("0.00"))
+
     familiarity = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         db_table = "UserFamiliarity"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "quiz_topic"], name="uq_user_quiz_topic"),
+            models.CheckConstraint(condition=models.Q(correct_answers__gte=0) & models.Q(total_questions__gte=0), name="ck_non_negative"),
+            models.CheckConstraint(condition=models.Q(correct_answers__lte=models.F("total_questions")), name="ck_correct_le_total"),
+        ]
+        indexes = [ models.Index(fields=["user", "quiz_topic"]) ]
 
 
 # 難度分類

@@ -1,5 +1,6 @@
-from django.db import models
+from django.db import models 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.core.validators import MinValueValidator , MaxValueValidator
 
 # 簡單的 User Manager
 class SimpleUserManager(BaseUserManager):
@@ -61,3 +62,12 @@ class AuthToken(models.Model):
     class Meta:
         db_table = "AuthToken"
 
+class Feedback(models.Model):
+    user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
+    level = models.IntegerField(default=1 , max_length=1 , validators=[MinValueValidator(1), MaxValueValidator(5)])  # 1-5 分
+    content = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "Feedback"
+        
