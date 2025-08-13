@@ -42,20 +42,29 @@ export default function NotePage() {
 
   // 初始化數據
   useEffect(() => {
-    const notesData = getNotes();
-    const subjectsData = getSubjects();
-    const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
-    setNotes(notesData);
-    setSubjects(subjectsData);
-    setIsPlusSubscribed(subscriptionStatus === "true");
+    const loadData = async () => {
+      try {
+        const notesData = await getNotes();
+        const subjectsData = await getSubjects();
+        const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+        
+        setNotes(notesData);
+        setSubjects(subjectsData);
+        setIsPlusSubscribed(subscriptionStatus === "true");
 
-    if (subjectsData.length > 0) {
-      if (!subjectsData.includes(currentSubject)) {
-        setCurrentSubject(subjectsData[0]);
+        if (subjectsData.length > 0) {
+          if (!subjectsData.includes(currentSubject)) {
+            setCurrentSubject(subjectsData[0]);
+          }
+        } else {
+          setCurrentSubject(""); // 沒有主題時重置為空字符串
+        }
+      } catch (error) {
+        console.error("初始化數據失敗：", error);
       }
-    } else {
-      setCurrentSubject(""); // 沒有主題時重置為空字符串
-    }
+    };
+
+    loadData();
   }, []);
 
   // subjects 更新後，自動選定可用主題，避免初次進頁 currentSubject 為空而不渲染
@@ -68,145 +77,12 @@ export default function NotePage() {
 
   // 從後端載入主題
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(
-          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            },
-          }
-        );
-
-        if (!res.ok) {
-          console.error("載入主題失敗：", res.status, await res.text());
-          return;
-        }
-
-        const data = await res.json();
-        // 安全取得 quizzes 並萃取 quiz_topic
-        const apiSubjects = Array.isArray(data?.favorite_quiz_topics)
-          ? data.favorite_quiz_topics.map((q) => q?.quiz_topic).filter(Boolean)
-          : [];
-
-        if (apiSubjects.length > 0) {
-          // 用後端回來的主題覆蓋 subjects
-          setSubjects(apiSubjects);
-
-          // 若目前的 currentSubject 不在新清單中，改設為第一個
-          setCurrentSubject((prev) =>
-            prev && apiSubjects.includes(prev) ? prev : apiSubjects[0]
-          );
-        }
-      } catch (err) {
-        console.error("載入主題發生錯誤：", err);
-      }
-    })();
+    // noteUtils.js 統一
   }, []);
 
   // 從後端載入筆記
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(
-          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-            },
-          }
-        );
-
-        if (!res.ok) {
-          console.error("載入筆記失敗：", res.status, await res.text());
-          return;
-        }
-
-        const data = await res.json();
-
-        // 把 favorite_quiz_topics 做成 id -> quiz_topic 的對照表
-        const topicMap = new Map(
-          (Array.isArray(data?.favorite_quiz_topics)
-            ? data.favorite_quiz_topics
-            : []
-          ).map((t) => [Number(t?.id), String(t?.quiz_topic || "").trim()])
-        );
-
-        // 主題字串陣列（由後端決定），用於下拉與篩選
-        const apiSubjects = [...topicMap.values()].filter(Boolean);
-
-        // 取得主題清單（與先前載入主題一致，這裡只用來決定預設 subject）
-        // const apiSubjects = Array.isArray(data?.favorite_quiz_topics)
-        //   ? data.favorite_quiz_topics.map((q) => q?.quiz_topic).filter(Boolean)
-        //   : [];
-        // const defaultSubject = apiSubjects[0] || "";
-
-        // 轉換 favorite_notes，每一筆用 quiz_topic_id 對應成 subject 名稱
-        const apiNotes = Array.isArray(data?.favorite_notes)
-          ? data.favorite_notes.map((n) => {
-              // 決定標題：優先 title，其次 content 第一行，再不行給預設
-              const rawTitle = n?.title ?? "";
-              const fallbackFromContent = String(n?.content || "").split(
-                "\n"
-              )[0];
-              const title =
-                String(rawTitle).trim() || fallbackFromContent || "未命名筆記";
-
-              // 嘗試解析 content
-              let parsedContent = "";
-              if (typeof n?.content === "string") {
-                try {
-                  const obj = JSON.parse(n.content.replace(/'/g, '"'));
-                  // 只取 explanation_text
-                  parsedContent = obj.explanation_text || "";
-                } catch {
-                  parsedContent = n.content;
-                }
-              } else if (
-                typeof n?.content === "object" &&
-                n?.content !== null
-              ) {
-                parsedContent = n.content.explanation_text || "";
-              }
-
-              // 依 quiz_topic_id 對應出主題名稱（關鍵修改）
-              const subject = topicMap.get(Number(n?.quiz_topic_id)) || "";
-
-              return {
-                id: Number(n?.id) || Date.now() + Math.random(),
-                title,
-                content: parsedContent,
-                subject, // 這裡不再用預設，而是用對應到的主題名稱
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              };
-            })
-          : [];
-
-        // 灌入本地暫存（避免重複由 addNote 自行判斷）
-        apiNotes.forEach((noteObj) => {
-          addNote(noteObj);
-        });
-
-        // 同步到畫面使用的 state
-        setNotes(getNotes());
-
-        // 若尚未有 currentSubject，補上預設主題；若 subjects 尚未填入，也一併補上
-        if (apiSubjects.length > 0) {
-          setSubjects((prev) => (prev && prev.length ? prev : apiSubjects));
-          setCurrentSubject((prev) =>
-            prev && apiSubjects.includes(prev) ? prev : apiSubjects[0]
-          );
-        }
-      } catch (err) {
-        console.error("載入筆記發生錯誤：", err);
-      }
-    })();
+    //  noteUtils.js 統一
   }, []);
 
   // 檢查是否為Plus用戶
@@ -237,7 +113,8 @@ export default function NotePage() {
 
   // 獲取當前主題的筆記
   const getCurrentSubjectNotes = () => {
-    return getNotesBySubject(currentSubject);
+    // 直接從當前notes state中篩選，避免異步調用
+    return notes.filter(note => note.subject === currentSubject);
   };
 
   // 切換下拉選單
@@ -263,7 +140,7 @@ export default function NotePage() {
   };
 
   // 確認新增主題
-  const confirmAddSubject = () => {
+  const confirmAddSubject = async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -271,7 +148,8 @@ export default function NotePage() {
     if (modalContent.trim()) {
       const result = addSubject(modalContent.trim());
       if (result.success) {
-        const updatedSubjects = getSubjects();
+        // 重新從數據庫加載主題
+        const updatedSubjects = await getSubjects();
         setSubjects(updatedSubjects);
         setCurrentSubject(modalContent.trim());
         setShowModal(false);
@@ -295,14 +173,15 @@ export default function NotePage() {
     setShowModal(true);
   };
 
-  const confirmDeleteSubject = () => {
+  const confirmDeleteSubject = async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
     }
     deleteSubject(modalContent);
-    const updatedSubjects = getSubjects();
-    const updatedNotes = getNotes();
+    // 重新從數據庫加載筆記和主題
+    const updatedSubjects = await getSubjects();
+    const updatedNotes = await getNotes();
     setSubjects(updatedSubjects);
     setNotes(updatedNotes);
     if (currentSubject === modalContent) {
@@ -333,7 +212,7 @@ export default function NotePage() {
     setShowModal(true);
   };
 
-  const confirmAddNote = () => {
+  const confirmAddNote = async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -363,10 +242,11 @@ export default function NotePage() {
       updatedAt: new Date().toISOString(),
     };
     
-    const result = addNote(newNote);
+    const result = await addNote(newNote);
     if (result.success) {
-      const updatedNotes = getNotes();
-      const updatedSubjects = getSubjects();
+      // 重新從數據庫加載筆記和主題
+      const updatedNotes = await getNotes();
+      const updatedSubjects = await getSubjects();
       setNotes(updatedNotes);
       setSubjects(updatedSubjects);
       setShowModal(false);
@@ -392,7 +272,7 @@ export default function NotePage() {
     setShowModal(true);
   };
 
-  const confirmEditNote = () => {
+  const confirmEditNote = async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -415,9 +295,10 @@ export default function NotePage() {
         updatedAt: new Date().toISOString(),
       };
 
-      const result = updateNote(editingNote.id, updatedNote);
+      const result = await updateNote(editingNote.id, updatedNote);
       if (result.success) {
-        const updatedNotes = getNotes();
+        // 重新從數據庫加載筆記
+        const updatedNotes = await getNotes();
         setNotes(updatedNotes);
         setShowModal(false);
         setModalContent(null);
@@ -452,11 +333,16 @@ export default function NotePage() {
     }
     safeConfirm(
       "確定要刪除這則筆記嗎？",
-      () => {
-        deleteNote(note.id);
-        const updatedNotes = getNotes();
-        setNotes(updatedNotes);
-        safeAlert("筆記刪除成功！");
+      async () => {
+        const result = await deleteNote(note.id);
+        if (result.success) {
+          // 重新從數據庫加載筆記
+          const updatedNotes = await getNotes();
+          setNotes(updatedNotes);
+          safeAlert("筆記刪除成功！");
+        } else {
+          safeAlert(result.message || "筆記刪除失敗！");
+        }
       },
       () => {}
     );
@@ -479,7 +365,7 @@ export default function NotePage() {
     setShowModal(true);
   };
 
-  const confirmMoveNote = () => {
+  const confirmMoveNote = async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -504,11 +390,12 @@ export default function NotePage() {
     }
 
     // 調用 moveNote 函數，傳遞 noteId 和 newSubject
-    const result = moveNote(movingNote.id, targetSubject);
+    const result = await moveNote(movingNote.id, targetSubject);
 
     if (result.success) {
-      const updatedNotes = getNotes();
-      const updatedSubjects = getSubjects();
+      // 重新從數據庫加載筆記和主題
+      const updatedNotes = await getNotes();
+      const updatedSubjects = await getSubjects();
       setNotes(updatedNotes);
       setSubjects(updatedSubjects);
       setShowModal(false);
