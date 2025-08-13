@@ -185,7 +185,7 @@ export default function UserPage() {
 
                 <header className={styles.profileHeader}>
                   <Image
-                    src="/img/social-page2.gif"
+                    src="/img/userr.gif"
                     alt="Chart Icon"
                     className={styles.profileIcon}
                     width={100}
