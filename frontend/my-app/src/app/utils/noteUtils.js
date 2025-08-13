@@ -244,17 +244,39 @@ export async function moveNote(noteId, newSubject) {
   }
 }
 
-// 添加主題（保留本地，沒有API）
-export function addSubject(subjectName) {
-  if (subjects.includes(subjectName)) {
-    return { success: false, message: "此主題已存在！" };
+// 添加主題
+export async function addSubject(subjectName) {
+  const name = String(subjectName || "").trim();
+  if (!name) {
+    return { success: false, message: "請輸入有效的主題名稱！" };
   }
-
-  subjects.push(subjectName);
-  return { success: true, message: `主題「${subjectName}」新增成功！` };
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+      body: JSON.stringify({ quiz_topic: name }),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("新增主題失敗：", res.status, text);
+      return {
+        success: false,
+        message: `新增主題失敗（${res.status}）${text ? "：" + text : ""}`,
+      };
+    }
+    // 後端成功 -> 同步本地暫存（保持舊行為，不影響前端現有流程）
+    if (!subjects.includes(name)) subjects.push(name);
+    return { success: true, message: `主題「${name}」新增成功！` };
+  } catch (err) {
+    console.error("新增主題發生錯誤：", err);
+    return { success: false, message: "新增失敗，請稍後再試。" };
+  }
 }
 
-// 刪除主題（保留本地）
+// 刪除主題
 export async function deleteSubject(subjectName) {
   try {
     // 先向後端查詢主題清單，找出要刪除的主題 id

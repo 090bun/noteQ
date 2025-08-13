@@ -48,7 +48,7 @@ export default function NotePage() {
         const notesData = await getNotes();
         const subjectsData = await getSubjects();
         const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
-        
+
         setNotes(notesData);
         setSubjects(subjectsData);
         setIsPlusSubscribed(subscriptionStatus === "true");
@@ -115,7 +115,9 @@ export default function NotePage() {
   // 獲取當前主題的筆記
   const getCurrentSubjectNotes = () => {
     // 直接從當前notes state中篩選，避免異步調用
-    return Array.isArray(notes) ? notes.filter(note => note.subject === currentSubject) : [];
+    return Array.isArray(notes)
+      ? notes.filter((note) => note.subject === currentSubject)
+      : [];
   };
 
   // 切換下拉選單
@@ -147,9 +149,9 @@ export default function NotePage() {
       return;
     }
     if (modalContent.trim()) {
-      const result = addSubject(modalContent.trim());
+      const result = await addSubject(modalContent.trim());
       if (result.success) {
-        // 重新從數據庫加載主題
+        // 重新從後端拉最新主題
         const updatedSubjects = await getSubjects();
         setSubjects(updatedSubjects);
         setCurrentSubject(modalContent.trim());
@@ -179,7 +181,24 @@ export default function NotePage() {
       showUpgradeAlert();
       return;
     }
-    deleteSubject(modalContent);
+
+    // 先把要刪的主題從 state 拿掉，提升即時體感
+    setSubjects((prev) => prev.filter((s) => s !== modalContent));
+    if (currentSubject === modalContent) {
+      setCurrentSubject((prev) => {
+        // 找一個還存在的主題當作新 current，沒有就設空字串
+        const next = subjects.find((s) => s !== modalContent) || "";
+        return next;
+      });
+    }
+
+    // 先等後端軟刪除完成
+    const result = await deleteSubject(modalContent);
+    if (!result?.success) {
+      safeAlert(result?.message || "刪除失敗，請稍後再試。");
+      return;
+    }
+
     // 重新從數據庫加載筆記和主題
     const updatedSubjects = await getSubjects();
     const updatedNotes = await getNotes();
@@ -194,7 +213,7 @@ export default function NotePage() {
     }
     setShowModal(false);
     setModalContent("");
-    safeAlert("主題刪除成功！");
+    safeAlert(result.message || "主題刪除成功！");
   };
 
   // 新增筆記
@@ -218,7 +237,7 @@ export default function NotePage() {
       showUpgradeAlert();
       return;
     }
-    
+
     // 從 modalTextContent 中提取標題和內容
     const parts = modalTextContent.split("\n---\n");
     const title = parts[0] || "";
@@ -242,7 +261,7 @@ export default function NotePage() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    
+
     const result = await addNote(newNote);
     if (result.success) {
       // 重新從數據庫加載筆記和主題
@@ -595,13 +614,15 @@ export default function NotePage() {
                       fontSize: "16px",
                       boxSizing: "border-box",
                     }}
-                    value={modalTextContent ? modalTextContent.split("\n---\n")[0] || "" : ""}
+                    value={
+                      modalTextContent
+                        ? modalTextContent.split("\n---\n")[0] || ""
+                        : ""
+                    }
                     onChange={(e) => {
                       const parts = modalTextContent.split("\n---\n");
                       const content = parts[1] || "";
-                      setModalTextContent(
-                        `${e.target.value}\n---\n${content}`
-                      );
+                      setModalTextContent(`${e.target.value}\n---\n${content}`);
                     }}
                   />
                 </div>
@@ -630,13 +651,15 @@ export default function NotePage() {
                     placeholder={
                       "請輸入筆記內容...\n範例格式：**\n- 粗體：**文字**\n- 斜體：*文字*\n- 標題：# ## ###\n- 列表：- 項目\n- 程式碼：`code`\n"
                     }
-                    value={modalTextContent ? modalTextContent.split("\n---\n")[1] || "" : ""}
+                    value={
+                      modalTextContent
+                        ? modalTextContent.split("\n---\n")[1] || ""
+                        : ""
+                    }
                     onChange={(e) => {
                       const parts = modalTextContent.split("\n---\n");
                       const title = parts[0] || "";
-                      setModalTextContent(
-                        `${title}\n---\n${e.target.value}`
-                      );
+                      setModalTextContent(`${title}\n---\n${e.target.value}`);
                     }}
                   />
                 </div>
