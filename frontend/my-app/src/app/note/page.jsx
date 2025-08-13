@@ -88,8 +88,8 @@ export default function NotePage() {
 
         const data = await res.json();
         // 安全取得 quizzes 並萃取 quiz_topic
-        const apiSubjects = Array.isArray(data?.quizzes)
-          ? data.quizzes.map((q) => q?.quiz_topic).filter(Boolean)
+        const apiSubjects = Array.isArray(data?.favorite_quiz_topics)
+          ? data.favorite_quiz_topics.map((q) => q?.quiz_topic).filter(Boolean)
           : [];
 
         if (apiSubjects.length > 0) {
@@ -107,7 +107,7 @@ export default function NotePage() {
     })();
   }, []);
 
-  // 從後端載入筆記（僅準備 renderNoteCard 需要的欄位）
+  // 從後端載入筆記
   useEffect(() => {
     (async () => {
       try {
@@ -129,20 +129,33 @@ export default function NotePage() {
 
         const data = await res.json();
 
-        // 取得主題清單（與先前載入主題一致，這裡只用來決定預設 subject）
-        const apiSubjects = Array.isArray(data?.quizzes)
-          ? data.quizzes.map((q) => q?.quiz_topic).filter(Boolean)
-          : [];
-        const defaultSubject = apiSubjects[0] || "";
+        // 把 favorite_quiz_topics 做成 id -> quiz_topic 的對照表
+        const topicMap = new Map(
+          (Array.isArray(data?.favorite_quiz_topics)
+            ? data.favorite_quiz_topics
+            : []
+          ).map((t) => [Number(t?.id), String(t?.quiz_topic || "").trim()])
+        );
 
-        // 將後端 notes 轉為筆記卡片所需結構
-        const apiNotes = Array.isArray(data?.notes)
-          ? data.notes.map((n) => {
+        // 主題字串陣列（由後端決定），用於下拉與篩選
+        const apiSubjects = [...topicMap.values()].filter(Boolean);
+
+        // 取得主題清單（與先前載入主題一致，這裡只用來決定預設 subject）
+        // const apiSubjects = Array.isArray(data?.favorite_quiz_topics)
+        //   ? data.favorite_quiz_topics.map((q) => q?.quiz_topic).filter(Boolean)
+        //   : [];
+        // const defaultSubject = apiSubjects[0] || "";
+
+        // 轉換 favorite_notes，每一筆用 quiz_topic_id 對應成 subject 名稱
+        const apiNotes = Array.isArray(data?.favorite_notes)
+          ? data.favorite_notes.map((n) => {
+              // 決定標題：優先 title，其次 content 第一行，再不行給預設
               const rawTitle = n?.title ?? "";
+              const fallbackFromContent = String(n?.content || "").split(
+                "\n"
+              )[0];
               const title =
-                (rawTitle && String(rawTitle).trim()) ||
-                String(n?.content || "").split("\n")[0] ||
-                "未命名筆記";
+                String(rawTitle).trim() || fallbackFromContent || "未命名筆記";
 
               // 嘗試解析 content
               let parsedContent = "";
@@ -161,11 +174,14 @@ export default function NotePage() {
                 parsedContent = n.content.explanation_text || "";
               }
 
+              // 依 quiz_topic_id 對應出主題名稱（關鍵修改）
+              const subject = topicMap.get(Number(n?.quiz_topic_id)) || "";
+
               return {
                 id: Number(n?.id) || Date.now() + Math.random(),
                 title,
                 content: parsedContent,
-                subject: defaultSubject,
+                subject, // 這裡不再用預設，而是用對應到的主題名稱
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               };
@@ -177,13 +193,15 @@ export default function NotePage() {
           addNote(noteObj);
         });
 
-        // 同步到畫面使用的 state（維持你原本的渲染邏輯）
+        // 同步到畫面使用的 state
         setNotes(getNotes());
 
         // 若尚未有 currentSubject，補上預設主題；若 subjects 尚未填入，也一併補上
-        if (defaultSubject) {
+        if (apiSubjects.length > 0) {
           setSubjects((prev) => (prev && prev.length ? prev : apiSubjects));
-          setCurrentSubject((prev) => (prev ? prev : defaultSubject));
+          setCurrentSubject((prev) =>
+            prev && apiSubjects.includes(prev) ? prev : apiSubjects[0]
+          );
         }
       } catch (err) {
         console.error("載入筆記發生錯誤：", err);
