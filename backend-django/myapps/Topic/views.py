@@ -870,6 +870,7 @@ class SubmitAnswerView(APIView):
             difficulty = request.data.get("difficulty")
             user_answer = request.data.get("user_answer")
             updates = request.data.get("updates", [])
+            is_test = request.data.get("is_test", False)  # 前端回傳是否為 TEST 模式
             token = request.META.get("HTTP_AUTHORIZATION", "").split(" ")[1]
 
             print(f"=== SubmitAnswerView Debug ===")
@@ -952,6 +953,16 @@ class SubmitAnswerView(APIView):
                     "correct_answers": correct_answers,
                 }
                 
+                # 判斷是否為 TEST 模式或 error 難度（id=5），直接回傳，不呼叫API
+                if is_test or difficulty_id == 5:
+                    message = "Test mode - no API call" if is_test else "Error level - no API call"
+                    return Response({
+                        "message": f"Batch answers submitted successfully ({message})",
+                        "updated_topics": updated_topics,
+                        "total_questions": total_questions,
+                        "correct_answers": correct_answers
+                    }, status=201)
+                
                 print(f"=== 傳送到熟悉度 API 的資料 ===")
                 print(f"Payload: {payload}")
                 
@@ -1029,6 +1040,16 @@ class SubmitAnswerView(APIView):
                     "total_questions": total_questions,
                     "correct_answers": correct_answers,
                 }
+                
+                # 判斷是否為 TEST 模式或 error 難度（id=5），直接回傳，不呼叫API
+                if is_test or difficulty_id == 5:
+                    message = "Test mode - no API call" if is_test else "Error level - no API call"
+                    return Response({
+                        "message": f"Batch answers submitted successfully ({message})",
+                        "updated_topics": updated_topics,
+                        "total_questions": total_questions,
+                        "correct_answers": correct_answers
+                    }, status=201)
                 
                 print(f"=== 傳送到熟悉度 API 的資料 (List格式) ===")
                 print(f"Payload: {payload}")
