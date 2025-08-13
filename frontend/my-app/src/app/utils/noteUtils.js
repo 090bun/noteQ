@@ -71,24 +71,30 @@ export async function getNotes() {
           const title =
             String(rawTitle).trim() || fallbackFromContent || "未命名筆記";
 
-          // 嘗試解析 content
+          // 嘗試解析 content - 新增的筆記是純文本，現有的可能是JSON格式
           let parsedContent = "";
           if (typeof n?.content === "string") {
             try {
+              // 嘗試解析為JSON（現有筆記格式）
               const obj = JSON.parse(n.content.replace(/'/g, '"'));
-              parsedContent = obj.explanation_text || "";
+              parsedContent = obj.explanation_text || n.content;
             } catch {
+              // 解析失敗，直接使用原始內容（新增筆記格式）
               parsedContent = n.content;
             }
           } else if (typeof n?.content === "object" && n?.content !== null) {
             parsedContent = n.content.explanation_text || "";
           }
 
+          // 獲取主題名稱
+          const quizTopicId = n?.quiz_topic_id;
+          const subject = topicMap.get(Number(quizTopicId)) || "";
+
           return {
             id: Number(n?.id),
             title,
             content: parsedContent,
-            subject: topicMap.get(Number(n?.quiz_topic_id)) || "",// 用 quiz_topic_id 對應名稱
+            subject,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -133,13 +139,38 @@ export async function getSubjects() {
 // 添加筆記
 export async function addNote(note) {
   try {
+    // 先獲取主題列表，找到對應的Quiz ID
+    const subjectsData = await getSubjects();
+    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("獲取主題數據失敗：", res.status, await res.text());
+      return { success: false, message: "獲取主題數據失敗" };
+    }
+
+    const data = await res.json();
+    const topics = Array.isArray(data?.favorite_quiz_topics) ? data.favorite_quiz_topics : [];
+    
+    // 根據主題名稱找到對應的Quiz ID
+    const targetTopic = topics.find(t => t?.quiz_topic === note.subject);
+    if (!targetTopic) {
+      return { success: false, message: `找不到主題「${note.subject}」` };
+    }
+
     // 構建API請求數據
     const apiData = {
-      quiz_topic: note.subject, // 主題ID
+      title: note.title, // 筆記標題
+      quiz_topic: targetTopic.id, // 主題ID（數字）
       content: note.content, // 筆記內容
     };
 
-    const res = await fetch("http://127.0.0.1:8000/api/notes/", {
+    const noteRes = await fetch("http://127.0.0.1:8000/api/notes/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -148,13 +179,13 @@ export async function addNote(note) {
       body: JSON.stringify(apiData),
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("新增筆記失敗：", res.status, errorText);
-      return { success: false, message: `新增筆記失敗：${res.status}` };
+    if (!noteRes.ok) {
+      const errorText = await noteRes.text();
+      console.error("新增筆記失敗：", noteRes.status, errorText);
+      return { success: false, message: `新增筆記失敗：${noteRes.status}` };
     }
 
-    const result = await res.json();
+    const result = await noteRes.json();
     return { success: true, message: "筆記添加成功！", data: result };
   } catch (error) {
     console.error("新增筆記失敗:", error);
