@@ -176,7 +176,7 @@ export async function deleteNote(noteId) {
     }
 }
 
-// 更新筆記
+// 編輯筆記
 export async function updateNote(noteId, updatedNote) {
     try {
         // 構建API請求數據
@@ -196,16 +196,16 @@ export async function updateNote(noteId, updatedNote) {
 
         if (!res.ok) {
             const errorText = await res.text();
-            console.error("更新筆記失敗：", res.status, errorText);
-            return { success: false, message: `更新筆記失敗：${res.status}` };
+            console.error("編輯筆記失敗：", res.status, errorText);
+            return { success: false, message: `編輯筆記失敗：${res.status}` };
         }
 
         const result = await res.json();
         return { success: true, message: '筆記更新成功！', data: result };
         
     } catch (error) {
-        console.error('更新筆記失敗:', error);
-        return { success: false, message: '更新失敗，請重試！' };
+        console.error('編輯筆記失敗:', error);
+        return { success: false, message: '編輯失敗，請重試！' };
     }
 }
 
