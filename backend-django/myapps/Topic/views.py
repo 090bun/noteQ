@@ -647,19 +647,18 @@ class NoteListView(APIView):
             content = request.data.get('content')
             if not quiz_topic or not content:
                 return Response({'error': 'quiz_topic and content are required'}, status=400)
-            if not quiz_topic_instance:
-                return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
+            
             try:
                 quiz_topic_instance = Quiz.objects.get(id=quiz_topic, deleted_at__isnull=True)
-                
             except Quiz.DoesNotExist:
                 return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
 
-                # 創建新的 Note
+            # 創建新的 Note
             note = Note.objects.create(
                 user=request.user,
                 title=title,
                 quiz_topic=quiz_topic_instance,
+                topic=None,  # 手動新增的筆記沒有關聯的題目
                 content=content
             )
             return Response({
@@ -844,8 +843,12 @@ class UsersQuizAndNote(APIView):
         topic_data = QuizSimplifiedSerializer(quizzes, many=True).data
 
 
-        # 取得這些主題的筆記（Note）
-        favor_notes = Note.objects.filter(id__in=favorites.values_list('note_id', flat=True), user=user, deleted_at__isnull=True)
+        # 取得這些主題的筆記（Note）- 修改為獲取所有屬於收藏主題的筆記，而不僅僅是收藏的筆記
+        favor_notes = Note.objects.filter(
+            quiz_topic__in=quizzes,  # 屬於收藏主題的筆記
+            user=user, 
+            deleted_at__isnull=True
+        )
 
         note_data = NoteSimplifiedSerializer(favor_notes, many=True).data
 
