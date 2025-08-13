@@ -26,7 +26,7 @@ urlpatterns = [
     path('notes/', NoteListView.as_view(), name='note-list'),
     path('create_quiz/', CreateQuizTopicView.as_view(), name='create_quiz'),
 
-    # 查詢USER創建的主題
+    # 查詢USER創建且加入收藏的主題
     path('user_quiz/', UserQuizView.as_view(), name='user_quiz'),
     # note內容重新測試
     path('retest/', RetestView.as_view(), name='retest'),

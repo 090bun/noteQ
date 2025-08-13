@@ -268,6 +268,21 @@ class QuizTopicsViewSet(APIView):
             return Response({
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
+    def patch(self, request , quiz_id):
+
+        new_quiz_topic = request.data.get('new_quiz_topic')
+        if not new_quiz_topic:
+            return Response({'error': 'new_quiz_topic is required'}, status=400)
+
+        try:
+            quiz = Quiz.objects.get(id=quiz_id, deleted_at__isnull=True)
+            quiz.quiz_topic = new_quiz_topic
+            quiz.save()
+            return Response({'message': 'Quiz updated successfully'}, status=200)
+        except Quiz.DoesNotExist:
+            return Response({'error': f'Quiz with ID {quiz_id} not found'}, status=404)
+        except Exception as e:
+            return Response({'error': f'Internal server error: {str(e)}'}, status=500)
 
 # 前端回傳要收藏的題目 加入到 userfavorites 和 note
 class AddFavoriteViewSet(APIView):
@@ -686,12 +701,15 @@ class CreateQuizTopicView(APIView):
 
 class UserQuizView(APIView):
     permission_classes = [IsAuthenticated]
-    # 取得所有 Quiz
+    # 取得所有 有在收藏的Quiz 
     def get(self, request):
-        quizzes = Quiz.objects.filter(user=request.user, deleted_at__isnull=True).order_by('-created_at')
-        serializer = QuizSerializer(quizzes, many=True)
+        favorites = UserFavorite.objects.filter(user=request.user)
+        print(f"=== 使用者 {request.user.username} 的收藏數量: {favorites.count()} ===")
+        quiz_ids = favorites.values_list('topic__quiz_topic', flat=True).distinct()
+        quizzes = Quiz.objects.filter(id__in=quiz_ids, deleted_at__isnull=True).order_by('-created_at')
+        print(f"找到 {quizzes.count()} 個 Quiz")
+        serializer = QuizSimplifiedSerializer(quizzes, many=True)
         return Response(serializer.data)
-
 
 class RetestView(APIView):
     permission_classes = [IsAuthenticated]
@@ -812,16 +830,23 @@ class UsersQuizAndNote(APIView):
         user = request.user
         # 取得該用戶所有有效收藏
         favorites = UserFavorite.objects.filter(user=user, deleted_at__isnull=True)
-        # 取得所有被收藏的主題（Topic）
-        favor_topics = Topic.objects.filter(id__in=favorites.values_list('topic_id', flat=True), deleted_at__isnull=True)
-        # 取得這些主題的筆記（Note）
-        favor_notes = Note.objects.filter(topic_id__in=favor_topics.values_list('id', flat=True), user=user, deleted_at__isnull=True)
+        # 取得所有被收藏的主題（quiz）
+        favor_quiz = Topic.objects.filter(id__in=favorites.values_list('topic__quiz_topic', flat=True), deleted_at__isnull=True)
 
-        topic_data = AddFavoriteTopicSerializer(favor_topics, many=True).data
+        quiz_ids = favorites.values_list('topic__quiz_topic', flat=True).distinct()
+        quizzes = Quiz.objects.filter(id__in=quiz_ids, deleted_at__isnull=True).order_by('-created_at')
+        topic_data = QuizSimplifiedSerializer(quizzes, many=True).data
+
+
+        # 取得這些主題的筆記（Note）
+        favor_quiz = Topic.objects.filter(id__in=favorites.values_list('topic', flat=True), deleted_at__isnull=True)
+    
+        favor_notes = Note.objects.filter(topic_id__in=favor_quiz.values_list('id', flat=True), user=user, deleted_at__isnull=True)
+
         note_data = NoteSimplifiedSerializer(favor_notes, many=True).data
 
         return Response({
-            'favorite_topics': topic_data,
+            'favorite_quiz_topics': topic_data,
             'favorite_notes': note_data
         })
     
