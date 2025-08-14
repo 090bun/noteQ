@@ -100,9 +100,37 @@ export default function FavoriteModal({
       explanation = matched?.explanation_text || "";
     }
 
+    // 獲取主題ID - 根據當前選擇的主題名稱找到對應的ID
+    let topicId = null;
+    try {
+      const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (subjectsRes.ok) {
+        const subjectsData = await subjectsRes.json();
+        const topics = Array.isArray(subjectsData?.favorite_quiz_topics) ? subjectsData.favorite_quiz_topics : [];
+        const targetTopic = topics.find(t => t?.quiz_topic === currentSubject);
+        if (targetTopic) {
+          topicId = targetTopic.id;
+        }
+      }
+    } catch (error) {
+      console.warn("獲取主題ID失敗:", error);
+    }
+
+    // 如果找不到主題ID，使用題目ID作為備用
+    if (!topicId) {
+      topicId = questionData.id;
+    }
+
     const payload = {
       user_id: Number(userId),
-      topic_id: questionData.id,
+      topic_id: topicId,
       title: questionData.title || `收藏題目 - 第${questionData.number}題`,
       content: {
         explanation_text: explanation,
@@ -135,14 +163,15 @@ export default function FavoriteModal({
     }
 
     try {
-      // 先送到後端
+      // 先標記題目為收藏狀態（後端收藏系統）
       try {
         const result = await sendFavoriteToBackend();
         if (result?.message) {
-          onShowCustomAlert(result.message);
+          console.log("收藏狀態更新成功:", result.message);
         }
       } catch (err) {
-        onShowCustomAlert(err.message);
+        console.warn("收藏狀態更新失敗:", err.message);
+        // 不阻擋筆記創建流程
       }
 
       if (currentNoteId === "add_note" || currentNoteId === null) {
@@ -158,10 +187,9 @@ export default function FavoriteModal({
         };
 
         if (window.addNoteToSystem) {
-          window.addNoteToSystem(newNote);
+          await window.addNoteToSystem(newNote);
+          onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
         }
-
-        onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
       } else {
         // 添加到現有筆記
         const targetNote = Array.isArray(notes) ? notes.find((note) => note.id === currentNoteId) : null;
