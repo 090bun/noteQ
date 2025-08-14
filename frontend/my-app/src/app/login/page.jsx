@@ -56,7 +56,7 @@ export default function LoginPage() {
       }
 
       const data = await res.json();
-      safeAlert("重設密碼連結已發送到您的電子郵件，請查收");
+      safeAlert("重設密碼連結已發送到您的電子郵件，請查看信箱");
       setShowForgotPasswordModal(false);
       setForgotPasswordEmail("");
     } catch (err) {
