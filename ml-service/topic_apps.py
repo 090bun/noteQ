@@ -89,7 +89,7 @@ def _generate_questions_batch(topic, difficulty, count):
     請根據以下條件生成 {count} 道選擇題：
 
     語言規則：
-    1. 如果主題是英文，題目、選項、都必須用英文，解析用繁體中文。
+    1. 如果主題是英文，題目、選項、都必須用英文，explanation_text用繁體中文。
     2. 如果主題不是英文，全部內容都必須用繁體中文。
 
     數學計算特殊要求：
@@ -171,7 +171,7 @@ def _generate_questions_batch(topic, difficulty, count):
     try:
         # 使用新版 API 語法
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "你是一個題目生成助手，請根據使用者的需求生成題目。"},
                 {"role": "user", "content": prompt}
@@ -434,7 +434,7 @@ def chat_with_ai():
             print(f"發送給 OpenAI 的訊息數量: {len(messages)}")
             
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500
