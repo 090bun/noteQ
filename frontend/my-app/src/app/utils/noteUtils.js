@@ -339,10 +339,9 @@ export async function addSubject(subjectName) {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      console.error("新增主題失敗：", res.status, text);
       return {
         success: false,
-        message: `新增主題失敗（${res.status}）${text ? "：" + text : ""}`,
+        message: `新增主題失敗，主題已存在`,
       };
     }
     // 後端成功 -> 同步本地暫存（保持舊行為，不影響前端現有流程）
