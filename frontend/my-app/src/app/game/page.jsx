@@ -109,6 +109,11 @@ const Game = () => {
       if (!res.ok) {
         console.error("提交答案失敗：", res.status, await res.text());
       }
+      // 成功後，獲取熟悉度
+      const data = await res.json();
+      // 這邊要改回傳的資料結構
+      const Familiarity = data.familiarity || 0; 
+      sessionStorage,setItem("familiarity", Familiarity);
     } catch (err) {
       console.error("提交答案發生錯誤：", err);
     } finally {
