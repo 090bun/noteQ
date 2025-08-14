@@ -1,6 +1,6 @@
-// 用戶系統工具函數
-
-// 從API獲取用戶熟悉度數據
+// =========================
+// 從 API 獲取用戶熟悉度（GET）
+// =========================
 export async function getUserFamiliarityFromAPI() {
     try {
         const token = localStorage.getItem("token");
@@ -23,17 +23,14 @@ export async function getUserFamiliarityFromAPI() {
         }
 
         const data = await res.json();
-        
+
         // 從 favorite_quiz_topics 中提取熟悉度數據
         const familiarityData = Array.isArray(data?.favorite_quiz_topics)
-            ? data.favorite_quiz_topics.map((quiz) => {
-                // 使用真實的API數據，如果沒有熟悉度則設為0
-                return {
-                    name: quiz.quiz_topic || "未命名主題",
-                    familiarity: 0, // 暫時設為0，因為現有API沒有熟悉度字段
-                    quizId: quiz.id
-                };
-            })
+            ? data.favorite_quiz_topics.map((quiz) => ({
+                name: quiz.quiz_topic || "未命名主題",
+                familiarity: quiz.familiarity ?? 0, // 如果 API 未提供熟悉度則為 0
+                quizId: quiz.id
+            }))
             : [];
 
         return familiarityData;
@@ -43,10 +40,11 @@ export async function getUserFamiliarityFromAPI() {
     }
 }
 
-// 獲取用戶主題熟悉度
+// =========================
+// 獲取用戶主題熟悉度（GET 包裝）
+// =========================
 export async function getUserTopics() {
     try {
-        // 使用API數據
         const apiData = await getUserFamiliarityFromAPI();
         return apiData;
     } catch (error) {
@@ -54,6 +52,59 @@ export async function getUserTopics() {
         return [];
     }
 }
+
+// =========================
+// 提交用戶答案並獲取熟悉度（POST）
+// =========================
+export async function submitUserAnswers(updates) {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            console.error("找不到 token");
+            return null;
+        }
+
+        const res = await fetch("http://127.0.0.1:8000/api/submit_answer/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ updates })
+        });
+
+        if (!res.ok) {
+            console.error("提交答案失敗：", res.status, await res.text());
+            return null;
+        }
+
+        const data = await res.json();
+
+        // 後端回傳範例：
+        // {
+        //   "familiarity": 3.0,
+        //   "quiz_topic_id": 52,
+        //   "difficulty_level": "beginner",
+        //   "difficulty_cap": 30.0,
+        //   "already_reached_cap": false,
+        //   "updated": true
+        // }
+
+        return {
+            familiarity: data.familiarity ?? 0,
+            quizTopicId: data.quiz_topic_id ?? null,
+            difficultyLevel: data.difficulty_level ?? null,
+            difficultyCap: data.difficulty_cap ?? null,
+            alreadyReachedCap: data.already_reached_cap ?? false,
+            updated: data.updated ?? false
+        };
+
+    } catch (error) {
+        console.error("提交答案或獲取熟悉度失敗:", error);
+        return null;
+    }
+}
+
 
 // 更改密碼（模擬）
 export function changePassword(oldPassword, newPassword) {
