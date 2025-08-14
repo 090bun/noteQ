@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet , ChatViewSet , ChatContentToNoteView,NoteEdit , NoteListView , CreateQuizTopicView ,UserQuizView ,RetestView ,ParseAnswerView ,UsersQuizAndNote , SubmitAnswerView 
+from .views import QuizViewSet , TopicDetailViewSet, QuizTopicsViewSet , AddFavoriteViewSet , ChatViewSet , ChatContentToNoteView,NoteEdit , NoteListView , CreateQuizTopicView ,UserQuizView ,RetestView ,ParseAnswerView ,UsersQuizAndNote , SubmitAnswerView , NoteEditQuizTopicView
 from .soft_delete_views import SoftDeleteManagementViewSet
 from .familiarity_views import SubmitAttemptView
 urlpatterns = [
@@ -25,6 +25,7 @@ urlpatterns = [
     path('notes/<int:note_id>/', NoteEdit.as_view(), name='note_edit'),
     path('notes/', NoteListView.as_view(), name='note-list'),
     path('create_quiz/', CreateQuizTopicView.as_view(), name='create_quiz'),
+    path('note_edit_quiztopic/<int:note_id>/', NoteEditQuizTopicView.as_view(), name='NoteEditQuizTopicView'),
 
     # 查詢USER創建且加入收藏的主題
     path('user_quiz/', UserQuizView.as_view(), name='user_quiz'),
@@ -42,4 +43,5 @@ urlpatterns = [
 
     # 前端回傳用戶答案
     path('submit_answer/', SubmitAnswerView.as_view(), name='submit_answer')
+
 ]
