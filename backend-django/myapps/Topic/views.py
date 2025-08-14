@@ -560,42 +560,9 @@ class ChatContentToNoteView(APIView):
 class NoteEdit(APIView):
     permission_classes = [IsAuthenticated]
     def patch(self, request, note_id):
-        """編輯筆記內容或搬移筆記"""
+        """編輯筆記內容"""
         try:
-            # 檢查是否為搬移筆記請求
-            quiz_topic_id = request.data.get('quiz_topic_id')
-            if quiz_topic_id is not None:
-                # 搬移筆記到新主題
-                try:
-                    note_instance = Note.objects.get(
-                        id=note_id,
-                        user=request.user,
-                        deleted_at__isnull=True
-                    )
-                except Note.DoesNotExist:
-                    return Response({'error': f'Note with ID {note_id} not found'}, status=404)
-                
-                # 檢查新主題是否存在
-                try:
-                    new_quiz_topic = Quiz.objects.get(
-                        id=quiz_topic_id,
-                        deleted_at__isnull=True
-                    )
-                except Quiz.DoesNotExist:
-                    return Response({'error': f'Quiz topic with ID {quiz_topic_id} not found'}, status=404)
-                
-                # 更新筆記的主題
-                note_instance.quiz_topic = new_quiz_topic
-                note_instance.updated_at = timezone.now()
-                note_instance.save()
-                
-                return Response({
-                    'message': 'Note moved successfully',
-                    'note_id': note_instance.id,
-                    'new_quiz_topic_id': quiz_topic_id
-                }, status=200)
-            
-            # 原有的編輯筆記內容邏輯
+            # 直接使用 URL 參數中的 note_id，不需要從 request.data 獲取
             new_content = request.data.get('content')
             new_title = request.data.get('title')
             if not new_content:
@@ -605,7 +572,6 @@ class NoteEdit(APIView):
             try:
                 note_instance = Note.objects.get(
                     id=note_id,
-                    user=request.user,
                     deleted_at__isnull=True
                 )
             except Note.DoesNotExist:
@@ -992,6 +958,7 @@ class SubmitAnswerView(APIView):
                     message = "Test mode - no API call" if is_test else "Error level - no API call"
                     return Response({
                         "message": f"Batch answers submitted successfully ({message})",
+                        "updated_topics": updated_topics,
                         "total_questions": total_questions,
                         "correct_answers": correct_answers
                     }, status=201)
@@ -1012,17 +979,17 @@ class SubmitAnswerView(APIView):
                         json=payload,
                         headers=headers
                     )
-                    data = response.json().get("familiarity")
                     print(f"熟悉度 API 回應狀態: {response.status_code}")
-                    print(f"熟悉度 API 回應內容: {data}")
+                    print(f"熟悉度 API 回應內容: {response.text}")
                 except Exception as e:
                     print(f"呼叫熟悉度 API 失敗: {str(e)}")
 
                 return Response({
                     "message": "Batch answers submitted successfully",
+                    "updated_topics": updated_topics,
+                    "payload_sent_to_familiarity_api": payload,
                     "total_questions": total_questions,
-                    "correct_answers": correct_answers,
-                    "familiarity_api_response": data
+                    "correct_answers": correct_answers
                 }, status=201)
             
             # 處理直接傳陣列的格式 [{"id": 276, "user_answer": "A"}]
@@ -1079,6 +1046,7 @@ class SubmitAnswerView(APIView):
                     message = "Test mode - no API call" if is_test else "Error level - no API call"
                     return Response({
                         "message": f"Batch answers submitted successfully ({message})",
+                        "updated_topics": updated_topics,
                         "total_questions": total_questions,
                         "correct_answers": correct_answers
                     }, status=201)
@@ -1088,17 +1056,17 @@ class SubmitAnswerView(APIView):
                 
                 try:
                     response = requests.post("http://127.0.0.1:8000/api/familiarity/", json=payload)
-                    data = response.json().get("familiarity")
                     print(f"熟悉度 API 回應狀態: {response.status_code}")
-                    print(f"熟悉度 API 回應內容: {data}")
+                    print(f"熟悉度 API 回應內容: {response.text}")
                 except Exception as e:
                     print(f"呼叫熟悉度 API 失敗: {str(e)}")
                 
                 return Response({
                     "message": "Batch answers submitted successfully",
+                    "updated_topics": updated_topics,
+                    "payload_sent_to_familiarity_api": payload,
                     "total_questions": total_questions,
-                    "correct_answers": correct_answers,
-                    "familiarity_api_response": data
+                    "correct_answers": correct_answers
                 }, status=201)
             
             else:

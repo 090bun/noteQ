@@ -9,17 +9,12 @@ import { safeAlert, safeConfirm } from "../utils/dialogs";
 import Header from "../components/Header";
 import { safeLogout } from "../utils/auth";
 import Menu from "../components/Menu";
-import DecryptedText from "../components/DecryptedText";
-import TargetCursor from "../components/TargetCursor";
 
 export default function HomeGamePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [topic, setTopic] = useState("");
   const [questionCount, setQuestionCount] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [showDecryption, setShowDecryption] = useState(false);
-  const [decryptionStep, setDecryptionStep] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   // 初始化路由器
   const router = useRouter();
@@ -88,14 +83,19 @@ export default function HomeGamePage() {
       return;
     }
 
+    if (!validDifficulties.includes(selectedDifficulty)) {
+      safeAlert("目前僅支援 中級 與 高級 題目");
+      return;
+    }
+
     if (!topic.trim()) {
       safeAlert("請輸入主題");
       return;
     }
 
     const count = parseInt(questionCount, 10);
-    if (!count || count < 1 || count > 15) {
-      safeAlert("請輸入有效的題數（1~15 題）");
+    if (!count || count < 1 || count > 3) {
+      safeAlert("請輸入有效的題數（1~3 題）");
       return;
     }
 
@@ -105,31 +105,7 @@ export default function HomeGamePage() {
       return;
     }
 
-    // 開始解密動畫和生題同時進行
-    setShowDecryption(true);
-    setIsGenerating(true);
-    setDecryptionStep(0);
-    
-    // 立即開始生題
-    generateQuestions();
-  };
-
-  // 解密動畫步驟控制
-  const handleDecryptionComplete = () => {
-    // 在生題進行中，動畫持續循環前3步
-    if (isGenerating && decryptionStep < 3) {
-      setDecryptionStep(prev => prev + 1);
-    } else if (isGenerating && decryptionStep === 3) {
-      // 循環回到第0步
-      setDecryptionStep(0);
-    }
-    // 第4步（完成文字）由生題完成後手動設置，不自動推進
-  };
-
-  // 生成題目
-  const generateQuestions = async () => {
     try {
-      const token = localStorage.getItem("token");
       const res = await fetch("http://127.0.0.1:8000/api/quiz/", {
         method: "POST",
         headers: {
@@ -140,40 +116,28 @@ export default function HomeGamePage() {
           user_id: localStorage.getItem("userId"),
           topic: topic.trim(),
           difficulty: selectedDifficulty,
-          question_count: parseInt(questionCount, 10),
+          question_count: count,
         }),
       });
 
-      // if (!res.ok) {
-      //   throw new Error("後端回傳錯誤");
-      // }
+      if (!res.ok) {
+        throw new Error("後端回傳錯誤");
+      }
 
       const result = await res.json();
-      // console.log("題目已送出，回傳結果:", result);
+      console.log("題目已送出，回傳結果:", result);
       sessionStorage.setItem(
         "quizData",
         JSON.stringify({
           quiz: result.quiz, // 單題形式
           topics: result.topics || [], // 多題陣列形式
-          question_count: parseInt(questionCount, 10), // 設定題數
+          question_count: count, // 設定題數
         })
       );
-      
-      // 生題完成，顯示完成文字
-      setDecryptionStep(4);
-      
-      // 等待1.5秒後跳轉
-      setTimeout(() => {
-        setShowDecryption(false);
-        setIsGenerating(false);
-        router.push("/game");
-      }, 1500);
-      
+      router.push("/game"); // 跳轉至 game 頁面
     } catch (err) {
-      // console.error("發送題目失敗:", err);
+      console.error("發送題目失敗:", err);
       safeAlert("題目發送失敗，請稍後再試");
-      setShowDecryption(false);
-      setIsGenerating(false);
     }
   };
 
@@ -219,32 +183,23 @@ export default function HomeGamePage() {
 
   return (
     <>
-      {/* TargetCursor 漢堡關閉時顯示*/}
-      {!isMenuOpen && (
-        <TargetCursor 
-          spinDuration={2}
-          hideDefaultCursor={true}
-        />
-      )}
-
       {/* 頭部 */}
       <Header
         showMenu={true}
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
-        enableNoteQLink={true}
       />
 
       {/* 主要內容 */}
       <main id="game-select" className={styles.gameSelectSection}>
         <div className={styles.pageContainer}>
-                      <input
-              type="text"
-              className={`${styles.topicInput} cursor-target`}
-              placeholder="輸入主題"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
+          <input
+            type="text"
+            className={styles.topicInput}
+            placeholder="輸入主題"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+          />
 
           <div className={styles.difficultyHub}>
             <Image
@@ -253,7 +208,6 @@ export default function HomeGamePage() {
               className={styles.hubOutline}
               width={600}
               height={500}
-              priority={true}
             />
             <h2 className={styles.hubTitle}>難度選擇</h2>
 
@@ -262,7 +216,7 @@ export default function HomeGamePage() {
                 key={option.id}
                 className={`${styles.difficultyButton} ${
                   styles[option.className]
-                } ${selectedDifficulty === option.id ? styles.selected : ""} cursor-target`}
+                } ${selectedDifficulty === option.id ? styles.selected : ""}`}
                 onClick={() => selectDifficulty(option.id)}
               >
                 <Image
@@ -279,14 +233,14 @@ export default function HomeGamePage() {
           <div className={styles.challengeStartForm}>
             <input
               type="number"
-              className={`${styles.questionCountInput} cursor-target`}
+              className={styles.questionCountInput}
               placeholder="輸入題數"
               min="1"
               max="50"
               value={questionCount}
               onChange={(e) => setQuestionCount(e.target.value)}
             />
-            <button className={`${styles.startButton} cursor-target`} onClick={startChallenge}>
+            <button className={styles.startButton} onClick={startChallenge}>
               <span>開始挑戰&nbsp;</span>
               <Image
                 src="/img/Vector-12.png"
@@ -298,28 +252,6 @@ export default function HomeGamePage() {
           </div>
         </div>
       </main>
-
-      {/* 解密動畫覆蓋層 */}
-      {showDecryption && (
-        <div className={styles.decryptionOverlay}>
-          <div className={styles.decryptionContainer}>
-            <DecryptedText
-              text={
-                decryptionStep === 0 ? "正在初始化題目生成系統..." :
-                decryptionStep === 1 ? "正在分析難度等級和主題內容..." :
-                decryptionStep === 2 ? "正在生成個性化題目，請稍候..." :
-                decryptionStep === 3 ? "正在優化題目內容..." :
-                decryptionStep === 4 ? "題目生成完成！準備開始..." :
-                ""
-              }
-              onComplete={handleDecryptionComplete}
-              speed={80}
-              className={styles.decryptionText}
-              key="decryption-text" // 固定key，避免重新创建组件
-            />
-          </div>
-        </div>
-      )}
 
       {/* 選單 */}
       <Menu isOpen={isMenuOpen} onClose={closeMenu} onLogout={safeLogout} />

@@ -6,7 +6,7 @@ import Header from "../components/Header";
 import Menu from "../components/Menu";
 import PlusPlanModal from "../components/PlusPlanModal";
 import styles from "../styles/UserPage.module.css";
-import { getUserTopics, changePassword } from "../utils/userUtils";
+import { getUserData, getUserTopics, changePassword } from "../utils/userUtils";
 import {
   safeAlert,
   safeConfirm,
@@ -91,15 +91,13 @@ export default function UserPage() {
     };
 
     const token = localStorage.getItem("token");
-    const userId = localStorage.getItem("userId");
-
     if (!token) {
       console.error("找不到 token");
       return;
     }
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/users/${userId}`, {
+      const res = await fetch("http://127.0.0.1:8000/users/", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -111,12 +109,14 @@ export default function UserPage() {
       }
 
       const data = await res.json();
-      // 根據 API 回應格式更新 userData
-      setUserData({
-        name: data.username || "未知",
-        email: data.email || "未知",
-        registerDate: formatDate(data.created_at || new Date()),
-      });
+      if (Array.isArray(data) && data.length > 0) {
+        const user = data[0]; // 假設只取第一筆資料
+        setUserData({
+          name: user.username,
+          email: user.email,
+          registerDate: formatDate(user.created_at),
+        });
+      }
     } catch (error) {
       console.error("取得使用者資料失敗:", error);
     }
@@ -127,23 +127,12 @@ export default function UserPage() {
     // 確保在客戶端渲染時才執行
     if (typeof window !== "undefined") {
       fetchUserDataFromAPI();
-      fetchUserTopicsFromAPI();
+      const userTopics = getUserTopics();
       const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+      setTopics(userTopics);
       setIsPlusSubscribed(subscriptionStatus === "true");
     }
   }, []);
-
-  // 從API獲取用戶主題熟悉度
-  const fetchUserTopicsFromAPI = async () => {
-    try {
-      const userTopics = await getUserTopics();
-      setTopics(userTopics);
-    } catch (error) {
-      console.error("獲取用戶主題失敗:", error);
-      // 如果API失敗，設置為空數組
-      setTopics([]);
-    }
-  };
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -159,15 +148,6 @@ export default function UserPage() {
     };
   }, []);
 
-  const name = userData.name || "";
-  const isChinese = /[^\x00-\x7F]/.test(name);
-  const fontSize = isChinese
-    ? name.length > 5
-      ? "1rem"
-      : "1.5rem"
-    : name.length > 6
-    ? "1.3rem"
-    : "2.3rem";
   return (
     <>
       {/* 頭部 */}
@@ -175,7 +155,6 @@ export default function UserPage() {
         showMenu={true}
         isMenuOpen={isMenuOpen}
         onToggleMenu={toggleMenu}
-        enableNoteQLink={true}
       />
 
       {/* 主要內容 */}
@@ -194,27 +173,15 @@ export default function UserPage() {
                 style={{ objectFit: "cover" }}
               />
 
-                <header className={styles.profileHeader}>
-                  <Image
-                    src="/img/userrr.gif"
-                    alt="Chart Icon"
-                    className={styles.profileIcon}
-                    width={100}
-                    height={80}
-                    style={{ 
-                      objectFit: "contain",
-                      mixBlendMode: "difference"
-                    }}
-                  />
-      <h1
-        className={styles.profileName}
-        title={name}
-        style={{ fontSize }}
-      >
-        {name}
-      </h1>
-
-
+              <header className={styles.profileHeader}>
+                <Image
+                  src="/img/Vector-35.png"
+                  alt="Chart Icon"
+                  className={styles.profileIcon}
+                  width={75}
+                  height={60}
+                />
+                <h1 className={styles.profileName}>{userData.name}</h1>
               </header>
 
               {/* 標籤頁容器 */}
@@ -276,30 +243,23 @@ export default function UserPage() {
                 }`}
               >
                 <div className={styles.topicsList}>
-                  {topics && topics.length > 0 ? (
-                    topics.map((topic, index) => (
-                      <div key={index} className={styles.topicItem}>
-                        <h2 className={styles.topicTitle}>{topic.name}</h2>
-                        <div className={styles.progressContainer}>
-                          <span className={styles.progressLabel}>熟悉度：</span>
-                          <div className={styles.progressBar}>
-                            <div
-                              className={styles.progress}
-                              style={{ width: `${topic.familiarity}%` }}
-                            ></div>
-                          </div>
-                          <span className={styles.progressPercentage}>
-                            {topic.familiarity}%
-                          </span>
+                  {topics.map((topic, index) => (
+                    <div key={index} className={styles.topicItem}>
+                      <h2 className={styles.topicTitle}>{topic.name}</h2>
+                      <div className={styles.progressContainer}>
+                        <span className={styles.progressLabel}>熟悉度：</span>
+                        <div className={styles.progressBar}>
+                          <div
+                            className={styles.progress}
+                            style={{ width: `${topic.familiarity}%` }}
+                          ></div>
                         </div>
+                        <span className={styles.progressPercentage}>
+                          {topic.familiarity}%
+                        </span>
                       </div>
-                    ))
-                  ) : (
-                    <div className={styles.noTopicsMessage}>
-                      <p>目前您還沒有任何主題熟悉度</p>
-                      
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
             </div>
@@ -371,7 +331,6 @@ export default function UserPage() {
               </button>
               <ul className={styles.featureList}>
                 <li className={styles.featureItem}>
-                  
                   <Image
                     src="/img/Vector-22.png"
                     alt="Feature icon"

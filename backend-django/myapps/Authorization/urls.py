@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 # 第三方套件
 from rest_framework.routers import DefaultRouter
 # app
-from myapps.Authorization.auth_views import UserViewSet, AuthTokenViewSet, RegisterView ,forgot_password, reset_password , reset_password_from_email
+from myapps.Authorization.auth_views import UserViewSet, AuthTokenViewSet, RegisterView ,forgot_password, reset_password 
 from myapps.Authorization.feedback_views import FeedbackViewSet
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -76,7 +76,6 @@ urlpatterns = [
     path('', include(router.urls)),  # 加入 DefaultRouter 的路徑
     path('forgot-password/', forgot_password),
     path('reset-password/', reset_password),
-    path('reset-password-from-email/', reset_password_from_email),
     path('feedback/', FeedbackViewSet.as_view(), name='feedback'),
 
 ]

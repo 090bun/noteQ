@@ -5,36 +5,12 @@ import os
 import json
 from dotenv import load_dotenv  
 import requests
-import re
-from flask_socketio import SocketIO, emit
-import random
 
 # 載入 .env 檔案
 load_dotenv()  
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
 
-
-
-def shuffle_options(q):
-    options = [
-        ("A", q["option_A"]),
-        ("B", q["option_B"]),
-        ("C", q["option_C"]),
-        ("D", q["option_D"]),
-    ]
-    correct = q["Ai_answer"]
-    correct_text = q[f"option_{correct}"]
-    random.shuffle(options)
-    # 重新分配選項
-    for idx, (opt, text) in enumerate(options):
-        q[f"option_{chr(65+idx)}"] = text
-    # 找出正確答案的新位置
-    for idx, (opt, text) in enumerate(options):
-        if text == correct_text:
-            q["Ai_answer"] = chr(65+idx)
-            break
 
 def generate_mock_questions(topic, count):
     """生成模擬題目（當 AI 服務不可用時使用）"""
@@ -55,28 +31,14 @@ def generate_mock_questions(topic, count):
     
     return mock_questions
 
-def generate_questions_with_ai(topic, difficulty, count, batch_size=3):
-    """分批使用 AI 生成題目"""
-    all_questions = []
-    total = count
-    while total > 0:
-        curr_batch = min(batch_size, total)
-        print(f"本次生成 {curr_batch} 題，剩餘 {total-curr_batch} 題")
-        # 呼叫原本的 AI 生成邏輯
-        batch_questions = _generate_questions_batch(topic, difficulty, curr_batch)
-        all_questions.extend(batch_questions)
-        total -= curr_batch
-    return all_questions
 
-def _generate_questions_batch(topic, difficulty, count):
-    """單批生成題目（原本的 generate_questions_with_ai 內容搬到這）"""
+def generate_questions_with_ai(topic, difficulty, count):
     """使用 AI 生成題目"""
     print(f"=== 開始生成題目 ===")
     print(f"主題: {topic}, 難度: {difficulty}, 數量: {count}")
 
     # 檢查 API Key
     api_key = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
-    
 
     if api_key == 'your-api-key-here' or not api_key:
         return generate_mock_questions(topic, count)
@@ -85,43 +47,17 @@ def _generate_questions_batch(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-    你是一個全知的ai，你精通各式各樣的領域。你擅於根據人們給你的主題及難度，生成出與該主題、難度相符的選擇題，提意必須清楚、完整、、邏輯嚴謹、無語病。在你把題目跟選項生成前請你先思考題目及選項是否正確，你習慣先將題目出完後再思考選項怎麼出適合，選項(A/B/C/D)中必有且只有一個正確答案，必須將正確答案隨機分配到(A/B/C/D)四個選項。
+    你是一位擁有跨領域知識的「全能出題專家」，精通各式各樣的領域。你能根據任何主題快速理解核心概念，並創造出貼近該主題、具有啟發性與準確性的題目。題目必須知識正確、邏輯嚴謹、無語病。
     請根據以下條件生成 {count} 道選擇題：
 
-    語言規則：
-    1. 如果主題是英文，題目、選項、都必須用英文，解析用繁體中文。
-    2. 如果主題不是英文，全部內容都必須用繁體中文。
-
-    數學計算特殊要求：
-    1. 對於數學題目，必須逐步展示計算過程
-    2. 每一步計算都要仔細驗證
-    3. 最後再次檢查答案是否正確
-    4. 如果不確定計算結果，請重新計算一遍
-    5. 在 explanation_text 中必須詳細顯示完整計算過程
-    6. 確認4個option選項內容有正確答案
-    7. Ai_answer為正確答案之選項，並且Ai_answer的option選項內容與explanation_text答案相同
-
-    explanation_text 規則：
-    1. 必須詳細分步驟解釋解題思路
-    2. 補充相關知識點、背景、易錯點
-    3. 用教學口吻，讓學生能真正理解
-    4. 數學題必須有完整計算過程與驗證
-    5. 其他科目要有邏輯推理、事實依據
-    6. 禁止空泛、主觀、無意義描述
-
     特殊規則：
-    1. 題目必須知識正確、邏輯嚴謹、無語病。
-    2. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
-    3. 如果主題為如果主題為無意義字串（與任何已知領域無關），請直接回傳：
+    1. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
+    2. 如果主題為如果主題為無意義字串（與任何已知領域無關），請直接回傳：
     "主題無法產生合理題目。"
     不要輸出其他內容。
-    4. 答案不能是疑問句
-    5. 題數必須精確為 {count} 題，不可少於或多於該數量。
-    6. 如果{topic}是數學題的話請務必先計算出正確答案，再將正確答案填入 Ai_answer 欄位。請勿猜測或隨意填寫，必保證答案正確。
-    7. 題目必須有明確知識點或事實依據，不能只問主觀感受或抽象描述。
-    8. 請根據主題的專業背景出題。
-    9. 避免空泛、隨意、或只描述顏色、符號等題目。
-    10. 禁止出現主觀、感受、意見類題目
+    3. 答案不能是疑問句
+    4. 題數必須精確為 {count} 題，不可少於或多於該數量。
+    5. 如果{topic}是數學題的話請務必先計算出正確答案，再將正確答案填入 Ai_answer 欄位。請勿猜測或隨意填寫，必保證答案正確。
 
     難度說明：
     題目必須與設定的難度相符，避免過於簡單或過於困難。
@@ -138,10 +74,10 @@ def _generate_questions_batch(topic, difficulty, count):
 
 
     每道題目需包含：
-    1. 題目描述 (title) - 除了英文題目以外請使用繁體中文
-    2. 四個選項 (option_A, option_B, option_C, option_D) - 除了英文題目以外請使用繁體中文
+    1. 題目描述 (title) - 請使用繁體中文
+    2. 四個選項 (option_A, option_B, option_C, option_D) - 請使用繁體中文
     3. 正確答案 (Ai_answer: A/B/C/D)
-    4. 題目解析 (explanation_text) - 除了英文題目以外請使用繁體中文
+    4. 題目解析 (explanation_text) - 請使用繁體中文
     請回傳json format, do not use markdown syntax only text，格式如下：
     [
         {{
@@ -167,7 +103,7 @@ def _generate_questions_batch(topic, difficulty, count):
     try:
         # 使用新版 API 語法
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "你是一個題目生成助手，請根據使用者的需求生成題目。"},
                 {"role": "user", "content": prompt}
@@ -198,9 +134,6 @@ def parse_ai_response(ai_text, count=1):
         print(f"AI 原始回應: {ai_text}")
         print(f"回應長度: {len(ai_text)} 字元")
 
-        # 移除 markdown code block 標記
-        ai_text = re.sub(r"^```json\s*|```$", "", ai_text.strip(), flags=re.MULTILINE)
-
         # 嘗試直接解析 JSON
         questions = json.loads(ai_text)
         print(f"解析出的題目數量: {len(questions)} , 內容: {questions}")
@@ -229,9 +162,8 @@ def parse_ai_response(ai_text, count=1):
             "Ai_answer": q.get("Ai_answer", "A"),
             "difficulty_id": difficulty_id
             }
-            shuffle_options(formatted_q)
             formatted_questions.append(formatted_q)
-            print(f"格式化後的題目formatted_questions: {formatted_questions}")
+        print(f"格式化後的題目formatted_questions: {formatted_questions}")
         return formatted_questions
 
     except json.JSONDecodeError as e:
@@ -505,14 +437,14 @@ def parse_note_content(content):
         prompt = f"""
         1. 分析文章內容，提取關鍵主題。
         2. 根據主題，設計一個測驗標題。
-        3. 測驗標題需簡短、清晰、有吸引力，且字數不超過30字。
+        3. 測驗標題需簡短、有吸引力，且字數不超過30字。
         4. 只輸出測驗標題，不需要多餘解釋。
         需整理內容：{content}
 
         請直接回傳整理後的內容，不要使用任何格式標記。
         """
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "user", "content": prompt}
             ],
@@ -579,7 +511,7 @@ def parse_answer():
                 {
                     "role": "user", 
                     "content":
-                    f"""
+                      f"""
                         題目:{title}
                         解答:{Ai_answer}
                         解析:{prompt}
@@ -597,23 +529,6 @@ def parse_answer():
 # 目前整合在一起 暫時保留
 # GPT 解析題目
 
-@socketio.on('generate_quiz')
-def handle_generate_quiz(data):
-    topic = data.get('topic')
-    difficulty = data.get('difficulty')
-    count = data.get('question_count', 1)
-    batch_size = data.get('batch_size', 3)
-    total = count
-    while total > 0:
-        curr_batch = min(batch_size, total)
-        batch_questions = _generate_questions_batch(topic, difficulty, curr_batch)
-        emit('quiz_batch', batch_questions)  # 推送一批題目給前端
-        total -= curr_batch
-    emit('quiz_done', {'message': 'All questions generated.'})
-
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
-
-#if __name__ == '__main__':
-    #app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000)
 

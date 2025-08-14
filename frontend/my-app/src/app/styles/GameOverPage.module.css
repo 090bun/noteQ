@@ -63,7 +63,7 @@
     margin: 0;
     font-weight: 700;
     font-size: 16px;
-    color: #f0f0f0;
+    color: var(--color-text-dark);
   }
 
   .status-tag {
@@ -84,7 +84,7 @@
   }
 
   .card-body {
-    color: #f0f0f0;
+    color: var(--color-text-dark);
     font-size: 16px;
     line-height: 1.2;
     margin: 6px 0;
@@ -256,8 +256,6 @@
     border-radius: 18px;
     font-size: 14px;
     line-height: 1.4;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
   }
 
   .message.ai {
@@ -265,11 +263,6 @@
     color: var(--color-text-dark);
     align-self: flex-start;
     border-bottom-left-radius: 4px;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
   }
 
   .message.user {
@@ -287,8 +280,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
   }
 
   .placeholder-icon {
@@ -303,9 +294,6 @@
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
-    flex-shrink: 0;
-    min-width: 16px;
-    min-height: 16px;
   }
 
   .placeholder-icon:hover {
@@ -356,12 +344,6 @@
     padding: 5px;
     cursor: pointer;
     transition: all 0.3s ease;
-    flex-shrink: 0;
-    min-width: 20px;
-    min-height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .add-icon:hover {
