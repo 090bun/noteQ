@@ -17,7 +17,7 @@ export default function NoteSelector({
   onNoteChange, 
   styles, 
   type = 'favorite',
-  currentSubject = '數學' // 添加當前主題參數
+  currentSubject = '' // 添加當前主題參數
 }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedText, setSelectedText] = useState('新增筆記');
