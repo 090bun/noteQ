@@ -195,14 +195,48 @@ export default function FavoriteModal({
         const targetNote = Array.isArray(notes) ? notes.find((note) => note.id === currentNoteId) : null;
 
         if (targetNote) {
-          const updatedContent = `${targetNote.content}
+          // 確保 targetNote.content 存在，避免 undefined 問題
+          const existingContent = targetNote.content || "";
+          const updatedContent = `${existingContent}
 ---
 ## 新增題目
 ${questionContent}`;
 
-          targetNote.content = updatedContent;
+          // 構建更新後的筆記對象
+          const updatedNote = {
+            ...targetNote,
+            content: updatedContent,
+          };
 
-          onShowCustomAlert(`題目已添加到筆記「${targetNote.title}」中！`);
+          try {
+            // 調用後端 API 更新筆記
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token ? `Bearer ${token}` : "",
+              },
+              body: JSON.stringify({
+                title: updatedNote.title,
+                content: updatedNote.content,
+              }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              throw new Error(`更新筆記失敗：${res.status} - ${errorText}`);
+            }
+
+            // 更新成功後，更新本地狀態
+            targetNote.content = updatedContent;
+            
+            onShowCustomAlert(`題目已添加到筆記「${targetNote.title}」中！`);
+          } catch (error) {
+            console.error("更新筆記失敗:", error);
+            onShowCustomAlert(`更新筆記失敗：${error.message}`);
+            return;
+          }
         } else {
           onShowCustomAlert("找不到選中的筆記！");
           return;

@@ -92,6 +92,21 @@ export default function AnalysisFavoriteModal({
         const title =
           String(rawTitle).trim() || fallbackFromContent || "未命名筆記";
 
+        // 嘗試解析 content - 新增的筆記是純文本，現有的可能是JSON格式
+        let parsedContent = "";
+        if (typeof n?.content === "string") {
+          try {
+            // 嘗試解析為JSON（現有筆記格式）
+            const obj = JSON.parse(n.content.replace(/'/g, '"'));
+            parsedContent = obj.explanation_text || n.content;
+          } catch {
+            // 解析失敗，直接使用原始內容（新增筆記格式）
+            parsedContent = n.content;
+          }
+        } else if (typeof n?.content === "object" && n?.content !== null) {
+          parsedContent = n.content.explanation_text || "";
+        }
+
         // 獲取主題名稱
         const quizTopicId = n?.quiz_topic_id;
         const subject = topicMap.get(Number(quizTopicId)) || "";
@@ -99,6 +114,7 @@ export default function AnalysisFavoriteModal({
         return {
           id: Number(n?.id),
           title,
+          content: parsedContent,
           subject,
         };
       });
@@ -109,6 +125,7 @@ export default function AnalysisFavoriteModal({
     return rawNotes.map((n) => ({
       id: n.id,
       title: n.title ?? n.name ?? `未命名筆記 ${n.id}`,
+      content: n.content || "",
       subject:
         n.subject ?? n.subject_name ?? n.topic ?? n.quiz_topic ?? "未分類",
     }));
@@ -183,7 +200,7 @@ export default function AnalysisFavoriteModal({
   }, [isOpen]); // 只在開啟時抓一次（或你可改依需求）
 
   // 處理收藏確認
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!content.trim()) {
       onShowCustomAlert("沒有要收藏的內容！");
       return;
@@ -211,10 +228,12 @@ export default function AnalysisFavoriteModal({
         onShowCustomAlert(`內容已收藏到「${currentSubject}」主題！`);
       } else {
         // 添加到現有筆記
-        const targetNote = Array.isArray(notes) ? notes.find((note) => note.id === currentNoteId) : null;
+        const targetNote = Array.isArray(effectiveNotes) ? effectiveNotes.find((note) => note.id === currentNoteId) : null;
 
         if (targetNote) {
-          const updatedContent = `${targetNote.content}
+          // 確保 targetNote.content 存在，避免 undefined 問題
+          const existingContent = targetNote.content || "";
+          const updatedContent = `${existingContent}
 
 ---
 
@@ -222,9 +241,41 @@ export default function AnalysisFavoriteModal({
 
 ${content}`;
 
-          targetNote.content = updatedContent;
+          // 構建更新後的筆記對象
+          const updatedNote = {
+            ...targetNote,
+            content: updatedContent,
+          };
 
-          onShowCustomAlert(`內容已添加到筆記「${targetNote.title}」中！`);
+          try {
+            // 調用後端 API 更新筆記
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token ? `Bearer ${token}` : "",
+              },
+              body: JSON.stringify({
+                title: updatedNote.title,
+                content: updatedNote.content,
+              }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              throw new Error(`更新筆記失敗：${res.status} - ${errorText}`);
+            }
+
+            // 更新成功後，更新本地狀態
+            targetNote.content = updatedContent;
+            
+            onShowCustomAlert(`內容已添加到筆記「${targetNote.title}」中！`);
+          } catch (error) {
+            console.error("更新筆記失敗:", error);
+            onShowCustomAlert(`更新筆記失敗：${error.message}`);
+            return;
+          }
         } else {
           onShowCustomAlert("找不到選中的筆記！");
           return;
