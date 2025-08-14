@@ -247,26 +247,6 @@ def parse_ai_response(ai_text, count=1):
         print(f"無法解析的內容: {ai_text[:200]}...")  # 只顯示前200字元
         return generate_mock_questions("解析失敗", count)
 
-def generate_mock_questions(topic, count):
-    """生成模擬題目（當 AI 服務不可用時使用）"""
-    mock_questions = []
-    for i in range(count):
-        mock_q = {
-            "title": f"伺服器維修中",
-            "option_A": "錯誤",
-            "option_B": "錯誤", 
-            "option_C": "錯誤",
-            "option_D": "錯誤",
-            "User_answer": "",
-            "Ai_answer": "X",
-            "explanation_text": "錯誤",
-            "difficulty_id": 1  # 統一回傳數字型態
-        }
-        mock_questions.append(mock_q)
-    return mock_questions
-    
-
-
 @app.route('/api/quiz', methods=['POST'])
 def create_quiz():
     """使用 AI 生成題目"""
@@ -519,7 +499,7 @@ def parse_note_content(content):
         請直接回傳整理後的內容，不要使用任何格式標記。
         """
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "user", "content": prompt}
             ],
@@ -581,7 +561,7 @@ def parse_answer():
         直接回傳整理後的內容，不要使用任何格式標記。
         """
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4.0",
             messages=[
                 {
                     "role": "user", 
