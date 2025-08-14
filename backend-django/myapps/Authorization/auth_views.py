@@ -93,7 +93,9 @@ def forgot_password(request):
 @api_view(['POST'])
 # 從忘記密碼進入的重設密碼 API
 def reset_password_from_email(request):
-    uid = request.data.get('uid')
+    uidb64 = request.data.get('uid')
+    print(f"Received uidb64: {uidb64}")
+    uid = force_str(urlsafe_base64_decode(uidb64))
     new_password = request.data.get('new_password')
 
     try:
