@@ -14,6 +14,9 @@ export default function LoginPage() {
   const [isLoginForm, setIsLoginForm] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [isSubmittingForgotPassword, setIsSubmittingForgotPassword] = useState(false);
   const splineViewerRef = useRef(null);
   const { navigateWithTransition } = usePageTransition();
 
@@ -27,6 +30,47 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+
+  // 處理忘記密碼
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    
+    if (!forgotPasswordEmail.trim()) {
+      safeAlert("請輸入電子郵件地址");
+      return;
+    }
+
+    setIsSubmittingForgotPassword(true);
+    
+    try {
+      const res = await fetch("http://127.0.0.1:8000/forgot-password/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      });
+
+      if (!res.ok) {
+        throw new Error("發送失敗");
+      }
+
+      const data = await res.json();
+      safeAlert("重設密碼連結已發送到您的電子郵件，請查收");
+      setShowForgotPasswordModal(false);
+      setForgotPasswordEmail("");
+    } catch (err) {
+      safeAlert("發送失敗，請確認電子郵件地址是否正確");
+    } finally {
+      setIsSubmittingForgotPassword(false);
+    }
+  };
+
+  // 關閉忘記密碼模態框
+  const closeForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false);
+    setForgotPasswordEmail("");
+  };
 
   //新增登入功能
   const handleLogin = async (e) => {
@@ -214,7 +258,7 @@ export default function LoginPage() {
               </div>
 
               <div className={styles.forgotPassword}>
-                <a href="#" className={styles.linkText}>
+                <a href="#" className={styles.linkText} onClick={() => setShowForgotPasswordModal(true)}>
                   忘記密碼？
                 </a>
               </div>
@@ -372,6 +416,56 @@ export default function LoginPage() {
           />
         </div>
       </main>
+
+      {/* 忘記密碼模態框 */}
+      {showForgotPasswordModal && (
+        <div className={styles.modalOverlay} onClick={closeForgotPasswordModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>忘記密碼</h2>
+              <button 
+                className={styles.closeButton}
+                onClick={closeForgotPasswordModal}
+              >
+                ×
+              </button>
+            </div>
+            
+            <form onSubmit={handleForgotPassword} className={styles.modalForm}>
+              <div className={styles.modalInputGroup}>
+                <label className={styles.modalLabel}>
+                  請輸入先前註冊的電子郵件
+                </label>
+                <input
+                  type="email"
+                  className={styles.modalInput}
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  placeholder="請輸入您的電子郵件"
+                  required
+                />
+              </div>
+              
+              <div className={styles.modalButtons}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={closeForgotPasswordModal}
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className={styles.submitButton}
+                  disabled={isSubmittingForgotPassword}
+                >
+                  {isSubmittingForgotPassword ? "發送中..." : "發送重設連結"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
