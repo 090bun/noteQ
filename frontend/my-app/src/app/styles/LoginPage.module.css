@@ -406,11 +406,34 @@
     transition: all 0.3s ease;
     letter-spacing: 0.5px;
     box-shadow: 0 4px 15px rgba(0, 24, 48, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.submitButton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+    z-index: 0;
+}
+
+.submitButton:hover:not(:disabled)::before {
+    left: 100%;
+}
+
+.submitButton > * {
+    position: relative;
+    z-index: 1;
 }
 
 .submitButton:hover:not(:disabled) {
     background: #002a5a;
-    transform: translateY(-2px);
+    transform: scale(1.05);
     box-shadow: 0 6px 20px rgba(0, 24, 48, 0.4);
 }
 
@@ -433,12 +456,13 @@
     }
     
     .modalButtons {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 12px;
     }
     
     .cancelButton,
     .submitButton {
-        flex: none;
-        width: 100%;
+        flex: 1;
+        width: auto;
     }
 } 
