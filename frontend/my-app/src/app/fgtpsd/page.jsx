@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 處理重置密碼
+  // 處理重設密碼
   const handleResetPassword = async (e) => {
     e.preventDefault();
     
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
       });
 
       if (!res.ok) {
-        throw new Error("重置失敗");
+        throw new Error("重設失敗");
       }
 
       const data = await res.json();
