@@ -6,7 +6,7 @@ import Header from "../components/Header";
 import Menu from "../components/Menu";
 import PlusPlanModal from "../components/PlusPlanModal";
 import styles from "../styles/UserPage.module.css";
-import { getUserTopics, changePassword } from "../utils/userUtils";
+import { getUserTopics } from "../utils/userUtils";
 import {
   safeAlert,
   safeConfirm,
@@ -47,11 +47,44 @@ export default function UserPage() {
 
   // 更改密碼
   const handleChangePassword = () => {
-    showPasswordChangeDialog((oldPassword, newPassword) => {
+    showPasswordChangeDialog(async (oldPassword, newPassword) => {
       if (!oldPassword || !newPassword) return;
 
-      const result = changePassword(oldPassword, newPassword);
-      safeAlert(result.message);
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        safeAlert("尚未登入或找不到 token，請重新登入後再試一次。");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://127.0.0.1:8000/reset-password/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            old_password: oldPassword,
+            new_password: newPassword,
+          }),
+        });
+
+        // 依照後端回傳格式彈窗提示
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // 優先顯示後端錯誤訊息
+          const msg =
+            data?.message || data?.detail || "更改密碼失敗，請稍後重試。";
+          safeAlert(msg);
+          return;
+        }
+
+        safeAlert(data?.message || "密碼已更新成功！");
+      } catch (err) {
+        console.error("reset-password 發生錯誤：", err);
+        safeAlert("網路或伺服器異常，請稍後再試。");
+      }
     });
   };
 
@@ -194,27 +227,25 @@ export default function UserPage() {
                 style={{ objectFit: "cover" }}
               />
 
-                <header className={styles.profileHeader}>
-                  <Image
-                    src="/img/userrr.gif"
-                    alt="Chart Icon"
-                    className={styles.profileIcon}
-                    width={100}
-                    height={80}
-                    style={{ 
-                      objectFit: "contain",
-                      mixBlendMode: "difference"
-                    }}
-                  />
-      <h1
-        className={styles.profileName}
-        title={name}
-        style={{ fontSize }}
-      >
-        {name}
-      </h1>
-
-
+              <header className={styles.profileHeader}>
+                <Image
+                  src="/img/userrr.gif"
+                  alt="Chart Icon"
+                  className={styles.profileIcon}
+                  width={100}
+                  height={80}
+                  style={{
+                    objectFit: "contain",
+                    mixBlendMode: "difference",
+                  }}
+                />
+                <h1
+                  className={styles.profileName}
+                  title={name}
+                  style={{ fontSize }}
+                >
+                  {name}
+                </h1>
               </header>
 
               {/* 標籤頁容器 */}
@@ -297,7 +328,6 @@ export default function UserPage() {
                   ) : (
                     <div className={styles.noTopicsMessage}>
                       <p>目前您還沒有任何主題熟悉度</p>
-                      
                     </div>
                   )}
                 </div>
@@ -371,7 +401,6 @@ export default function UserPage() {
               </button>
               <ul className={styles.featureList}>
                 <li className={styles.featureItem}>
-                  
                   <Image
                     src="/img/Vector-22.png"
                     alt="Feature icon"
