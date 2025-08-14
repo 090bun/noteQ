@@ -371,6 +371,7 @@ export default function UserPage() {
               </button>
               <ul className={styles.featureList}>
                 <li className={styles.featureItem}>
+                  
                   <Image
                     src="/img/Vector-22.png"
                     alt="Feature icon"
