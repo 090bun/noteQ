@@ -149,7 +149,7 @@ export default function HomeGamePage() {
       // }
 
       const result = await res.json();
-      console.log("題目已送出，回傳結果:", result);
+      // console.log("題目已送出，回傳結果:", result);
       sessionStorage.setItem(
         "quizData",
         JSON.stringify({
@@ -170,7 +170,7 @@ export default function HomeGamePage() {
       }, 1500);
       
     } catch (err) {
-      console.error("發送題目失敗:", err);
+      // console.error("發送題目失敗:", err);
       safeAlert("題目發送失敗，請稍後再試");
       setShowDecryption(false);
       setIsGenerating(false);
