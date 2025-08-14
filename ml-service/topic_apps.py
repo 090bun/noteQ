@@ -74,6 +74,8 @@ def _generate_questions_batch(topic, difficulty, count):
     3. 最後再次檢查答案是否正確
     4. 如果不確定計算結果，請重新計算一遍
     5. 在 explanation_text 中必須詳細顯示完整計算過程
+    6. 確認4個option選項內容有正確答案
+    7. Ai_answer為正確答案之選項，並且Ai_answer的option選項內容與explanation_text答案相同
     特殊規則：
     1. 題目必須知識正確、邏輯嚴謹、無語病。
     2. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
@@ -131,7 +133,7 @@ def _generate_questions_batch(topic, difficulty, count):
     try:
         # 使用新版 API 語法
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "你是一個題目生成助手，請根據使用者的需求生成題目。"},
                 {"role": "user", "content": prompt}
