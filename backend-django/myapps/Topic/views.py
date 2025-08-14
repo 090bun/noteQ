@@ -992,7 +992,6 @@ class SubmitAnswerView(APIView):
                     message = "Test mode - no API call" if is_test else "Error level - no API call"
                     return Response({
                         "message": f"Batch answers submitted successfully ({message})",
-                        "updated_topics": updated_topics,
                         "total_questions": total_questions,
                         "correct_answers": correct_answers
                     }, status=201)
@@ -1021,8 +1020,6 @@ class SubmitAnswerView(APIView):
 
                 return Response({
                     "message": "Batch answers submitted successfully",
-                    "updated_topics": updated_topics,
-                    "payload_sent_to_familiarity_api": payload,
                     "total_questions": total_questions,
                     "correct_answers": correct_answers,
                     "familiarity_api_response": data
@@ -1082,7 +1079,6 @@ class SubmitAnswerView(APIView):
                     message = "Test mode - no API call" if is_test else "Error level - no API call"
                     return Response({
                         "message": f"Batch answers submitted successfully ({message})",
-                        "updated_topics": updated_topics,
                         "total_questions": total_questions,
                         "correct_answers": correct_answers
                     }, status=201)
@@ -1100,8 +1096,6 @@ class SubmitAnswerView(APIView):
                 
                 return Response({
                     "message": "Batch answers submitted successfully",
-                    "updated_topics": updated_topics,
-                    "payload_sent_to_familiarity_api": payload,
                     "total_questions": total_questions,
                     "correct_answers": correct_answers,
                     "familiarity_api_response": data
