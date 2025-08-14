@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   // 重置密碼欄位綁定狀態
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
   // 處理重設密碼
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    
+
     if (!newPassword.trim() || !confirmPassword.trim()) {
       safeAlert("請填寫所有欄位");
       return;
@@ -37,18 +37,23 @@ export default function ForgotPasswordPage() {
     }
 
     setIsSubmitting(true);
-    
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const uid = urlParams.get("uid");
     try {
-      const res = await fetch("http://127.0.0.1:8000/forgot-password/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          new_password: newPassword,
-          confirm_password: confirmPassword 
-        }),
-      });
+      const res = await fetch(
+        "http://127.0.0.1:8000/reset-password-from-email/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            uid: uid,
+            new_password: confirmPassword,
+          }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error("重設失敗");
@@ -56,7 +61,7 @@ export default function ForgotPasswordPage() {
 
       const data = await res.json();
       safeAlert("密碼重設成功，請使用新密碼登入");
-      router.push('/login');
+      router.push("/login");
     } catch (err) {
       safeAlert("重設失敗，請稍後再試");
     } finally {
@@ -66,7 +71,7 @@ export default function ForgotPasswordPage() {
 
   // 返回登入頁面
   const goBackToLogin = () => {
-    router.push('/login');
+    router.push("/login");
   };
 
   const togglePasswordVisibility = () => {
@@ -84,7 +89,7 @@ export default function ForgotPasswordPage() {
       <main className={styles.authMain}>
         <div className={styles.authContainer}>
           <div className={styles.formSection}>
-                         <h1 className={styles.authTitle}>重設密碼</h1>
+            <h1 className={styles.authTitle}>重設密碼</h1>
 
             <form className={styles.authForm} onSubmit={handleResetPassword}>
               <div className={styles.inputGroup}>
@@ -187,9 +192,13 @@ export default function ForgotPasswordPage() {
                 <div className={styles.inputUnderline}></div>
               </div>
 
-                             <button type="submit" className={styles.authButton} disabled={isSubmitting}>
-                 {isSubmitting ? "重設中..." : "重設密碼"}
-               </button>
+              <button
+                type="submit"
+                className={styles.authButton}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "重設中..." : "重設密碼"}
+              </button>
             </form>
 
             <div className={styles.switchLink}>
@@ -199,8 +208,6 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
         </div>
-
-        
       </main>
     </>
   );

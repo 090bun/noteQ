@@ -31,7 +31,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  // 處理忘記密碼
+  // 忘記密碼
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     
@@ -55,7 +55,6 @@ export default function LoginPage() {
         throw new Error("發送失敗");
       }
 
-      const data = await res.json();
       safeAlert("重設密碼連結已發送到您的電子郵件，請查看信箱");
       setShowForgotPasswordModal(false);
       setForgotPasswordEmail("");
@@ -72,7 +71,7 @@ export default function LoginPage() {
     setForgotPasswordEmail("");
   };
 
-  //新增登入功能
+  // 登入功能
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -102,7 +101,7 @@ export default function LoginPage() {
     }
   };
 
-  // 新增註冊功能
+  // 註冊功能
   const handleSignup = async (e) => {
     e.preventDefault();
 
