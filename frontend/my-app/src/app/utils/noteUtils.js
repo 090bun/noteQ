@@ -136,6 +136,37 @@ export async function getSubjects() {
   }
 }
 
+// 獲取主題數據（包含ID）
+export async function getSubjectsWithIds() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("獲取主題失敗：", res.status, await res.text());
+      return [];
+    }
+
+    const data = await res.json();
+    const apiSubjects = Array.isArray(data?.favorite_quiz_topics)
+      ? data.favorite_quiz_topics.map((q) => ({
+          id: q?.id,
+          name: q?.quiz_topic
+        })).filter(q => q.id && q.name)
+      : [];
+
+    return apiSubjects;
+  } catch (error) {
+    console.error("獲取主題失敗:", error);
+    return [];
+  }
+}
+
 // 添加筆記
 export async function addNote(note) {
   try {
@@ -251,9 +282,17 @@ export async function updateNote(noteId, updatedNote) {
 // 搬移筆記
 export async function moveNote(noteId, newSubject) {
   try {
+    // 先獲取主題列表，找到對應的Quiz ID
+    const subjectsWithIds = await getSubjectsWithIds();
+    const targetSubject = subjectsWithIds.find(s => s.name === newSubject);
+    
+    if (!targetSubject) {
+      return { success: false, message: `找不到主題「${newSubject}」` };
+    }
+
     // 構建API請求數據
     const apiData = {
-      quiz_topic: newSubject,
+      quiz_topic_id: targetSubject.id,
     };
 
     const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {

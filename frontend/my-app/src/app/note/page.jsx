@@ -397,6 +397,15 @@ export default function NotePage() {
       return;
     }
 
+    // 如果是新主題，先創建主題
+    if (newSubjectName && newSubjectName.trim() !== "") {
+      const createSubjectResult = await addSubject(targetSubject);
+      if (!createSubjectResult.success) {
+        safeAlert(createSubjectResult.message);
+        return;
+      }
+    }
+
     // 調用 moveNote 函數，傳遞 noteId 和 newSubject
     const result = await moveNote(movingNote.id, targetSubject);
 
