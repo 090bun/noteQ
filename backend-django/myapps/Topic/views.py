@@ -560,9 +560,42 @@ class ChatContentToNoteView(APIView):
 class NoteEdit(APIView):
     permission_classes = [IsAuthenticated]
     def patch(self, request, note_id):
-        """編輯筆記內容"""
+        """編輯筆記內容或搬移筆記"""
         try:
-            # 直接使用 URL 參數中的 note_id，不需要從 request.data 獲取
+            # 檢查是否為搬移筆記請求
+            quiz_topic_id = request.data.get('quiz_topic_id')
+            if quiz_topic_id is not None:
+                # 搬移筆記到新主題
+                try:
+                    note_instance = Note.objects.get(
+                        id=note_id,
+                        user=request.user,
+                        deleted_at__isnull=True
+                    )
+                except Note.DoesNotExist:
+                    return Response({'error': f'Note with ID {note_id} not found'}, status=404)
+                
+                # 檢查新主題是否存在
+                try:
+                    new_quiz_topic = Quiz.objects.get(
+                        id=quiz_topic_id,
+                        deleted_at__isnull=True
+                    )
+                except Quiz.DoesNotExist:
+                    return Response({'error': f'Quiz topic with ID {quiz_topic_id} not found'}, status=404)
+                
+                # 更新筆記的主題
+                note_instance.quiz_topic = new_quiz_topic
+                note_instance.updated_at = timezone.now()
+                note_instance.save()
+                
+                return Response({
+                    'message': 'Note moved successfully',
+                    'note_id': note_instance.id,
+                    'new_quiz_topic_id': quiz_topic_id
+                }, status=200)
+            
+            # 原有的編輯筆記內容邏輯
             new_content = request.data.get('content')
             new_title = request.data.get('title')
             if not new_content:
@@ -572,6 +605,7 @@ class NoteEdit(APIView):
             try:
                 note_instance = Note.objects.get(
                     id=note_id,
+                    user=request.user,
                     deleted_at__isnull=True
                 )
             except Note.DoesNotExist:
