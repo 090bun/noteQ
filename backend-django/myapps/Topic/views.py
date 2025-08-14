@@ -1013,8 +1013,9 @@ class SubmitAnswerView(APIView):
                         json=payload,
                         headers=headers
                     )
+                    data = response.json().get("familiarity")
                     print(f"熟悉度 API 回應狀態: {response.status_code}")
-                    print(f"熟悉度 API 回應內容: {response.text}")
+                    print(f"熟悉度 API 回應內容: {data}")
                 except Exception as e:
                     print(f"呼叫熟悉度 API 失敗: {str(e)}")
 
@@ -1023,7 +1024,8 @@ class SubmitAnswerView(APIView):
                     "updated_topics": updated_topics,
                     "payload_sent_to_familiarity_api": payload,
                     "total_questions": total_questions,
-                    "correct_answers": correct_answers
+                    "correct_answers": correct_answers,
+                    "familiarity_api_response": data
                 }, status=201)
             
             # 處理直接傳陣列的格式 [{"id": 276, "user_answer": "A"}]
@@ -1090,8 +1092,9 @@ class SubmitAnswerView(APIView):
                 
                 try:
                     response = requests.post("http://127.0.0.1:8000/api/familiarity/", json=payload)
+                    data = response.json().get("familiarity")
                     print(f"熟悉度 API 回應狀態: {response.status_code}")
-                    print(f"熟悉度 API 回應內容: {response.text}")
+                    print(f"熟悉度 API 回應內容: {data}")
                 except Exception as e:
                     print(f"呼叫熟悉度 API 失敗: {str(e)}")
                 
@@ -1100,7 +1103,8 @@ class SubmitAnswerView(APIView):
                     "updated_topics": updated_topics,
                     "payload_sent_to_familiarity_api": payload,
                     "total_questions": total_questions,
-                    "correct_answers": correct_answers
+                    "correct_answers": correct_answers,
+                    "familiarity_api_response": data
                 }, status=201)
             
             else:
