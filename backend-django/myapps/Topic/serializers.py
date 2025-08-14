@@ -113,8 +113,7 @@ class AddFavoriteTopicSerializer(serializers.ModelSerializer):
         fields = ['id','title', 'quiz_topic']
 
 class NoteSimplifiedSerializer(serializers.ModelSerializer):
-    quiz = QuizSerializer(read_only=True)
+    quiz_topic_id = serializers.PrimaryKeyRelatedField(source='quiz_topic', read_only=True)
     class Meta:
         model = Note
-        quiz_topic_id = serializers.PrimaryKeyRelatedField(queryset=Quiz.objects.all())
-        fields = ['id', 'title','content','quiz','quiz_topic_id']
+        fields = ['id', 'title','content','quiz_topic_id']

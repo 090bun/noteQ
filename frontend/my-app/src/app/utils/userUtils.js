@@ -1,112 +1,110 @@
-// 用戶系統工具函數
-
-// 模擬用戶數據
-let userData = {
-    name: 'Aaron',
-    email: 'aaron@example.com',
-    registerDate: '2025年8月15日',
-    studyHours: '總計：4小時',
-    topics: [
-        { name: '累了', familiarity: 35 },
-        { name: '多益', familiarity: 35 },
-        { name: '數學', familiarity: 35 },
-        { name: '物理', familiarity: 35 },
-        { name: '累了', familiarity: 35 },
-        { name: '多益', familiarity: 35 },
-        { name: '數學', familiarity: 35 },
-        { name: '物理', familiarity: 35 }
-    ]
-};
-
-// 從 localStorage 或 API 初始化用戶數據
-export function initializeUserData() {
+// =========================
+// 從 API 獲取用戶熟悉度（GET）
+// =========================
+export async function getUserFamiliarityFromAPI() {
     try {
-        const storedData = localStorage.getItem('userData');
-        if (storedData) {
-            const parsedData = JSON.parse(storedData);
-            userData = { ...userData, ...parsedData };
+        const token = localStorage.getItem("token");
+        if (!token) {
+            console.error("找不到 token");
+            return [];
         }
+
+        const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (!res.ok) {
+            console.error("獲取熟悉度數據失敗：", res.status, await res.text());
+            return [];
+        }
+
+        const data = await res.json();
+
+        // 從 favorite_quiz_topics 中提取熟悉度數據
+        const familiarityData = Array.isArray(data?.favorite_quiz_topics)
+            ? data.favorite_quiz_topics.map((quiz) => ({
+                name: quiz.quiz_topic || "未命名主題",
+                familiarity: quiz.familiarity ?? 0, // 如果 API 未提供熟悉度則為 0
+                quizId: quiz.id
+            }))
+            : [];
+
+        return familiarityData;
     } catch (error) {
-        console.log('無法從 localStorage 讀取用戶數據，使用默認數據');
+        console.error('獲取熟悉度數據失敗:', error);
+        return [];
     }
 }
 
-// 保存用戶數據到 localStorage
-export function saveUserData() {
+// =========================
+// 獲取用戶主題熟悉度（GET 包裝）
+// =========================
+export async function getUserTopics() {
     try {
-        localStorage.setItem('userData', JSON.stringify(userData));
+        const apiData = await getUserFamiliarityFromAPI();
+        return apiData;
     } catch (error) {
-        console.log('無法保存用戶數據到 localStorage');
+        console.error('獲取主題熟悉度失敗:', error);
+        return [];
     }
 }
 
-// 獲取用戶數據
-export function getUserData() {
-    return userData;
-}
+// =========================
+// 提交用戶答案並獲取熟悉度（POST）
+// =========================
+export async function submitUserAnswers(updates) {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            console.error("找不到 token");
+            return null;
+        }
 
-// 更新用戶數據
-export function updateUserData(newData) {
-    userData = { ...userData, ...newData };
-    saveUserData();
-    return { success: true, message: '用戶數據更新成功！' };
-}
+        const res = await fetch("http://127.0.0.1:8000/api/submit_answer/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ updates })
+        });
 
-// 獲取用戶主題熟悉度
-export function getUserTopics() {
-    return userData.topics;
-}
+        if (!res.ok) {
+            console.error("提交答案失敗：", res.status, await res.text());
+            return null;
+        }
 
-// 更新主題熟悉度
-export function updateTopicFamiliarity(topicName, newFamiliarity) {
-    const topicIndex = userData.topics.findIndex(topic => topic.name === topicName);
-    if (topicIndex !== -1) {
-        userData.topics[topicIndex].familiarity = Math.max(0, Math.min(100, newFamiliarity));
-        saveUserData();
-        return { success: true, message: '熟悉度更新成功！' };
+        const data = await res.json();
+
+        // 後端回傳範例：
+        // {
+        //   "familiarity": 3.0,
+        //   "quiz_topic_id": 52,
+        //   "difficulty_level": "beginner",
+        //   "difficulty_cap": 30.0,
+        //   "already_reached_cap": false,
+        //   "updated": true
+        // }
+
+        return {
+            familiarity: data.familiarity ?? 0,
+            quizTopicId: data.quiz_topic_id ?? null,
+            difficultyLevel: data.difficulty_level ?? null,
+            difficultyCap: data.difficulty_cap ?? null,
+            alreadyReachedCap: data.already_reached_cap ?? false,
+            updated: data.updated ?? false
+        };
+
+    } catch (error) {
+        console.error("提交答案或獲取熟悉度失敗:", error);
+        return null;
     }
-    return { success: false, message: '找不到該主題！' };
 }
 
-// 添加新主題
-export function addUserTopic(topicName) {
-    const existingTopic = userData.topics.find(topic => topic.name === topicName);
-    if (existingTopic) {
-        return { success: false, message: '該主題已存在！' };
-    }
-    
-    userData.topics.push({
-        name: topicName,
-        familiarity: 0
-    });
-    
-    saveUserData();
-    return { success: true, message: '主題添加成功！' };
-}
-
-// 刪除主題
-export function removeUserTopic(topicName) {
-    const topicIndex = userData.topics.findIndex(topic => topic.name === topicName);
-    if (topicIndex !== -1) {
-        userData.topics.splice(topicIndex, 1);
-        saveUserData();
-        return { success: true, message: '主題刪除成功！' };
-    }
-    return { success: false, message: '找不到該主題！' };
-}
-
-// 計算總學習時數
-export function calculateTotalStudyHours() {
-    // 這裡可以根據實際需求計算學習時數
-    return userData.studyHours;
-}
-
-// 更新學習時數
-export function updateStudyHours(hours) {
-    userData.studyHours = `總計：${hours}小時`;
-    saveUserData();
-    return { success: true, message: '學習時數更新成功！' };
-}
 
 // 更改密碼（模擬）
 export function changePassword(oldPassword, newPassword) {
@@ -125,22 +123,4 @@ export function changePassword(oldPassword, newPassword) {
     
     // 模擬成功
     return { success: true, message: '密碼更改成功！' };
-}
-
-// 獲取用戶統計數據
-export function getUserStats() {
-    const totalTopics = userData.topics.length;
-    const averageFamiliarity = totalTopics > 0 
-        ? Math.round(userData.topics.reduce((sum, topic) => sum + topic.familiarity, 0) / totalTopics)
-        : 0;
-    
-    return {
-        totalTopics,
-        averageFamiliarity,
-        studyHours: userData.studyHours,
-        registerDate: userData.registerDate
-    };
-}
-
-// 初始化用戶數據
-initializeUserData(); 
+} 

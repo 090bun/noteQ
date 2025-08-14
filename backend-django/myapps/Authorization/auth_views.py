@@ -70,7 +70,7 @@ def forgot_password(request):
         # 生成重設密碼的
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-        reset_link = f"http://localhost:3000/reset-password/{uid}/{token}/"
+        reset_link = f"http://localhost:3000/fgtpsd?uid={uid}&token={token}"
         
         # 嘗試發送郵件，並捕獲可能的錯誤
         try:
@@ -88,21 +88,37 @@ def forgot_password(request):
     except Exception as e:
         return Response({"error": f"伺服器錯誤: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+
 @api_view(['POST'])
-def reset_password(request):
-    uidb64 = request.data.get('uid')
-    token = request.data.get('token')
+# 從忘記密碼進入的重設密碼 API
+def reset_password_from_email(request):
+    uid = request.data.get('uid')
     new_password = request.data.get('new_password')
 
     try:
-        uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         return Response({'error': '連結無效'}, status=400)
 
-    if default_token_generator.check_token(user, token):
-        user.set_password(new_password)
-        user.save()
-        return Response({'message': '密碼重設成功'}, status=200)
-    else:
-        return Response({'error': 'token 無效或已過期'}, status=400)
+    user.set_password(new_password)
+    user.save()
+    return Response({'message': '密碼重設成功'}, status=200)
+
+
+@api_view(['POST'])
+# 使用者登入後重設密碼 API
+def reset_password(request):
+    user = request.user
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    try:
+        user = User.objects.filter(id=user.id).first()
+        if user.check_password(old_password):
+            user.set_password(new_password)
+            user.save()
+            return Response({'message': '密碼重設成功'}, status=200)
+        else:
+            return Response({'error': '舊密碼錯誤'}, status=401)
+    except Exception as e:
+        return Response({'error': f'伺服器錯誤: {str(e)}'}, status=500)

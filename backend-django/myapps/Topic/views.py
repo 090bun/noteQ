@@ -340,7 +340,8 @@ class AddFavoriteViewSet(APIView):
             user_favorite = UserFavorite.objects.create(
                 user=user_instance,
                 topic=topic_instance,
-                note=note_instance
+                note=note_instance,
+                quiz=topic_instance.quiz_topic
             )
 
             # 序列化返回資料
@@ -559,9 +560,42 @@ class ChatContentToNoteView(APIView):
 class NoteEdit(APIView):
     permission_classes = [IsAuthenticated]
     def patch(self, request, note_id):
-        """編輯筆記內容"""
+        """編輯筆記內容或搬移筆記"""
         try:
-            # 直接使用 URL 參數中的 note_id，不需要從 request.data 獲取
+            # 檢查是否為搬移筆記請求
+            quiz_topic_id = request.data.get('quiz_topic_id')
+            if quiz_topic_id is not None:
+                # 搬移筆記到新主題
+                try:
+                    note_instance = Note.objects.get(
+                        id=note_id,
+                        user=request.user,
+                        deleted_at__isnull=True
+                    )
+                except Note.DoesNotExist:
+                    return Response({'error': f'Note with ID {note_id} not found'}, status=404)
+                
+                # 檢查新主題是否存在
+                try:
+                    new_quiz_topic = Quiz.objects.get(
+                        id=quiz_topic_id,
+                        deleted_at__isnull=True
+                    )
+                except Quiz.DoesNotExist:
+                    return Response({'error': f'Quiz topic with ID {quiz_topic_id} not found'}, status=404)
+                
+                # 更新筆記的主題
+                note_instance.quiz_topic = new_quiz_topic
+                note_instance.updated_at = timezone.now()
+                note_instance.save()
+                
+                return Response({
+                    'message': 'Note moved successfully',
+                    'note_id': note_instance.id,
+                    'new_quiz_topic_id': quiz_topic_id
+                }, status=200)
+            
+            # 原有的編輯筆記內容邏輯
             new_content = request.data.get('content')
             new_title = request.data.get('title')
             if not new_content:
@@ -571,6 +605,7 @@ class NoteEdit(APIView):
             try:
                 note_instance = Note.objects.get(
                     id=note_id,
+                    user=request.user,
                     deleted_at__isnull=True
                 )
             except Note.DoesNotExist:
@@ -646,19 +681,18 @@ class NoteListView(APIView):
             content = request.data.get('content')
             if not quiz_topic or not content:
                 return Response({'error': 'quiz_topic and content are required'}, status=400)
-            if not quiz_topic_instance:
-                return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
+            
             try:
                 quiz_topic_instance = Quiz.objects.get(id=quiz_topic, deleted_at__isnull=True)
-                
             except Quiz.DoesNotExist:
                 return Response({'error': f'Quiz with ID {quiz_topic} not found'}, status=404)
 
-                # 創建新的 Note
+            # 創建新的 Note
             note = Note.objects.create(
                 user=request.user,
                 title=title,
                 quiz_topic=quiz_topic_instance,
+                topic=None,  # 手動新增的筆記沒有關聯的題目
                 content=content
             )
             return Response({
@@ -681,16 +715,21 @@ class CreateQuizTopicView(APIView):
             user = request.user
             if not quiz_topic_name:
                 return Response({'error': 'quiz_topic is required'}, status=400)
-            
-            # 檢查是否已經存在同名的 Quiz
-            existing_quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
-            if existing_quiz:
+
+            #檢查使用者是否有建立過Quiz
+            user_quiz = Quiz.objects.filter(user=user, quiz_topic=quiz_topic_name, deleted_at__isnull=True).first()
+            if user_quiz:
+                print(f"使用者 {user.username} 已經有 Quiz: {user_quiz.quiz_topic}")
                 return Response({'error': f'Quiz with topic "{quiz_topic_name}" already exists'}, status=400)
-            
+
             # 創建新的 QuizTopic
             serializer = QuizSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             quiz_topic_instance = serializer.save(user=user)  # 在保存時設定 user
+
+            # 為新創建的 QuizTopic 添加收藏
+            add_favor = UserFavorite.objects.create(user=user, quiz_id=quiz_topic_instance.id)
+
             return Response({
                 "message": "QuizTopic created successfully.",
                 "quiz_topic_id": quiz_topic_instance.id
@@ -830,17 +869,20 @@ class UsersQuizAndNote(APIView):
         # 取得該用戶所有有效收藏
         favorites = UserFavorite.objects.filter(user=user, deleted_at__isnull=True)
         # 取得所有被收藏的主題（quiz）
-        favor_quiz = Topic.objects.filter(id__in=favorites.values_list('topic__quiz_topic', flat=True), deleted_at__isnull=True)
+        favor_quiz = Quiz.objects.filter(id__in=favorites.values_list('quiz_id', flat=True), deleted_at__isnull=True)
 
-        quiz_ids = favorites.values_list('topic__quiz_topic', flat=True).distinct()
+        quiz_ids = favorites.values_list('quiz_id', flat=True).distinct()
         quizzes = Quiz.objects.filter(id__in=quiz_ids, deleted_at__isnull=True).order_by('-created_at')
+        
         topic_data = QuizSimplifiedSerializer(quizzes, many=True).data
 
 
-        # 取得這些主題的筆記（Note）
-        favor_quiz = Topic.objects.filter(id__in=favorites.values_list('topic', flat=True), deleted_at__isnull=True)
-    
-        favor_notes = Note.objects.filter(topic_id__in=favor_quiz.values_list('id', flat=True), user=user, deleted_at__isnull=True)
+        # 取得這些主題的筆記（Note）- 修改為獲取所有屬於收藏主題的筆記，而不僅僅是收藏的筆記
+        favor_notes = Note.objects.filter(
+            quiz_topic__in=quizzes,  # 屬於收藏主題的筆記
+            user=user, 
+            deleted_at__isnull=True
+        )
 
         note_data = NoteSimplifiedSerializer(favor_notes, many=True).data
 
@@ -858,83 +900,237 @@ class SubmitAnswerView(APIView):
         with transaction.atomic():
             user = request.user
             topic_id = request.data.get("topic")
+            quiz_topic_id = request.data.get("quiz_topic_id")
+            difficulty = request.data.get("difficulty")
             user_answer = request.data.get("user_answer")
             updates = request.data.get("updates", [])
+            is_test = request.data.get("is_test", False)  # 前端回傳是否為 TEST 模式
+            token = request.META.get("HTTP_AUTHORIZATION", "").split(" ")[1]
 
+            print(f"=== SubmitAnswerView Debug ===")
+            print(f"topic_id: {topic_id}")
+            print(f"user_answer: {user_answer}")
+            print(f"updates: {updates}")
+            print(f"updates 長度: {len(updates) if updates else 0}")
+            print(f"request.data type: {type(request.data)}")
+            print(f"quiz_topic_id {quiz_topic_id}  ===")
+            print(f"使用者: {user.id}")
+            print(f"題目 ID: {topic_id}")
+            print(f"難度: {difficulty}")
+            print(f"使用者答案: {user_answer}")
+            
             # 處理單一題目更新
             if topic_id and user_answer is not None:
+                print("=== 進入單一題目更新分支 ===")
                 topic = get_object_or_404(Topic, id=topic_id, deleted_at__isnull=True)
                 topic.User_answer = user_answer
                 topic.save()
+                Ai_answer = topic.Ai_answer
                 return Response({"message": "Answer submitted successfully"}, status=201)
-            
-            # 處理批次更新 (支援兩種格式)
+                # 計算總題數與正確數
+
             elif updates:
+                print("=== 進入 updates 分支 ===")
                 updated_topics = []
+                correct_answers = 0
+                total_questions = len(updates)
+                quiz_topic_id = None
+                difficulty_name = None
+                
+                # 難度 ID 轉英文名稱的對照表
+                difficulty_mapping = {
+                    1: "beginner",
+                    2: "intermediate", 
+                    3: "advanced",
+                    4: "master",
+                    5: "error"
+                }
+                
                 for item in updates:
                     topic = get_object_or_404(Topic, id=item.get("id"), deleted_at__isnull=True)
                     topic.User_answer = item.get("user_answer")
                     topic.save()
+                    
+                    # 從第一個 topic 抓取 quiz_topic_id 和 difficulty
+                    if quiz_topic_id is None:
+                        quiz_topic_id = topic.quiz_topic.id  # 使用正確的關聯字段
+                        print(f"Topic ID: {topic.id}, difficulty object: {topic.difficulty}")
+                        if topic.difficulty:
+                            difficulty_id = topic.difficulty.id
+                            difficulty_name = difficulty_mapping.get(difficulty_id, "beginner")
+                            print(f"Found difficulty_id: {difficulty_id}, mapped to: {difficulty_name}")
+                        else:
+                            difficulty_id = 1
+                            difficulty_name = "beginner"
+                            print(f"No difficulty found, using default: {difficulty_name}")
+                        print(f"Final values - quiz_topic_id: {quiz_topic_id}, difficulty_name: {difficulty_name}")
+                    
+                    # 使用從資料庫抓出來的 topic.Ai_answer，而不是 item.get("Ai_answer")
+                    if item.get("user_answer") == topic.Ai_answer:
+                        correct_answers += 1
                     updated_topics.append({
                         "id": topic.id,
+                        "Ai_answer": topic.Ai_answer,
                         "User_answer": topic.User_answer,
-                        "title": topic.title
+                        "quiz_topic_id": topic.quiz_topic.id,
+                        "difficulty": difficulty_name,
+                        "difficulty_id": topic.difficulty.id if topic.difficulty else None,
+                        "title": topic.title,
+                        "is_correct": item.get("user_answer") == topic.Ai_answer
                     })
+                
+                # 準備傳送到熟悉度 API 的資料
+                payload = {
+                    "quiz_topic_id": quiz_topic_id,
+                    "difficulty": difficulty_name,
+                    "total_questions": total_questions,
+                    "correct_answers": correct_answers,
+                }
+                
+                # 判斷是否為 TEST 模式或 error 難度（id=5），直接回傳，不呼叫API
+                if is_test or difficulty_id == 5:
+                    message = "Test mode - no API call" if is_test else "Error level - no API call"
+                    return Response({
+                        "message": f"Batch answers submitted successfully ({message})",
+                        "total_questions": total_questions,
+                        "correct_answers": correct_answers
+                    }, status=201)
+                
+                print(f"=== 傳送到熟悉度 API 的資料 ===")
+                print(f"Payload: {payload}")
+                
+                # 獲取當前請求的 Authorization token
+                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                headers = {}
+                if auth_header:
+                    headers['Authorization'] = auth_header
+                    print(f"Using Authorization header: {auth_header}")
+                
+                try:
+                    response = requests.post(
+                        "http://127.0.0.1:8000/api/familiarity/", 
+                        json=payload,
+                        headers=headers
+                    )
+                    data = response.json().get("familiarity")
+                    print(f"熟悉度 API 回應狀態: {response.status_code}")
+                    print(f"熟悉度 API 回應內容: {data}")
+                except Exception as e:
+                    print(f"呼叫熟悉度 API 失敗: {str(e)}")
+
                 return Response({
                     "message": "Batch answers submitted successfully",
-                    "updated_topics": updated_topics
+                    "total_questions": total_questions,
+                    "correct_answers": correct_answers,
+                    "familiarity_api_response": data
                 }, status=201)
             
             # 處理直接傳陣列的格式 [{"id": 276, "user_answer": "A"}]
             elif isinstance(request.data, list):
                 updated_topics = []
+                correct_answers = 0
+                total_questions = len(request.data)
+                quiz_topic_id = None
+                difficulty_name = None
+                
+                # 難度 ID 轉英文名稱的對照表
+                difficulty_mapping = {
+                    1: "beginner",
+                    2: "intermediate", 
+                    3: "advanced",
+                    4: "master",
+                    5: "error"
+                }
+                
                 for item in request.data:
                     topic = get_object_or_404(Topic, id=item.get("id"), deleted_at__isnull=True)
                     topic.User_answer = item.get("user_answer")
                     topic.save()
+                    
+                    # 從第一個 topic 抓取 quiz_topic_id 和 difficulty
+                    if quiz_topic_id is None:
+                        quiz_topic_id = topic.quiz_topic.id  # 使用正確的關聯字段
+                        difficulty_id = topic.difficulty.id if topic.difficulty else 1
+                        difficulty_name = difficulty_mapping.get(difficulty_id, "beginner")
+                    
+                    # 使用從資料庫抓出來的 topic.Ai_answer
+                    if item.get("user_answer") == topic.Ai_answer:
+                        correct_answers += 1
                     updated_topics.append({
                         "id": topic.id,
+                        "Ai_answer": topic.Ai_answer,
                         "User_answer": topic.User_answer,
-                        "title": topic.title
+                        "quiz_topic_id": topic.quiz_topic.id,
+                        "difficulty": difficulty_name,
+                        "title": topic.title,
+                        "is_correct": item.get("user_answer") == topic.Ai_answer
                     })
+                
+                # 準備傳送到熟悉度 API 的資料
+                payload = {
+                    "quiz_topic_id": quiz_topic_id,
+                    "difficulty": difficulty_name,
+                    "total_questions": total_questions,
+                    "correct_answers": correct_answers,
+                }
+                
+                # 判斷是否為 TEST 模式或 error 難度（id=5），直接回傳，不呼叫API
+                if is_test or difficulty_id == 5:
+                    message = "Test mode - no API call" if is_test else "Error level - no API call"
+                    return Response({
+                        "message": f"Batch answers submitted successfully ({message})",
+                        "total_questions": total_questions,
+                        "correct_answers": correct_answers
+                    }, status=201)
+                
+                print(f"=== 傳送到熟悉度 API 的資料 (List格式) ===")
+                print(f"Payload: {payload}")
+                
+                try:
+                    response = requests.post("http://127.0.0.1:8000/api/familiarity/", json=payload)
+                    data = response.json().get("familiarity")
+                    print(f"熟悉度 API 回應狀態: {response.status_code}")
+                    print(f"熟悉度 API 回應內容: {data}")
+                except Exception as e:
+                    print(f"呼叫熟悉度 API 失敗: {str(e)}")
+                
                 return Response({
                     "message": "Batch answers submitted successfully",
-                    "updated_topics": updated_topics
+                    "total_questions": total_questions,
+                    "correct_answers": correct_answers,
+                    "familiarity_api_response": data
                 }, status=201)
             
             else:
                 return Response({"error": "Either 'topic' and 'user_answer' or 'updates' are required"}, status=400)
 
-
-# 計算熟悉度
-class SubmitAnswerMixedView(APIView):
+class NoteEditQuizTopicView(APIView):
     permission_classes = [IsAuthenticated]
-    def post(self, request):
-        """
-        body: {
-          "quiz_topic_id": 123,
-          "is_correct": true,
-          "difficulty_level": "advanced"
-        }
-        """
-        user = request.user
-        quiz_topic_id = request.data.get("quiz_topic_id")
-        is_correct = bool(request.data.get("is_correct", False))
-        level_name = request.data.get("difficulty_level")
 
-        if not quiz_topic_id or not level_name:
-            return Response({"error": "quiz_topic_id and difficulty_level are required"}, status=400)
+    def patch(self, request, note_id):
+        try:
+            # 從請求中獲取新的 quiz_topic ID
+            user=request.user
+            new_quiz_topic_id = request.data.get("quiz_topic_id")
+            if not new_quiz_topic_id:
+                return Response({"error": "quiz_topic_id is required"}, status=400)
 
-        quiz_topic = get_object_or_404(Quiz, id=quiz_topic_id, deleted_at__isnull=True)
-        uf = record_answer_mixed(user=user, quiz_topic=quiz_topic, is_correct=is_correct, level_name=level_name)
+            # 確認新的 quiz_topic 是否存在
+            new_quiz_topic = get_object_or_404(Quiz, id=new_quiz_topic_id, user=user)
 
-        return Response({
-            "quiz_topic_id": quiz_topic.id,
-            "total_questions": uf.total_questions,
-            "correct_answers": uf.correct_answers,
-            "weighted_total": float(uf.weighted_total),
-            "weighted_correct": float(uf.weighted_correct),
-            "familiarity": float(uf.familiarity),          # 0~1
-            "familiarity_percent": float(uf.familiarity) * 100.0,  # %
-            "last_level": uf.difficulty_level.level_name if uf.difficulty_level else None,
-        }, status=200)
+            # 獲取要修改的筆記
+            note = get_object_or_404(Note, id=note_id, user=user, deleted_at__isnull=True)
+
+            # 更新筆記的 quiz_topic
+            note.quiz_topic = new_quiz_topic
+            note.save()
+
+            print(f"Updated topics for note {note.id}: {note.quiz_topic} -> {new_quiz_topic}")
+
+            # 同步更新所有與該 Note 關聯的 Topic 的 topic
+            topic = Topic.objects.filter(id=note.topic.id, deleted_at__isnull=True).update(quiz_topic=new_quiz_topic)
+
+
+            return Response({"message": "Note and related topics topic updated successfully"}, status=200)
+        except Exception as e:
+            return Response({"error": f"Internal server error: {str(e)}"}, status=500)
