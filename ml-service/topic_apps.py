@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import requests
 import re
 from flask_socketio import SocketIO, emit
+import random
 
 # 載入 .env 檔案
 load_dotenv()  
@@ -15,6 +16,25 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
 
 
+
+def shuffle_options(q):
+    options = [
+        ("A", q["option_A"]),
+        ("B", q["option_B"]),
+        ("C", q["option_C"]),
+        ("D", q["option_D"]),
+    ]
+    correct = q["Ai_answer"]
+    correct_text = q[f"option_{correct}"]
+    random.shuffle(options)
+    # 重新分配選項
+    for idx, (opt, text) in enumerate(options):
+        q[f"option_{chr(65+idx)}"] = text
+    # 找出正確答案的新位置
+    for idx, (opt, text) in enumerate(options):
+        if text == correct_text:
+            q["Ai_answer"] = chr(65+idx)
+            break
 
 def generate_mock_questions(topic, count):
     """生成模擬題目（當 AI 服務不可用時使用）"""
@@ -65,8 +85,12 @@ def _generate_questions_batch(topic, difficulty, count):
     client = OpenAI(api_key=api_key)
 
     prompt = f"""
-    你是一個全知的ai，你精通各式各樣的領域。你擅於根據人們給你的主題及難度，生成出與該主題、難度相符的選擇題，提意必須清楚、完整、、邏輯嚴謹、無語病。在你把題目跟選項生成前請你先思考題目及選項是否正確，你習慣先將題目出完後再思考選項怎麼出適合，選項(A/B/C/D)中必有且只有一個正確答案。
+    你是一個全知的ai，你精通各式各樣的領域。你擅於根據人們給你的主題及難度，生成出與該主題、難度相符的選擇題，提意必須清楚、完整、、邏輯嚴謹、無語病。在你把題目跟選項生成前請你先思考題目及選項是否正確，你習慣先將題目出完後再思考選項怎麼出適合，選項(A/B/C/D)中必有且只有一個正確答案，必須將正確答案隨機分配到(A/B/C/D)四個選項。
     請根據以下條件生成 {count} 道選擇題：
+
+    語言規則：
+    1. 如果主題是英文，題目、選項、都必須用英文，解析用繁體中文。
+    2. 如果主題不是英文，全部內容都必須用繁體中文。
 
     數學計算特殊要求：
     1. 對於數學題目，必須逐步展示計算過程
@@ -76,6 +100,15 @@ def _generate_questions_batch(topic, difficulty, count):
     5. 在 explanation_text 中必須詳細顯示完整計算過程
     6. 確認4個option選項內容有正確答案
     7. Ai_answer為正確答案之選項，並且Ai_answer的option選項內容與explanation_text答案相同
+
+    explanation_text 規則：
+    1. 必須詳細分步驟解釋解題思路
+    2. 補充相關知識點、背景、易錯點
+    3. 用教學口吻，讓學生能真正理解
+    4. 數學題必須有完整計算過程與驗證
+    5. 其他科目要有邏輯推理、事實依據
+    6. 禁止空泛、主觀、無意義描述
+
     特殊規則：
     1. 題目必須知識正確、邏輯嚴謹、無語病。
     2. 如果主題為純數字或數字組合，請生成數學計算相關題目，並確保答案正確。
@@ -88,6 +121,7 @@ def _generate_questions_batch(topic, difficulty, count):
     7. 題目必須有明確知識點或事實依據，不能只問主觀感受或抽象描述。
     8. 請根據主題的專業背景出題。
     9. 避免空泛、隨意、或只描述顏色、符號等題目。
+    10. 禁止出現主觀、感受、意見類題目
 
     難度說明：
     題目必須與設定的難度相符，避免過於簡單或過於困難。
@@ -195,8 +229,9 @@ def parse_ai_response(ai_text, count=1):
             "Ai_answer": q.get("Ai_answer", "A"),
             "difficulty_id": difficulty_id
             }
+            shuffle_options(formatted_q)
             formatted_questions.append(formatted_q)
-        print(f"格式化後的題目formatted_questions: {formatted_questions}")
+            print(f"格式化後的題目formatted_questions: {formatted_questions}")
         return formatted_questions
 
     except json.JSONDecodeError as e:
@@ -470,14 +505,14 @@ def parse_note_content(content):
         prompt = f"""
         1. 分析文章內容，提取關鍵主題。
         2. 根據主題，設計一個測驗標題。
-        3. 測驗標題需簡短、有吸引力，且字數不超過30字。
+        3. 測驗標題需簡短、清晰、有吸引力，且字數不超過30字。
         4. 只輸出測驗標題，不需要多餘解釋。
         需整理內容：{content}
 
         請直接回傳整理後的內容，不要使用任何格式標記。
         """
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "user", "content": prompt}
             ],
