@@ -234,6 +234,9 @@ def parse_ai_response(ai_text, count=1):
             "difficulty_id": difficulty_id
             }
             shuffle_options(formatted_q)
+            ai_ans = formatted_q["Ai_answer"]
+            formatted_q["explanation_text"] = re.sub(r"(答案是\s*[ABCD])", f"答案是 {ai_ans}", formatted_q["explanation_text"])
+            formatted_q["explanation_text"] = re.sub(r"(即選項\s*[ABCD])", f"即選項 {ai_ans}", formatted_q["explanation_text"])
             formatted_questions.append(formatted_q)
             print(f"格式化後的題目formatted_questions: {formatted_questions}")
         return formatted_questions
