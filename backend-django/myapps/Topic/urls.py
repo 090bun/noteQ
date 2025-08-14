@@ -40,6 +40,7 @@ urlpatterns = [
 
     # 熟悉度計算
     path('familiarity/', SubmitAttemptView.as_view(), name='familiarity'),
+    
 
     # 前端回傳用戶答案
     path('submit_answer/', SubmitAnswerView.as_view(), name='submit_answer')
