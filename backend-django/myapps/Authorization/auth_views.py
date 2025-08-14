@@ -90,6 +90,20 @@ def forgot_password(request):
 
 
 
+@api_view(['POST'])
+# 從忘記密碼進入的重設密碼 API
+def reset_password_from_email(request):
+    uid = request.data.get('uid')
+    new_password = request.data.get('new_password')
+
+    try:
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response({'error': '連結無效'}, status=400)
+
+    user.set_password(new_password)
+    user.save()
+    return Response({'message': '密碼重設成功'}, status=200)
 
 
 @api_view(['POST'])
