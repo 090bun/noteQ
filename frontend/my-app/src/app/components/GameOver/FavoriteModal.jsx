@@ -66,8 +66,13 @@ export default function FavoriteModal({
     }
   }, [isOpen, questionData]);
 
-  // 新增：組裝並送出收藏資料
+  // 重構：直接觸發 sendFavoriteToBackend
   const sendFavoriteToBackend = async () => {
+    if (!questionData) {
+      onShowCustomAlert("沒有要收藏的題目數據！");
+      return;
+    }
+
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
 
@@ -103,18 +108,25 @@ export default function FavoriteModal({
     // 獲取主題ID - 根據當前選擇的主題名稱找到對應的ID
     let topicId = null;
     try {
-      const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const subjectsRes = await fetch(
+        "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (subjectsRes.ok) {
         const subjectsData = await subjectsRes.json();
-        const topics = Array.isArray(subjectsData?.favorite_quiz_topics) ? subjectsData.favorite_quiz_topics : [];
-        const targetTopic = topics.find(t => t?.quiz_topic === currentSubject);
+        const topics = Array.isArray(subjectsData?.favorite_quiz_topics)
+          ? subjectsData.favorite_quiz_topics
+          : [];
+        const targetTopic = topics.find(
+          (t) => t?.quiz_topic === currentSubject
+        );
         if (targetTopic) {
           topicId = targetTopic.id;
         }
@@ -139,118 +151,35 @@ export default function FavoriteModal({
       },
     };
 
-    const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : undefined,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(msg || `收藏失敗 (${res.status})`);
-    }
-
-    return await res.json().catch(() => ({}));
-  };
-
-  const handleConfirm = async () => {
-    if (!questionData) {
-      onShowCustomAlert("沒有要收藏的題目數據！");
-      return;
-    }
-
     try {
-      // 先標記題目為收藏狀態（後端收藏系統）
-      try {
-        const result = await sendFavoriteToBackend();
-        if (result?.message) {
-          console.log("收藏狀態更新成功:", result.message);
-        }
-      } catch (err) {
-        console.warn("收藏狀態更新失敗:", err.message);
-        // 不阻擋筆記創建流程
+      const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : undefined,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `收藏失敗 (${res.status})`);
       }
 
-      if (currentNoteId === "add_note" || currentNoteId === null) {
-        // 新增筆記
-        const userTitle = noteTitle.trim();
-        const finalTitle = userTitle || `收藏題目 - 第${questionData.number}題`;
-
-        const newNote = {
-          id: Date.now(),
-          title: finalTitle,
-          content: questionContent,
-          subject: currentSubject,
-        };
-
-        if (window.addNoteToSystem) {
-          await window.addNoteToSystem(newNote);
-          onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
-        }
-      } else {
-        // 添加到現有筆記
-        const targetNote = Array.isArray(notes) ? notes.find((note) => note.id === currentNoteId) : null;
-
-        if (targetNote) {
-          // 確保 targetNote.content 存在，避免 undefined 問題
-          const existingContent = targetNote.content || "";
-          const updatedContent = `${existingContent}
----
-## 新增題目
-${questionContent}`;
-
-          // 構建更新後的筆記對象
-          const updatedNote = {
-            ...targetNote,
-            content: updatedContent,
-          };
-
-          try {
-            // 調用後端 API 更新筆記
-            const token = localStorage.getItem("token");
-            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: token ? `Bearer ${token}` : "",
-              },
-              body: JSON.stringify({
-                title: updatedNote.title,
-                content: updatedNote.content,
-              }),
-            });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              throw new Error(`更新筆記失敗：${res.status} - ${errorText}`);
-            }
-
-            // 更新成功後，更新本地狀態
-            targetNote.content = updatedContent;
-            
-            onShowCustomAlert(`題目已添加到筆記「${targetNote.title}」中！`);
-          } catch (error) {
-            console.error("更新筆記失敗:", error);
-            onShowCustomAlert(`更新筆記失敗：${error.message}`);
-            return;
-          }
-        } else {
-          onShowCustomAlert("找不到選中的筆記！");
-          return;
-        }
+      const result = await res.json().catch(() => ({}));
+      if (result?.message) {
+        console.log("收藏狀態更新成功:", result.message);
       }
-
-      onClose();
+      onShowCustomAlert("題目收藏成功！");
     } catch (error) {
       console.error("收藏失敗:", error);
       onShowCustomAlert("收藏失敗，請重試！");
     }
   };
 
-  const filteredNotes = Array.isArray(notes) ? notes.filter((note) => note.subject === currentSubject) : [];
+  const filteredNotes = Array.isArray(notes)
+    ? notes.filter((note) => note.subject === currentSubject)
+    : [];
 
   return (
     <div
@@ -322,7 +251,7 @@ ${questionContent}`;
           </button>
           <button
             className={`${styles["favorite-modal-btn"]} ${styles["favorite-modal-btn-primary"]}`}
-            onClick={handleConfirm}
+            onClick={sendFavoriteToBackend}
           >
             收藏
           </button>
