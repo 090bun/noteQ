@@ -105,37 +105,16 @@ export default function FavoriteModal({
       explanation = matched?.explanation_text || "";
     }
 
-    // 獲取主題ID - 根據當前選擇的主題名稱找到對應的ID
+    // 獲取 topicId - 從 sessionStorage 的 topics 中找到對應的題目 ID
     let topicId = null;
-    try {
-      const subjectsRes = await fetch(
-        "http://127.0.0.1:8000/api/user_quiz_and_notes/",
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (subjectsRes.ok) {
-        const subjectsData = await subjectsRes.json();
-        const topics = Array.isArray(subjectsData?.favorite_quiz_topics)
-          ? subjectsData.favorite_quiz_topics
-          : [];
-        const targetTopic = topics.find(
-          (t) => t?.quiz_topic === currentSubject
-        );
-        if (targetTopic) {
-          topicId = targetTopic.id;
-        }
+    if (quizData?.topics && Array.isArray(quizData.topics)) {
+      const topicIndex = quizData.topics.findIndex((t) => t.id === questionData.id);
+      if (topicIndex !== -1) {
+        topicId = quizData.topics[topicIndex].id;
       }
-    } catch (error) {
-      console.warn("獲取主題ID失敗:", error);
     }
 
-    // 如果找不到主題ID，使用題目ID作為備用
+    // 如果找不到 topicId，使用題目 ID 作為備用
     if (!topicId) {
       topicId = questionData.id;
     }
@@ -163,6 +142,7 @@ export default function FavoriteModal({
 
       if (!res.ok) {
         const msg = await res.text();
+        //console.log(payload);
         throw new Error(msg || `收藏失敗 (${res.status})`);
       }
 
