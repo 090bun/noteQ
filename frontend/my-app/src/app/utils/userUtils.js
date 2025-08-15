@@ -9,7 +9,7 @@ export async function getUserFamiliarityFromAPI() {
             return [];
         }
 
-        const res = await fetch("http://127.0.0.1:8000/api/familiarity/", { // 更新 API URL
+        const res = await fetch("http://127.0.0.1:8000/api/familiarity/", {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -27,9 +27,12 @@ export async function getUserFamiliarityFromAPI() {
         // 調整資料格式
         const familiarityData = Array.isArray(data)
             ? data.map((item) => ({
-                name: item.quiz_topic?.quiz_topic || "未命名主題",
-                familiarity: item.familiarity ?? 0, // 如果 API 未提供熟悉度則為 0
-                quizId: item.quiz_topic?.id ?? null
+            name: item.quiz_topic?.quiz_topic.length > 8  // 如果主題名稱超過8個字符，則截斷並添加省略號+
+            
+                ? item.quiz_topic.quiz_topic.slice(0, 8) + "..." 
+                : item.quiz_topic?.quiz_topic || "未命名主題",
+            familiarity: item.familiarity ?? 0, // 如果 API 未提供熟悉度則為 0
+            quizId: item.quiz_topic?.id ?? null
             }))
             : [];
 
