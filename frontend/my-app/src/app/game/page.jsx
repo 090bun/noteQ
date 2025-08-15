@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import styles from "../styles/GamePage.module.css";
@@ -96,7 +96,7 @@ const Game = () => {
       const token = localStorage.getItem("token");
 
       // POST 到後端
-      const res = await fetch("http://127.0.0.1:8000/api/submit_answer/", {
+      const res = await fetch(`${apiFetch}/api/submit_answer/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

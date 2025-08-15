@@ -164,7 +164,7 @@ export default function AnalysisFavoriteModal({
         setIsLoadingOptions(true);
         const token = localStorage.getItem("token");
         const res = await fetch(
-          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+          `${apiFetch}/api/user_quiz_and_notes/`,
           {
             method: "GET",
             headers: {
@@ -250,7 +250,7 @@ ${content}`;
           try {
             // 調用後端 API 更新筆記
             const token = localStorage.getItem("token");
-            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+            const res = await fetch(`${apiFetch}/api/notes/${currentNoteId}/`, {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",

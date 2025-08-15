@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/lib/api";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Header from "../components/Header";
@@ -58,7 +58,7 @@ export default function UserPage() {
       }
 
       try {
-        const res = await fetch("http://127.0.0.1:8000/reset-password/", {
+        const res = await fetch(`${apiFetch}/reset-password/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -132,7 +132,7 @@ export default function UserPage() {
     }
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/users/${userId}`, {
+      const res = await fetch(`${apiFetch}/users/${userId}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

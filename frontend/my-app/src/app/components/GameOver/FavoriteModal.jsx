@@ -103,7 +103,7 @@ export default function FavoriteModal({
     // 獲取主題ID - 根據當前選擇的主題名稱找到對應的ID
     let topicId = null;
     try {
-      const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      const subjectsRes = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -139,7 +139,7 @@ export default function FavoriteModal({
       },
     };
 
-    const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
+    const res = await fetch(`${apiFetch}/api/add-favorite/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -211,7 +211,7 @@ ${questionContent}`;
           try {
             // 調用後端 API 更新筆記
             const token = localStorage.getItem("token");
-            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+            const res = await fetch(`${apiFetch}/api/notes/${currentNoteId}/`, {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",

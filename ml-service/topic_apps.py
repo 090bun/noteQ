@@ -11,7 +11,7 @@ import random
 
 # 載入 .env 檔案
 load_dotenv()  
-
+DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
 
@@ -308,8 +308,8 @@ def get_quiz():
         
         # 這裡需要一個有效的 JWT token 來調用 Django API
         # 你可能需要根據實際情況調整認證方式
-        django_response = requests.get('http://localhost:8000/api/create_quiz/')
-        
+        django_response = requests.get(f'{DJANGO_BASE_URL}/api/create_quiz/')
+
         if django_response.status_code != 200:
             return jsonify({
                 "error": f"Django API error: {django_response.status_code}",
@@ -330,7 +330,7 @@ def get_quiz():
 def get_quiz_alt():
     # 重定向到 Django API
     try:
-        django_response = requests.get('http://localhost:8000/api/quiz/')
+        django_response = requests.get(f'{DJANGO_BASE_URL}/api/quiz/')
         
         if django_response.status_code != 200:
             return jsonify({

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 // =========================
 // 從 API 獲取用戶熟悉度（GET）
 // =========================
@@ -9,7 +10,7 @@ export async function getUserFamiliarityFromAPI() {
             return [];
         }
 
-        const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+        const res = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -64,7 +65,7 @@ export async function submitUserAnswers(updates) {
             return null;
         }
 
-        const res = await fetch("http://127.0.0.1:8000/api/submit_answer/", {
+        const res = await fetch(`${apiFetch}/api/submit_answer/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

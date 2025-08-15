@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -130,7 +130,7 @@ export default function HomeGamePage() {
   const generateQuestions = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://127.0.0.1:8000/api/quiz/", {
+      const res = await fetch(`${apiFetch}/api/quiz/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

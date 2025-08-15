@@ -1,4 +1,4 @@
-import requests
+
 from django.shortcuts import render , get_object_or_404
 from django.http import JsonResponse
 from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer , AddFavoriteTopicSerializer
@@ -12,6 +12,10 @@ from rest_framework.decorators import api_view , permission_classes
 from django.utils import timezone
 from rest_framework.response import Response
 from django.db import transaction
+import os , requests
+
+FLASK_BASE_URL = os.getenv("FLASK_BASE_URL", "http://localhost:5000")
+DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 # Create your views here.
 
 # flask api接口
@@ -23,7 +27,7 @@ class QuizViewSet(APIView):
         try:
             # 傳給 Flask 做處理
             flask_response = requests.post(
-                'http://localhost:5000/api/quiz',
+                f'{FLASK_BASE_URL}/api/quiz',
                 json=request.data  # 傳遞請求資料
             )
             
@@ -452,7 +456,7 @@ class ChatViewSet(APIView):
             
             # 3. 傳給 Flask 做處理
             flask_response = requests.post(
-                'http://localhost:5000/api/chat',
+                f'{FLASK_BASE_URL}/api/chat',
                 json=flask_data
             )
         
@@ -766,7 +770,7 @@ class RetestView(APIView):
         note_data = NoteSerializer(note).data
         try:
             response = requests.post(
-                'http://localhost:5000/api/retest',
+                f'{FLASK_BASE_URL}/api/retest',
                 json=note_data
             )
             if response.status_code == 200:
@@ -843,7 +847,7 @@ class ParseAnswerView(APIView):
         print(f"傳送給 Flask 的資料: {flask_data}")
         try:
             response = requests.post(
-                'http://localhost:5000/api/parse_answer',
+                f'{FLASK_BASE_URL}/api/parse_answer',
                 json=flask_data
             )
             if response.status_code != 200:
@@ -1006,7 +1010,7 @@ class SubmitAnswerView(APIView):
                 
                 try:
                     response = requests.post(
-                        "http://127.0.0.1:8000/api/familiarity/", 
+                        f"{DJANGO_BASE_URL}/api/familiarity/", 
                         json=payload,
                         headers=headers
                     )
@@ -1085,7 +1089,7 @@ class SubmitAnswerView(APIView):
                 print(f"Payload: {payload}")
                 
                 try:
-                    response = requests.post("http://127.0.0.1:8000/api/familiarity/", json=payload)
+                    response = requests.post(f"{DJANGO_BASE_URL}/api/familiarity/", json=payload)
                     data = response.json().get("familiarity")
                     print(f"熟悉度 API 回應狀態: {response.status_code}")
                     print(f"熟悉度 API 回應內容: {data}")

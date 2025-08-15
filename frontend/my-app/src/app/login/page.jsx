@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/lib/api";
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -43,7 +43,7 @@ export default function LoginPage() {
     setIsSubmittingForgotPassword(true);
     
     try {
-      const res = await fetch("http://127.0.0.1:8000/forgot-password/", {
+      const res = await fetch(`${apiFetch}/forgot-password/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +76,7 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/login/", {
+      const res = await fetch(`${apiFetch}/login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function LoginPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/register/", {
+      const res = await fetch(`${apiFetch}/register/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

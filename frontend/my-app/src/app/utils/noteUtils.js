@@ -1,3 +1,4 @@
+import { apiFetch } from "@/lib/api";
 // 筆記系統工具函數
 
 // 模擬資料庫（保留用於向後兼容）
@@ -39,7 +40,7 @@ export function parseMarkdown(text) {
 // 獲取筆記數據
 export async function getNotes() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -111,7 +112,7 @@ export async function getNotes() {
 // 獲取主題數據
 export async function getSubjects() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -139,7 +140,7 @@ export async function getSubjects() {
 // 獲取主題數據（包含ID）
 export async function getSubjectsWithIds() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -172,7 +173,7 @@ export async function addNote(note) {
   try {
     // 先獲取主題列表，找到對應的Quiz ID
     const subjectsData = await getSubjects();
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -201,7 +202,7 @@ export async function addNote(note) {
       content: note.content, // 筆記內容
     };
 
-    const noteRes = await fetch("http://127.0.0.1:8000/api/notes/", {
+    const noteRes = await fetch(`${apiFetch}/api/notes/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -227,7 +228,7 @@ export async function addNote(note) {
 // 刪除筆記
 export async function deleteNote(noteId) {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
+    const res = await fetch(`${apiFetch}/api/notes/${noteId}/`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
@@ -256,7 +257,7 @@ export async function updateNote(noteId, updatedNote) {
       content: updatedNote.content,
     };
 
-    const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
+    const res = await fetch(`${apiFetch}/api/notes/${noteId}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -295,7 +296,7 @@ export async function moveNote(noteId, newSubject) {
       quiz_topic_id: targetSubject.id,
     };
 
-    const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
+    const res = await fetch(`${apiFetch}/api/notes/${noteId}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -329,7 +330,7 @@ export async function addSubject(subjectName) {
     return { success: false, message: "請輸入有效的主題名稱！" };
   }
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+    const res = await fetch(`${apiFetch}/api/create_quiz/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -358,7 +359,7 @@ export async function deleteSubject(subjectName) {
   try {
     // 先向後端查詢主題清單，找出要刪除的主題 id
     const lookupRes = await fetch(
-      "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+      `${apiFetch}/api/user_quiz_and_notes/`,
       {
         method: "GET",
         headers: {
@@ -389,7 +390,7 @@ export async function deleteSubject(subjectName) {
 
     // 呼叫後端軟刪除 API
     const delRes = await fetch(
-      `http://127.0.0.1:8000/api/quiz/${topicId}/soft-delete/`,
+      `${apiFetch}/api/quiz/${topicId}/soft-delete/`,
       {
         method: "DELETE",
         headers: {
@@ -425,7 +426,7 @@ export async function getNotesBySubject(subject) {
 // 從後端載入使用者的主題與收藏筆記，並同步到本地 notes/subjects
 export async function loadUserQuizAndNotes() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${apiFetch}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
