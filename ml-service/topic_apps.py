@@ -1,16 +1,17 @@
 from flask import Flask, request, jsonify
 # 更新 OpenAI 導入方式
 from openai import OpenAI
-import os
+import os , requests
 import json
 from dotenv import load_dotenv  
-import requests
 import re
 from flask_socketio import SocketIO, emit
 import random
+from pathlib import Path
 
 # 載入 .env 檔案
-load_dotenv()  
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
