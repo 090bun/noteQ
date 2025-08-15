@@ -50,19 +50,17 @@ class QuizViewSet(APIView):
             user_instance = None
             
             # 如果有 user_id，取得 User 實例
-            if user_id:
-                from myapps.Authorization.models import User
-                try:
-                    user_instance = User.objects.get(id=user_id)
-                except User.DoesNotExist:
-                    return Response({
-                        'error': f'User with ID {user_id} not found'
-                    }, status=400)
+            try:
+                user_instance = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({
+                    'error': f'User with ID {user_id} not found'
+                }, status=400)
             
             # 返回結果 寫回資料庫
             # 先判斷 quiz_topic 是否有未軟刪除的 Quiz，有則不再新建
             quiz_topic_name = result.get('quiz_topic')
-            quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, user_id=user_instance.id, deleted_at__isnull=True).first()
+            quiz = Quiz.objects.filter(quiz_topic=quiz_topic_name, user_id=user_id, deleted_at__isnull=True).first()
             if quiz:
                 print(f"Found existing Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
             else:
