@@ -89,7 +89,7 @@ def _generate_questions_batch(topic, difficulty, count):
     請根據以下條件生成 {count} 道選擇題：
 
     語言規則：
-    1. 如果主題是英文，題目、選項、都必須用英文，解析用繁體中文。
+    1. 如果主題是英文，題目、選項、都必須用英文，explanation_text用繁體中文。
     2. 如果主題不是英文，全部內容都必須用繁體中文。
 
     數學計算特殊要求：
@@ -108,6 +108,10 @@ def _generate_questions_batch(topic, difficulty, count):
     4. 數學題必須有完整計算過程與驗證
     5. 其他科目要有邏輯推理、事實依據
     6. 禁止空泛、主觀、無意義描述
+    7. 如果難度是 beginner，解析必須簡單明瞭，避免使用過多專業術語或複雜推理，只需簡單一句話說明答案，不要分步驟，不要過度教學。適合初學者理解。
+    8. 如果難度是 intermediate，解析需包含基本原理與步驟，但不需過度深入。
+    9. 如果難度是 advanced 或 master，解析需詳細分步驟、補充相關知識點與背景，適合有基礎的學生深入學習。
+    10. 如果有自己設定未知數的話請講清楚是怎麼設定的。
 
     特殊規則：
     1. 題目必須知識正確、邏輯嚴謹、無語病。
@@ -167,7 +171,7 @@ def _generate_questions_batch(topic, difficulty, count):
     try:
         # 使用新版 API 語法
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": "你是一個題目生成助手，請根據使用者的需求生成題目。"},
                 {"role": "user", "content": prompt}
@@ -230,6 +234,9 @@ def parse_ai_response(ai_text, count=1):
             "difficulty_id": difficulty_id
             }
             shuffle_options(formatted_q)
+            ai_ans = formatted_q["Ai_answer"]
+            formatted_q["explanation_text"] = re.sub(r"(答案是\s*[ABCD])", f"答案是 {ai_ans}", formatted_q["explanation_text"])
+            formatted_q["explanation_text"] = re.sub(r"(即選項\s*[ABCD])", f"即選項 {ai_ans}", formatted_q["explanation_text"])
             formatted_questions.append(formatted_q)
             print(f"格式化後的題目formatted_questions: {formatted_questions}")
         return formatted_questions
@@ -239,26 +246,6 @@ def parse_ai_response(ai_text, count=1):
         print(f"JSON 解析錯誤: {str(e)}")
         print(f"無法解析的內容: {ai_text[:200]}...")  # 只顯示前200字元
         return generate_mock_questions("解析失敗", count)
-
-def generate_mock_questions(topic, count):
-    """生成模擬題目（當 AI 服務不可用時使用）"""
-    mock_questions = []
-    for i in range(count):
-        mock_q = {
-            "title": f"伺服器維修中",
-            "option_A": "錯誤",
-            "option_B": "錯誤", 
-            "option_C": "錯誤",
-            "option_D": "錯誤",
-            "User_answer": "",
-            "Ai_answer": "X",
-            "explanation_text": "錯誤",
-            "difficulty_id": 1  # 統一回傳數字型態
-        }
-        mock_questions.append(mock_q)
-    return mock_questions
-    
-
 
 @app.route('/api/quiz', methods=['POST'])
 def create_quiz():
@@ -427,7 +414,7 @@ def chat_with_ai():
             print(f"發送給 OpenAI 的訊息數量: {len(messages)}")
             
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o",
                 messages=messages,
                 temperature=0.7,
                 max_tokens=500
@@ -512,7 +499,7 @@ def parse_note_content(content):
         請直接回傳整理後的內容，不要使用任何格式標記。
         """
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
                 {"role": "user", "content": prompt}
             ],
@@ -574,7 +561,7 @@ def parse_answer():
         直接回傳整理後的內容，不要使用任何格式標記。
         """
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4.0",
             messages=[
                 {
                     "role": "user", 
