@@ -1,7 +1,7 @@
 import requests
 from django.shortcuts import render , get_object_or_404
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer , UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer , AddFavoriteTopicSerializer
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer, UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer , AddFavoriteTopicSerializer
 from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz , UserFamiliarity, DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
 from myapps.Authorization.models import User
@@ -69,6 +69,17 @@ class QuizViewSet(APIView):
                     user=user_instance
                 )
                 print(f"Created new Quiz: {quiz.quiz_topic} (ID: {quiz.id}) for user: {user_instance}")
+                
+                # 自動添加到用戶收藏
+                try:
+                    UserFavorite.objects.create(
+                        user=user_instance,
+                        quiz=quiz
+                    )
+                    print(f"✅ 自動添加Quiz到用戶收藏: {quiz.quiz_topic}")
+                except Exception as e:
+                    print(f"⚠️ 添加收藏失敗: {str(e)}")
+                    # 不阻止主流程繼續
             
             # 然後創建 Topic，並關聯到 Quiz
             topics = []

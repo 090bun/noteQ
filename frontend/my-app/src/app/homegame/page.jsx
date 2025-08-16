@@ -130,6 +130,51 @@ export default function HomeGamePage() {
   const generateQuestions = async () => {
     try {
       const token = localStorage.getItem("token");
+      
+      // 第一步：先創建Quiz主題（如果不存在）
+      let quizTopicId = null;
+      try {
+        const createQuizRes = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ 
+            quiz_topic: topic.trim() 
+          }),
+        });
+
+        if (createQuizRes.ok) {
+          const createResult = await createQuizRes.json();
+          quizTopicId = createResult.quiz_topic_id;
+          console.log("✅ 成功創建Quiz主題:", topic.trim(), "ID:", quizTopicId);
+        } else if (createQuizRes.status === 400) {
+          // 主題已存在，獲取現有主題ID
+          const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          
+          if (subjectsRes.ok) {
+            const subjectsData = await subjectsRes.json();
+            const topics = Array.isArray(subjectsData?.favorite_quiz_topics) ? subjectsData.favorite_quiz_topics : [];
+            const existingTopic = topics.find(t => t?.quiz_topic === topic.trim());
+            if (existingTopic) {
+              quizTopicId = existingTopic.id;
+              console.log("✅ 找到現有Quiz主題:", topic.trim(), "ID:", quizTopicId);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("創建Quiz主題時出錯:", error);
+        // 繼續執行，不阻止題目生成
+      }
+
+      // 第二步：生成題目
       const res = await fetch("http://127.0.0.1:8000/api/quiz/", {
         method: "POST",
         headers: {
