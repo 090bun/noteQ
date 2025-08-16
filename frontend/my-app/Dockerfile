@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
 
 # Install dependencies
-RUN npm ci --no-audit --no-fund
+RUN npm install --no-audit --no-fund
 
 # Copy the rest of the application code
 COPY . .
