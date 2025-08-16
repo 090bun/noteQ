@@ -17,6 +17,11 @@ DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*") 
 
+@app.route("/health", methods=["GET"])
+def health():
+    return {"status": "ok"}, 200
+
+
 def shuffle_options(q):
     options = [
         ("A", q["option_A"]),
