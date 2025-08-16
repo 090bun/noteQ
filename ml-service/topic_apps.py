@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 # 更新 OpenAI 導入方式
 from openai import OpenAI
 import os
@@ -13,6 +14,7 @@ import random
 load_dotenv()  
 
 app = Flask(__name__)
+CORS(app)  # 啟用cros
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
 
 
@@ -611,6 +613,7 @@ def generate_topic_from_note():
         
         data = request.json
         note_content = data.get('note_content', '')
+        note_title = data.get('note_title', '')  # 新增：獲取筆記標題
         
         if not note_content:
             return jsonify({"success": False, "message": "筆記內容不能為空"}), 400
@@ -624,7 +627,7 @@ def generate_topic_from_note():
         
         if api_key == 'your-api-key-here' or not api_key:
             # 如果沒有API Key，使用改進的備用邏輯
-            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content)
+            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content, note_title)
             return jsonify({
                 "success": True,
                 "topic": fallback_topic,
@@ -639,47 +642,51 @@ def generate_topic_from_note():
         prompt = f"""
         你是一個專業的學習主題生成專家，擅長分析各種類型的筆記內容並提取核心概念。
 
-        請分析以下筆記內容，生成一個適合製作練習題的遊戲主題名稱：
+        請分析以下筆記標題和內容，生成一個適合製作練習題的遊戲主題名稱：
+
+        筆記標題：
+        {note_title}
 
         筆記內容：
         {note_content}
 
         分析要求：
-        1. 仔細閱讀筆記內容，識別主要概念、關鍵詞和核心主題
-        2. 考慮內容的學科領域、難度層次和實用性
-        3. 主題名稱要簡潔明了，控制在5-15個字之間
-        4. 要能準確反映筆記的核心內容和學習目標
-        5. 適合製作選擇題練習，有明確的知識點
-        6. 優先使用繁體中文，但如果是英文內容可用英文
-        7. 避免過於籠統、抽象或主觀的名稱
-        8. 優先選擇具體、可測量的學習目標
+        1. 優先分析筆記標題，標題通常包含核心主題和關鍵概念
+        2. 結合標題和內容，識別主要概念、關鍵詞和核心主題
+        3. 考慮內容的學科領域、難度層次和實用性
+        4. 主題名稱要簡潔明了，控制在5-15個字之間
+        5. 要能準確反映筆記的核心內容和學習目標
+        6. 適合製作選擇題練習，有明確的知識點
+        7. 優先使用繁體中文，但如果是英文內容可用英文
+        8. 避免過於籠統、抽象或主觀的名稱
+        9. 優先選擇具體、可測量的學習目標
 
         內容類型識別和處理規則：
         
         語言學習類：
-        - 英文內容：使用「English + 主題名稱」或「英文 + 技能練習」格式
-        - 日文內容：使用「日語 + 主題名稱」或「日文 + 技能練習」格式
-        - 其他語言：使用「語言名稱 + 主題名稱」格式
+        - 英文內容：使用「英文語法練習」、「英文詞彙測驗」、「英文閱讀理解」等明確格式
+        - 日文內容：使用「日語基礎練習」、「日語語法測驗」格式
+        - 其他語言：使用「語言名稱主題練習」格式
         
         動漫遊戲類：
-        - 動漫內容：使用「動漫 + 作品名稱/角色/概念」格式
-        - 遊戲內容：使用「遊戲 + 遊戲名稱/機制/策略」格式
-        - 二次元文化：使用「二次元 + 具體概念」格式
+        - 動漫內容：使用「動漫作品名稱知識測驗」格式
+        - 遊戲內容：使用「遊戲名稱策略練習」格式
+        - 二次元文化：使用「二次元文化知識測驗」格式
         
         娛樂文化類：
-        - 電影電視：使用「影視 + 作品類型/主題」格式
-        - 音樂藝術：使用「音樂/藝術 + 風格/技巧」格式
-        - 流行文化：使用「流行 + 具體概念」格式
+        - 電影電視：使用「影視作品類型主題測驗」格式
+        - 音樂藝術：使用「音樂風格技巧練習」格式
+        - 流行文化：使用「流行文化概念測驗」格式
         
         專業技能類：
-        - 技術技能：使用「技能名稱 + 應用練習」格式
-        - 職業技能：使用「職業 + 技能名稱」格式
-        - 生活技能：使用「生活 + 技能名稱」格式
+        - 技術技能：使用「技能名稱應用練習」格式
+        - 職業技能：使用「職業技能名稱測驗」格式
+        - 生活技能：使用「生活技能名稱練習」格式
         
         學術研究類：
-        - 如果是數學相關：使用「數學概念名稱+練習」格式
-        - 如果是科學相關：使用「學科名稱+具體概念練習」格式
-        - 如果是人文相關：使用「學科名稱+主題練習」格式
+        - 如果是數學相關：使用「數學概念名稱練習」格式
+        - 如果是科學相關：使用「學科名稱具體概念練習」格式
+        - 如果是人文相關：使用「學科名稱主題練習」格式
 
         特殊情況處理：
         - 混合語言內容：優先使用主要語言，可適當混合
@@ -707,7 +714,7 @@ def generate_topic_from_note():
         
         if not topic or len(topic) > 25 or len(topic) < 3:
             # 如果AI生成的主題無效，使用改進的備用邏輯
-            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content)
+            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content, note_title)
             return jsonify({
                 "success": True,
                 "topic": fallback_topic,
@@ -727,7 +734,7 @@ def generate_topic_from_note():
         
         # 發生錯誤時使用改進的備用邏輯
         try:
-            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content)
+            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content, note_title)
             return jsonify({
                 "success": True,
                 "topic": fallback_topic,
@@ -776,12 +783,14 @@ def clean_ai_response(ai_response):
     
     return cleaned
 
-def generate_enhanced_fallback_topic_from_note(note_content):
+def generate_enhanced_fallback_topic_from_note(note_content, note_title=''):
     """改進的備用主題生成邏輯"""
-    if not note_content:
+    if not note_content and not note_title:
         return "綜合知識練習"
     
-    content = str(note_content).lower()
+    # 優先使用標題，如果沒有標題則使用內容
+    primary_text = note_title if note_title else note_content
+    content = str(primary_text).lower()
     
     # 擴展的學科關鍵詞映射
     subject_keywords = {
@@ -905,7 +914,7 @@ def generate_enhanced_fallback_topic_from_note(note_content):
         if any(keyword in content for keyword in keywords):
             # 檢測主要語言
             if language == '英文' and any(word in content for word in ['english', 'grammar', 'vocabulary']):
-                return "English Grammar Practice"
+                return "英文語法練習"
             elif language == '英文':
                 return "英文語法練習"
             elif language == '日文':
@@ -947,8 +956,9 @@ def generate_enhanced_fallback_topic_from_note(note_content):
             elif category == '藝術':
                 return "藝術鑑賞練習"
     
-    # 智能內容分析
-    content_analysis = analyze_content_complexity(note_content)
+    # 智能內容分析（優先分析標題，如果沒有標題則分析內容）
+    analysis_content = note_title if note_title else note_content
+    content_analysis = analyze_content_complexity(analysis_content)
     
     # 根據內容特徵生成主題
     if content_analysis['has_formulas']:
@@ -964,12 +974,12 @@ def generate_enhanced_fallback_topic_from_note(note_content):
     elif content_analysis['has_lists']:
         return "條理整理練習"
     elif content_analysis['has_english']:
-        return "English Content Practice"
+        return "英文語法練習"
     elif content_analysis['has_japanese']:
-        return "日本語コンテンツ練習"
+        return "日語基礎練習"
     
-    # 提取關鍵詞生成主題
-    key_words = extract_key_words(note_content)
+    # 提取關鍵詞生成主題（優先從標題提取，如果沒有標題則從內容提取）
+    key_words = extract_key_words(analysis_content)
     if key_words:
         if len(key_words) == 1:
             return f"{key_words[0]}相關練習"

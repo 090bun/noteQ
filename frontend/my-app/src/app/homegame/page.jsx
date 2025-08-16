@@ -33,9 +33,6 @@ export default function HomeGamePage() {
       // 自動填入AI生成的主題
       setTopic(generatedTopic);
       
-      // 顯示提示訊息
-      safeAlert(`已自動填入AI生成的主題：「${generatedTopic}」\n\n您可以調整難度和題數，然後開始挑戰！`);
-      
       // 清除sessionStorage中的臨時數據
       sessionStorage.removeItem("generatedTopic");
       sessionStorage.removeItem("generatedTopicSource");

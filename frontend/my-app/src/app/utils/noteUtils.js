@@ -501,7 +501,7 @@ export async function loadUserQuizAndNotes() {
 }
 
 // 根據筆記內容AI生成遊戲主題
-export async function generateQuestions(noteContent) {
+export async function generateQuestions(noteContent, noteTitle = '') {
   try {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -521,7 +521,8 @@ export async function generateQuestions(noteContent) {
         "Authorization": `Bearer ${token}`, // 添加認證
       },
       body: JSON.stringify({
-        note_content: noteContent.trim()
+        note_content: noteContent.trim(),
+        note_title: noteTitle.trim()
       }),
     });
 
@@ -547,7 +548,7 @@ export async function generateQuestions(noteContent) {
     
     // 如果AI服務失敗，使用前端備用邏輯
     try {
-      const fallbackTopic = generateFallbackTopic(noteContent);
+      const fallbackTopic = generateFallbackTopic(noteContent, noteTitle);
       return {
         success: true,
         topic: fallbackTopic,
@@ -565,10 +566,11 @@ export async function generateQuestions(noteContent) {
 }
 
 // 前端備用主題生成邏輯（當AI服務不可用時）
-function generateFallbackTopic(noteContent) {
+function generateFallbackTopic(noteContent, noteTitle = '') {
   try {
-    // 從筆記內容中提取關鍵詞作為主題
-    const content = String(noteContent || "").toLowerCase().trim();
+    // 優先使用標題，如果沒有標題則使用內容
+    const primaryText = noteTitle || noteContent;
+    const content = String(primaryText || "").toLowerCase().trim();
     
     if (!content) {
       throw new Error("筆記內容為空");

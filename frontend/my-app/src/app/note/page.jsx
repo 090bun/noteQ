@@ -449,10 +449,10 @@ export default function NotePage() {
 
     try {
       // 顯示生成中的提示
-      safeAlert("正在根據筆記內容生成遊戲主題，請稍候...");
+      safeAlert("正在分析筆記內容，完成後將跳轉到遊戲頁面...");
       
-      // 調用AI生成主題
-      const result = await generateQuestions(note.content);
+      // 調用AI生成主題（傳遞筆記內容和標題）
+      const result = await generateQuestions(note.content, note.title);
       
       if (result.success && result.topic) {
         // 將生成的主題存儲到sessionStorage，供homegame頁面使用
@@ -460,14 +460,8 @@ export default function NotePage() {
         sessionStorage.setItem("generatedTopicSource", "note");
         sessionStorage.setItem("generatedTopicNoteId", note.id);
         
-        // 顯示成功訊息
-        safeAlert(`${result.message}\n\n即將跳轉到遊戲頁面...`);
-        
-        // 延遲跳轉，讓用戶看到訊息
-        setTimeout(() => {
-          // 跳轉到homegame頁面
-          window.location.href = "/homegame";
-        }, 1500);
+        // 直接跳轉到homegame頁面
+        window.location.href = "/homegame";
         
       } else {
         safeAlert(`❌ 生成主題失敗：${result.message}`);
