@@ -66,13 +66,8 @@ export default function FavoriteModal({
     }
   }, [isOpen, questionData]);
 
-  // 重構：直接觸發 sendFavoriteToBackend
+  // 新增：組裝並送出收藏資料
   const sendFavoriteToBackend = async () => {
-    if (!questionData) {
-      onShowCustomAlert("沒有要收藏的題目數據！");
-      return;
-    }
-
     const userId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
 
@@ -105,21 +100,57 @@ export default function FavoriteModal({
       explanation = matched?.explanation_text || "";
     }
 
-    // 獲取 topicId - 從 sessionStorage 的 topics 中找到對應的題目 ID
+    // 獲取主題ID - 根據當前選擇的主題名稱找到對應的ID
     let topicId = null;
-    if (quizData?.topics && Array.isArray(quizData.topics)) {
-      const topicIndex = quizData.topics.findIndex(
-        (t) => t.id === questionData.id
-      );
-      if (topicIndex !== -1) {
-        topicId = quizData.topics[topicIndex].id;
+    try {
+      const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (subjectsRes.ok) {
+        const subjectsData = await subjectsRes.json();
+        const topics = Array.isArray(subjectsData?.favorite_quiz_topics) ? subjectsData.favorite_quiz_topics : [];
+        const targetTopic = topics.find(t => t?.quiz_topic === currentSubject);
+        if (targetTopic) {
+          topicId = targetTopic.id;
+        }
+      }
+    } catch (error) {
+      console.warn("獲取主題ID失敗:", error);
+    }
+
+    // 如果找不到主題ID，先创建主题
+    if (!topicId) {
+      try {
+        const createRes = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ quiz_topic: currentSubject }),
+        });
+        
+        if (createRes.ok) {
+          const newTopic = await createRes.json();
+          topicId = newTopic.quiz_topic_id;
+        } else {
+          throw new Error("创建主题失败");
+        }
+      } catch (error) {
+        console.error("创建主题失败:", error);
+        throw new Error(`无法创建主题「${currentSubject}」`);
       }
     }
 
-    // 如果找不到 topicId，使用題目 ID 作為備用
-    if (!topicId) {
-      topicId = questionData.id;
-    }
+    // 移除这个备用逻辑，因为现在topicId一定有值
+    // if (!topicId) {
+    //   topicId = questionData.id;
+    // }
 
     const payload = {
       user_id: Number(userId),
@@ -132,36 +163,119 @@ export default function FavoriteModal({
       },
     };
 
+    const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : undefined,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg || `收藏失敗 (${res.status})`);
+    }
+
+    return await res.json().catch(() => ({}));
+  };
+
+  const handleConfirm = async () => {
+    if (!questionData) {
+      onShowCustomAlert("沒有要收藏的題目數據！");
+      return;
+    }
+
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : undefined,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        //console.log(payload);
-        throw new Error(msg || `收藏失敗 (${res.status})`);
+      // 先標記題目為收藏狀態（後端收藏系統）
+      try {
+        const result = await sendFavoriteToBackend();
+        if (result?.message) {
+          console.log("收藏狀態更新成功:", result.message);
+        }
+      } catch (err) {
+        console.warn("收藏狀態更新失敗:", err.message);
+        // 不阻擋筆記創建流程
       }
 
-      const result = await res.json().catch(() => ({}));
-      if (result?.message) {
-        console.log("收藏狀態更新成功:", result.message);
+      if (currentNoteId === "add_note" || currentNoteId === null) {
+        // 新增筆記
+        const userTitle = noteTitle.trim();
+        const finalTitle = userTitle || `收藏題目 - 第${questionData.number}題`;
+
+        const newNote = {
+          id: Date.now(),
+          title: finalTitle,
+          content: questionContent,
+          subject: currentSubject,
+        };
+
+        if (window.addNoteToSystem) {
+          await window.addNoteToSystem(newNote);
+          onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
+        }
+              } else {
+          // 添加到現有筆記
+          // ✅ 使用 filteredNotes 而不是 notes，确保数据一致
+          const targetNote = Array.isArray(filteredNotes) ? filteredNotes.find((note) => note.id === currentNoteId) : null;
+
+        if (targetNote) {
+          // 確保 targetNote.content 存在，避免 undefined 問題
+          const existingContent = targetNote.content || "";
+          const updatedContent = `${existingContent}
+---
+## 新增題目
+${questionContent}`;
+
+          // 構建更新後的筆記對象
+          const updatedNote = {
+            ...targetNote,
+            content: updatedContent,
+          };
+
+          try {
+            // 調用後端 API 更新筆記
+            const token = localStorage.getItem("token");
+            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token ? `Bearer ${token}` : "",
+              },
+              body: JSON.stringify({
+                title: updatedNote.title,
+                content: updatedNote.content,
+              }),
+            });
+
+            if (!res.ok) {
+              const errorText = await res.text();
+              throw new Error(`更新筆記失敗：${res.status} - ${errorText}`);
+            }
+
+            // 更新成功後，更新本地狀態
+            targetNote.content = updatedContent;
+            
+            onShowCustomAlert(`題目已添加到筆記「${targetNote.title}」中！`);
+          } catch (error) {
+            console.error("更新筆記失敗:", error);
+            onShowCustomAlert(`更新筆記失敗：${error.message}`);
+            return;
+          }
+        } else {
+          onShowCustomAlert("找不到選中的筆記！");
+          return;
+        }
       }
-      onShowCustomAlert("題目收藏成功！");
+
+      onClose();
     } catch (error) {
       console.error("收藏失敗:", error);
       onShowCustomAlert("收藏失敗，請重試！");
     }
   };
 
-  const filteredNotes = Array.isArray(notes)
-    ? notes.filter((note) => note.subject === currentSubject)
-    : [];
+  const filteredNotes = Array.isArray(notes) ? notes.filter((note) => note.subject === currentSubject) : [];
 
   return (
     <div
@@ -233,7 +347,7 @@ export default function FavoriteModal({
           </button>
           <button
             className={`${styles["favorite-modal-btn"]} ${styles["favorite-modal-btn-primary"]}`}
-            onClick={sendFavoriteToBackend}
+            onClick={handleConfirm}
           >
             收藏
           </button>
