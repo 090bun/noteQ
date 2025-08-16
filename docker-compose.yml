@@ -40,6 +40,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend/my-app:/app
+      - /app/node_modules   # 讓容器內 node_modules 不被覆蓋
     command: ["npm","run","dev"]
 
 # The commented out section below is an example of how to define a PostgreSQL
