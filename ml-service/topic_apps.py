@@ -599,5 +599,5 @@ def handle_generate_quiz(data):
     emit('quiz_done', {'message': 'All questions generated.'})
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000 , host='0.0.0.0' , debug=True)  # 使用 SocketIO 啟動 Flask 應用
+    socketio.run(app, debug=True, port=5000 , host='0.0.0.0')  # 使用 SocketIO 啟動 Flask 應用
 
