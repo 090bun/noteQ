@@ -108,7 +108,9 @@ export default function FavoriteModal({
     // 獲取 topicId - 從 sessionStorage 的 topics 中找到對應的題目 ID
     let topicId = null;
     if (quizData?.topics && Array.isArray(quizData.topics)) {
-      const topicIndex = quizData.topics.findIndex((t) => t.id === questionData.id);
+      const topicIndex = quizData.topics.findIndex(
+        (t) => t.id === questionData.id
+      );
       if (topicIndex !== -1) {
         topicId = quizData.topics[topicIndex].id;
       }
