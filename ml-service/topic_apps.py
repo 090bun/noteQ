@@ -9,14 +9,13 @@ from flask_socketio import SocketIO, emit
 import random
 from pathlib import Path
 
+
 # 載入 .env 檔案
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")  # 允許跨域
-
-
+socketio = SocketIO(app, cors_allowed_origins="*") 
 
 def shuffle_options(q):
     options = [
@@ -600,8 +599,5 @@ def handle_generate_quiz(data):
     emit('quiz_done', {'message': 'All questions generated.'})
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
-
-#if __name__ == '__main__':
-    #app.run(debug=True, port=5000)
+    socketio.run(app, debug=True, port=5000 , host='0.0.0.0' , debug=True)  # 使用 SocketIO 啟動 Flask 應用
 

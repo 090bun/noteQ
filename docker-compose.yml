@@ -30,7 +30,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./ml-service:/app
+      - ./ml-service:/topic_apps
 
   web:
     build:

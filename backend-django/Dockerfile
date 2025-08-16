@@ -22,10 +22,7 @@ RUN adduser \
     --no-create-home \
     --uid "${UID}" \
     appuser
-
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
+    
 # Install system packages needed to build some Python wheels (e.g. mysqlclient)
 # pkg-config and development headers are required by mysqlclient when building
 RUN apt-get update \
@@ -36,11 +33,12 @@ RUN apt-get update \
        python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the pyproject.toml and uv.lock files
-COPY pyproject.toml uv.lock ./
+# Copy the requirements.txt file
+COPY requirements.txt .
 
-# Install dependencies using uv
-RUN uv sync --frozen --no-cache
+
+# Install dependencies using pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Switch to the non-privileged user to run the application.
 USER appuser
