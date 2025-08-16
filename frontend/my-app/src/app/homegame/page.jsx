@@ -24,6 +24,31 @@ export default function HomeGamePage() {
   // 初始化路由器
   const router = useRouter();
 
+  // 檢查是否從筆記頁面跳轉過來，並自動填入生成的主題
+  useEffect(() => {
+    const generatedTopic = sessionStorage.getItem("generatedTopic");
+    const generatedTopicSource = sessionStorage.getItem("generatedTopicSource");
+    
+    if (generatedTopic && generatedTopicSource === "note") {
+      // 自動填入AI生成的主題
+      setTopic(generatedTopic);
+      
+      // 顯示提示訊息
+      safeAlert(`已自動填入AI生成的主題：「${generatedTopic}」\n\n您可以調整難度和題數，然後開始挑戰！`);
+      
+      // 清除sessionStorage中的臨時數據
+      sessionStorage.removeItem("generatedTopic");
+      sessionStorage.removeItem("generatedTopicSource");
+      sessionStorage.removeItem("generatedTopicNoteId");
+      
+      // 自動選擇一個難度（預設為intermediate）
+      setSelectedDifficulty("intermediate");
+      
+      // 自動填入題數（預設為5題）
+      setQuestionCount("5");
+    }
+  }, []);
+
   // 難度選項配置
   const difficultyOptions = [
     {

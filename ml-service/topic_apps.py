@@ -598,6 +598,461 @@ def handle_generate_quiz(data):
         total -= curr_batch
     emit('quiz_done', {'message': 'All questions generated.'})
 
+@app.route('/api/generate_topic_from_note', methods=['POST'])
+def generate_topic_from_note():
+    """根據筆記內容AI生成遊戲主題"""
+    try:
+        # 檢查認證（可選，因為這是內部服務）
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            # 這裡可以添加token驗證邏輯
+            print(f"收到認證token: {token[:10]}...")
+        
+        data = request.json
+        note_content = data.get('note_content', '')
+        
+        if not note_content:
+            return jsonify({"success": False, "message": "筆記內容不能為空"}), 400
+        
+        # 檢查筆記內容長度
+        if len(note_content) > 10000:  # 限制內容長度
+            return jsonify({"success": False, "message": "筆記內容過長，請縮短後再試"}), 400
+        
+        # 檢查 API Key
+        api_key = os.getenv('OPENAI_API_KEY', 'your-api-key-here')
+        
+        if api_key == 'your-api-key-here' or not api_key:
+            # 如果沒有API Key，使用改進的備用邏輯
+            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content)
+            return jsonify({
+                "success": True,
+                "topic": fallback_topic,
+                "message": "使用改進的備用邏輯生成主題",
+                "is_fallback": True
+            })
+        
+        # 使用 OpenAI API 生成主題
+        client = OpenAI(api_key=api_key)
+        
+        # 改進的AI提示詞
+        prompt = f"""
+        你是一個專業的學習主題生成專家，擅長分析各種類型的筆記內容並提取核心概念。
+
+        請分析以下筆記內容，生成一個適合製作練習題的遊戲主題名稱：
+
+        筆記內容：
+        {note_content}
+
+        分析要求：
+        1. 仔細閱讀筆記內容，識別主要概念、關鍵詞和核心主題
+        2. 考慮內容的學科領域、難度層次和實用性
+        3. 主題名稱要簡潔明了，控制在5-15個字之間
+        4. 要能準確反映筆記的核心內容和學習目標
+        5. 適合製作選擇題練習，有明確的知識點
+        6. 優先使用繁體中文，但如果是英文內容可用英文
+        7. 避免過於籠統、抽象或主觀的名稱
+        8. 優先選擇具體、可測量的學習目標
+
+        內容類型識別和處理規則：
+        
+        語言學習類：
+        - 英文內容：使用「English + 主題名稱」或「英文 + 技能練習」格式
+        - 日文內容：使用「日語 + 主題名稱」或「日文 + 技能練習」格式
+        - 其他語言：使用「語言名稱 + 主題名稱」格式
+        
+        動漫遊戲類：
+        - 動漫內容：使用「動漫 + 作品名稱/角色/概念」格式
+        - 遊戲內容：使用「遊戲 + 遊戲名稱/機制/策略」格式
+        - 二次元文化：使用「二次元 + 具體概念」格式
+        
+        娛樂文化類：
+        - 電影電視：使用「影視 + 作品類型/主題」格式
+        - 音樂藝術：使用「音樂/藝術 + 風格/技巧」格式
+        - 流行文化：使用「流行 + 具體概念」格式
+        
+        專業技能類：
+        - 技術技能：使用「技能名稱 + 應用練習」格式
+        - 職業技能：使用「職業 + 技能名稱」格式
+        - 生活技能：使用「生活 + 技能名稱」格式
+        
+        學術研究類：
+        - 如果是數學相關：使用「數學概念名稱+練習」格式
+        - 如果是科學相關：使用「學科名稱+具體概念練習」格式
+        - 如果是人文相關：使用「學科名稱+主題練習」格式
+
+        特殊情況處理：
+        - 混合語言內容：優先使用主要語言，可適當混合
+        - 專業術語：保留專業術語，使用繁體中文解釋
+        - 文化特定內容：尊重原文化，使用適當的命名方式
+        - 創意內容：鼓勵創意表達，但保持主題明確
+
+        請直接回傳主題名稱，不要加任何其他內容、格式標記或解釋。
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "你是一個學習主題生成助手，請根據筆記內容生成合適的練習題主題。只回傳主題名稱，不要其他內容。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,  # 降低溫度，提高一致性
+            max_tokens=50      # 減少token使用
+        )
+        
+        ai_response = response.choices[0].message.content.strip()
+        
+        # 改進的AI回應清理邏輯
+        topic = clean_ai_response(ai_response)
+        
+        if not topic or len(topic) > 25 or len(topic) < 3:
+            # 如果AI生成的主題無效，使用改進的備用邏輯
+            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content)
+            return jsonify({
+                "success": True,
+                "topic": fallback_topic,
+                "message": "AI生成主題無效，使用改進的備用邏輯",
+                "is_fallback": True
+            })
+        
+        return jsonify({
+            "success": True,
+            "topic": topic,
+            "message": "成功生成主題",
+            "is_fallback": False
+        })
+        
+    except Exception as e:
+        print(f"生成主題時發生錯誤: {str(e)}")
+        
+        # 發生錯誤時使用改進的備用邏輯
+        try:
+            fallback_topic = generate_enhanced_fallback_topic_from_note(note_content)
+            return jsonify({
+                "success": True,
+                "topic": fallback_topic,
+                "message": "AI服務錯誤，使用改進的備用邏輯",
+                "is_fallback": True
+            })
+        except Exception as fallback_error:
+            print(f"改進的備用邏輯也失敗: {str(fallback_error)}")
+            return jsonify({
+                "success": False,
+                "message": f"生成主題失敗: {str(e)}"
+            }), 500
+
+def clean_ai_response(ai_response):
+    """清理AI回應，提取純淨的主題名稱"""
+    if not ai_response:
+        return ""
+    
+    # 移除常見的前綴和後綴
+    prefixes_to_remove = [
+        '主題：', '主題名稱：', '建議主題：', '推薦主題：', '生成主題：',
+        '主題是：', '主題為：', '主題叫做：', '主題名稱是：'
+    ]
+    
+    suffixes_to_remove = [
+        '練習', '測驗', '測試', '題目', '問題', '考題'
+    ]
+    
+    # 移除前綴
+    cleaned = ai_response
+    for prefix in prefixes_to_remove:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip()
+    
+    # 移除後綴
+    for suffix in suffixes_to_remove:
+        if cleaned.endswith(suffix):
+            cleaned = cleaned[:-len(suffix)].strip()
+    
+    # 移除引號和特殊符號
+    cleaned = cleaned.replace('"', '').replace('"', '').replace('「', '').replace('」', '').replace('『', '').replace('』', '')
+    cleaned = cleaned.replace('：', '').replace(':', '').replace('。', '').replace('！', '').replace('？', '')
+    
+    # 移除多餘的空白
+    cleaned = ' '.join(cleaned.split())
+    
+    return cleaned
+
+def generate_enhanced_fallback_topic_from_note(note_content):
+    """改進的備用主題生成邏輯"""
+    if not note_content:
+        return "綜合知識練習"
+    
+    content = str(note_content).lower()
+    
+    # 擴展的學科關鍵詞映射
+    subject_keywords = {
+        '數學': [
+            '數學', '計算', '公式', '幾何', '代數', '微積分', '統計', '概率', '函數', '方程', '不等式',
+            '三角', '向量', '矩陣', '數列', '極限', '導數', '積分', '微分', '線性', '非線性'
+        ],
+        '物理': [
+            '物理', '力學', '電學', '光學', '熱學', '量子', '相對論', '牛頓', '愛因斯坦', '能量', '動量',
+            '電場', '磁場', '波', '聲', '光', '溫度', '壓力', '密度', '速度', '加速度'
+        ],
+        '化學': [
+            '化學', '分子', '原子', '反應', '元素', '化合物', '離子', '鍵', '酸', '鹼', '氧化', '還原',
+            '催化', '平衡', '速率', '濃度', 'pH值', '有機', '無機', '生物化學'
+        ],
+        '生物': [
+            '生物', '細胞', '基因', '進化', '生態', '解剖', '生理', '遺傳', '免疫', '神經', '循環',
+            '消化', '呼吸', '繁殖', '代謝', '酶', '蛋白質', 'DNA', 'RNA', '染色體'
+        ],
+        '歷史': [
+            '歷史', '古代', '近代', '戰爭', '革命', '文化', '文明', '帝國', '王朝', '政治', '社會',
+            '經濟', '宗教', '哲學', '藝術', '文學', '科學', '技術', '地理', '民族'
+        ],
+        '地理': [
+            '地理', '地形', '氣候', '人口', '經濟', '環境', '自然', '人文', '區域', '國家', '城市',
+            '山脈', '河流', '海洋', '沙漠', '森林', '草原', '資源', '產業', '交通'
+        ],
+        '文學': [
+            '文學', '小說', '詩歌', '散文', '戲劇', '作者', '作品', '風格', '流派', '主題', '情節',
+            '人物', '語言', '修辭', '意象', '象徵', '諷刺', '幽默', '浪漫', '現實'
+        ],
+        '語言': [
+            '語言', '語法', '詞彙', '發音', '翻譯', '寫作', '閱讀', '聽力', '口語', '文法', '句型',
+            '時態', '語態', '語氣', '連接詞', '介詞', '冠詞', '形容詞', '副詞', '動詞'
+        ],
+        '計算機': [
+            '計算機', '程式', '算法', '數據', '網絡', '軟件', '硬體', '編程', '開發', '設計', '測試',
+            '數據庫', '人工智能', '機器學習', '深度學習', '雲計算', '大數據', '區塊鏈', '物聯網'
+        ],
+        '經濟': [
+            '經濟', '市場', '貿易', '金融', '投資', '政策', '貨幣', '銀行', '股票', '債券', '匯率',
+            '通貨膨脹', '失業', 'GDP', '供需', '價格', '成本', '利潤', '競爭', '壟斷'
+        ],
+        '心理學': [
+            '心理', '認知', '行為', '情緒', '人格', '發展', '社會', '臨床', '實驗', '學習', '記憶',
+            '注意力', '思維', '動機', '態度', '價值觀', '群體', '文化', '健康'
+        ],
+        '哲學': [
+            '哲學', '邏輯', '倫理', '美學', '形而上學', '認識論', '存在', '意識', '自由', '正義',
+            '真理', '知識', '理性', '經驗', '懷疑', '辯證', '唯心', '唯物', '實用主義'
+        ]
+    }
+    
+    # 新增：語言學習關鍵詞
+    language_keywords = {
+        '英文': [
+            'english', 'english', '英語', '英文', '英語', 'english', 'english', 'english', 'english', 'english',
+            'grammar', 'vocabulary', 'pronunciation', 'translation', 'writing', 'reading', 'listening', 'speaking',
+            'tense', 'verb', 'noun', 'adjective', 'adverb', 'preposition', 'conjunction', 'article'
+        ],
+        '日文': [
+            '日語', '日文', '日本語', 'ひらがな', 'カタカナ', '漢字', '文法', '語彙', '發音', '翻訳',
+            'writing', 'reading', 'listening', 'speaking', '敬語', '助詞', '動詞', '形容詞', '名詞'
+        ],
+        '韓文': [
+            '韓語', '韓文', '한국어', '한글', '문법', '어휘', '발음', '번역', 'writing', 'reading'
+        ],
+        '法文': [
+            '法語', '法文', 'français', 'francais', 'grammaire', 'vocabulaire', 'prononciation', 'traduction'
+        ],
+        '德文': [
+            '德語', '德文', 'deutsch', 'grammatik', 'wortschatz', 'aussprache', 'übersetzung'
+        ]
+    }
+    
+    # 新增：動漫遊戲關鍵詞
+    anime_game_keywords = {
+        '動漫': [
+            '動漫', '動畫', '漫畫', 'anime', 'manga', '二次元', '角色', '劇情', '聲優', 'op', 'ed',
+            '輕小說', '輕小', 'galgame', '視覺小說', '視覺小說', '視覺小說', '視覺小說'
+        ],
+        '遊戲': [
+            '遊戲', 'game', 'rpg', 'mmorpg', 'fps', 'moba', '策略', '動作', '冒險', '解謎', '模擬',
+            '競技', '單機', '網遊', '手遊', '主機', 'pc', 'steam', 'switch', 'ps5', 'xbox'
+        ],
+        '二次元文化': [
+            'cosplay', '同人', '手辦', '模型', '周邊', '應援', '粉絲', '宅', '萌', '燃', '百合', 'bl',
+            '腐女', '蘿莉', '御姐', '正太', '大叔', '傲嬌', '天然', '病嬌', '三無'
+        ]
+    }
+    
+    # 新增：娛樂文化關鍵詞
+    entertainment_keywords = {
+        '影視': [
+            '電影', '電視', '劇', '影視', 'movie', 'tv', 'drama', 'series', 'show', 'film', 'cinema',
+            '導演', '演員', '編劇', '製片', '票房', '收視率', '劇情', '特效', '配樂', '剪輯'
+        ],
+        '音樂': [
+            '音樂', '歌曲', '歌手', '樂團', '樂器', '作曲', '作詞', '編曲', '音樂', 'music', 'song',
+            'pop', 'rock', 'jazz', 'classical', 'electronic', 'hip-hop', 'r&b', 'country', 'folk'
+        ],
+        '藝術': [
+            '藝術', '繪畫', '雕塑', '攝影', '設計', '建築', '時尚', 'art', 'painting', 'sculpture',
+            'photography', 'design', 'architecture', 'fashion', '素描', '水彩', '油畫', '版畫'
+        ]
+    }
+    
+    # 檢查內容中是否包含學科關鍵詞
+    for subject, keywords in subject_keywords.items():
+        if any(keyword in content for keyword in keywords):
+            # 根據內容長度和複雜度選擇合適的後綴
+            if len(content) > 500:
+                return f"{subject}進階練習"
+            elif len(content) > 200:
+                return f"{subject}綜合練習"
+            else:
+                return f"{subject}基礎練習"
+    
+    # 檢查語言學習內容
+    for language, keywords in language_keywords.items():
+        if any(keyword in content for keyword in keywords):
+            # 檢測主要語言
+            if language == '英文' and any(word in content for word in ['english', 'grammar', 'vocabulary']):
+                return "English Grammar Practice"
+            elif language == '英文':
+                return "英文語法練習"
+            elif language == '日文':
+                return "日語基礎練習"
+            elif language == '韓文':
+                return "韓語基礎練習"
+            elif language == '法文':
+                return "法語基礎練習"
+            elif language == '德文':
+                return "德語基礎練習"
+    
+    # 檢查動漫遊戲內容
+    for category, keywords in anime_game_keywords.items():
+        if any(keyword in content for keyword in keywords):
+            if category == '動漫':
+                # 嘗試識別具體作品
+                anime_titles = ['海賊王', '火影', '死神', '進擊的巨人', '鬼滅之刃', '咒術迴戰', '鋼彈', 'eva']
+                for title in anime_titles:
+                    if title in content:
+                        return f"{title}相關練習"
+                return "動漫知識練習"
+            elif category == '遊戲':
+                # 嘗試識別具體遊戲
+                game_titles = ['minecraft', 'fortnite', 'lol', 'dota', 'csgo', 'valorant', '原神', '崩壞']
+                for title in game_titles:
+                    if title in content:
+                        return f"{title}遊戲練習"
+                return "遊戲策略練習"
+            elif category == '二次元文化':
+                return "二次元文化練習"
+    
+    # 檢查娛樂文化內容
+    for category, keywords in entertainment_keywords.items():
+        if any(keyword in content for keyword in keywords):
+            if category == '影視':
+                return "影視作品練習"
+            elif category == '音樂':
+                return "音樂欣賞練習"
+            elif category == '藝術':
+                return "藝術鑑賞練習"
+    
+    # 智能內容分析
+    content_analysis = analyze_content_complexity(note_content)
+    
+    # 根據內容特徵生成主題
+    if content_analysis['has_formulas']:
+        return "數學公式練習"
+    elif content_analysis['has_code']:
+        return "程式設計練習"
+    elif content_analysis['has_dates']:
+        return "歷史時間練習"
+    elif content_analysis['has_numbers']:
+        return "數值分析練習"
+    elif content_analysis['has_questions']:
+        return "問題思考練習"
+    elif content_analysis['has_lists']:
+        return "條理整理練習"
+    elif content_analysis['has_english']:
+        return "English Content Practice"
+    elif content_analysis['has_japanese']:
+        return "日本語コンテンツ練習"
+    
+    # 提取關鍵詞生成主題
+    key_words = extract_key_words(note_content)
+    if key_words:
+        if len(key_words) == 1:
+            return f"{key_words[0]}相關練習"
+        else:
+            return f"{key_words[0]}與{key_words[1]}練習"
+    
+    return "綜合知識練習"
+
+def analyze_content_complexity(content):
+    """分析內容複雜度和特徵"""
+    analysis = {
+        'has_formulas': bool(re.search(r'[+\-*/=()\[\]{}]', content)),
+        'has_code': bool(re.search(r'(def|class|import|function|var|let|const)', content, re.IGNORECASE)),
+        'has_dates': bool(re.search(r'\d{4}年|\d{1,2}月|\d{1,2}日|\d{4}-\d{1,2}-\d{1,2}', content)),
+        'has_numbers': bool(re.search(r'\d+\.?\d*', content)),
+        'has_questions': bool(re.search(r'[？?]', content)),
+        'has_lists': bool(re.search(r'^\s*[-*•]\s|^\s*\d+\.\s', content, re.MULTILINE)),
+        'has_english': bool(re.search(r'[a-zA-Z]{3,}', content)),  # 檢測英文單詞
+        'has_japanese': bool(re.search(r'[あ-んア-ン一-龯]', content)),  # 檢測日文字符
+        'has_korean': bool(re.search(r'[가-힣]', content)),  # 檢測韓文字符
+        'has_chinese': bool(re.search(r'[\u4e00-\u9fff]', content)),  # 檢測中文字符
+        'has_emoji': bool(re.search(r'[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002600-\U000027BF]', content)),  # 檢測emoji
+        'has_urls': bool(re.search(r'https?://[^\s]+', content)),  # 檢測URL
+        'has_hashtags': bool(re.search(r'#[^\s]+', content)),  # 檢測標籤
+        'has_mentions': bool(re.search(r'@[^\s]+', content))  # 檢測提及
+    }
+    return analysis
+
+def extract_key_words(content):
+    """提取內容中的關鍵詞，支持多語言"""
+    if not content:
+        return []
+    
+    # 移除標點符號和特殊字符，但保留中文字符
+    cleaned = re.sub(r'[^\w\s\u4e00-\u9fff]', ' ', content)
+    
+    # 分割成單詞
+    words = cleaned.split()
+    
+    # 多語言停用詞
+    stop_words = {
+        # 中文停用詞
+        '的', '是', '在', '有', '和', '與', '或', '但', '而', '如果', '因為', '所以', '這個', '那個', '這些', '那些',
+        '了', '着', '過', '來', '去', '到', '從', '向', '對', '為', '給', '被', '把', '讓', '使', '得',
+        '很', '非常', '特別', '比較', '更', '最', '太', '真', '好', '壞', '大', '小', '高', '低', '長', '短',
+        '我', '你', '他', '她', '它', '我們', '你們', '他們', '她們', '它們',
+        '什麼', '怎麼', '為什麼', '哪裡', '什麼時候', '多少', '幾個',
+        
+        # 英文停用詞
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+        'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+        'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
+        'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
+        'what', 'when', 'where', 'why', 'how', 'which', 'who', 'whom',
+        
+        # 日文停用詞
+        'は', 'が', 'を', 'に', 'へ', 'で', 'から', 'まで', 'より', 'の', 'と', 'や', 'も', 'か', 'ね', 'よ',
+        'です', 'ます', 'だ', 'である', 'いる', 'ある', 'する', 'なる', 'できる', '見る', '聞く',
+        'これ', 'それ', 'あれ', 'どれ', 'ここ', 'そこ', 'あそこ', 'どこ',
+        
+        # 通用停用詞
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'
+    }
+    
+    # 過濾短詞和常見詞
+    filtered_words = []
+    for word in words:
+        word_lower = word.lower()
+        # 保留長度大於1的詞，且不在停用詞列表中
+        if len(word) > 1 and word_lower not in stop_words:
+            # 檢查是否包含有效字符（至少包含一個字母或中文字符）
+            if re.search(r'[a-zA-Z\u4e00-\u9fff]', word):
+                filtered_words.append(word)
+    
+    # 按頻率排序
+    word_freq = {}
+    for word in filtered_words:
+        word_freq[word] = word_freq.get(word, 0) + 1
+    
+    # 返回頻率最高的3個詞（增加數量以提供更多選擇）
+    sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
+    return [word for word, freq in sorted_words[:3]]
+
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
 
