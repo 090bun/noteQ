@@ -91,6 +91,7 @@ export default function LoginPage() {
       const data = await res.json();
       localStorage.setItem("token", data.token);
       localStorage.setItem("userId", data.user_id);
+      localStorage.setItem("is_paid", data.is_paid);
       
       // 登入成功後才開始頁面過渡動畫
       navigateWithTransition('/homegame', 'right');

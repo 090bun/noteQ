@@ -58,10 +58,10 @@ export default function NotePage() {
         const notesData = await getNotes();
         const subjectsData = await getSubjects();
         
-        console.log("載入的筆記數據:", notesData);
-        console.log("載入的主題數據:", subjectsData);
+        //console.log("載入的筆記數據:", notesData);
+        //console.log("載入的主題數據:", subjectsData);
         
-        const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+        const subscriptionStatus = localStorage.getItem("is_paid");
         setNotes(notesData);
         setSubjects(subjectsData);
         setIsPlusSubscribed(subscriptionStatus === "true");

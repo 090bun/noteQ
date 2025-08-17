@@ -15,7 +15,7 @@ export function useGameoverUtils() {
   // 初始化檢查訂閱狀態和資料
   useEffect(() => {
     // 从localStorage獲得訂閱狀態
-    const subscriptionStatus = localStorage.getItem('isPlusSubscribed');
+    const subscriptionStatus = localStorage.getItem('is_paid');
     setIsPlusSubscribed(subscriptionStatus === 'true');
 
     // 从 noteUtil獲取主題和筆記
