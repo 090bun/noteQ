@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECPay API 測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ECPay API 測試工具</h1>
+        
+        <div class="form-group">
+            <label for="apiUrl">API 網址:</label>
+            <input type="text" id="apiUrl" value="http://localhost:8000/ecpay/" placeholder="輸入 API 網址">
+        </div>
+        
+        <div class="form-group">
+            <label for="token">Bearer Token:</label>
+            <textarea id="token" rows="3" placeholder="貼上你的 JWT Token">eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1NTAwOTU0LCJpYXQiOjE3NTU0MTQ1NTQsImp0aSI6Ijg2ZTZmNDA4OGQ5MjQ4ZTBhYzEwMjMwODE3NGU5NmZlIiwidXNlcl9pZCI6IjEwIn0.CLa_Z_e_8MrprwTe1mWj6fDZxPGDU5Rgfkj3gU1iIew</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="paymentMethod">付款方式:</label>
+            <input type="text" id="paymentMethod" value="Credit" placeholder="Credit">
+        </div>
+        
+        <button onclick="testEcpayAPI()">測試 ECPay API</button>
+        
+        <div class="loading" id="loading">
+            <p>處理中，請稍候...</p>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testEcpayAPI() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const token = document.getElementById('token').value.trim();
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+            
+            // 清除之前的結果
+            resultDiv.innerHTML = '';
+            loadingDiv.style.display = 'block';
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        payment_method: paymentMethod
+                    })
+                });
+                
+                loadingDiv.style.display = 'none';
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('text/html')) {
+                        // 如果回傳是 HTML，在新視窗開啟 ECPay 付款頁面
+                        const html = await response.text();
+                        
+                        // 建立新視窗顯示付款表單並自動提交
+                        const paymentWindow = window.open('', '_blank', 'width=800,height=600');
+                        paymentWindow.document.write(html);
+                        paymentWindow.document.close();
+                        
+                        resultDiv.innerHTML = `
+                            <div class="result">
+                                <h3>✅ API 呼叫成功！</h3>
+                                <p>🚀 ECPay 付款表單已在新視窗開啟，正在自動跳轉到綠界付款頁面...</p>
+                                <p>請在新視窗完成付款流程。</p>
+                                <details style="margin-top: 10px;">
+                                    <summary>查看原始 HTML</summary>
+                                    <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;">${html}</pre>
+                                </details>
+                            </div>
+                        `;
+                    } else {
+                        // 如果回傳是 JSON
+                        const data = await response.json();
+                        resultDiv.innerHTML = `
+                            <div class="result">
+                                <h3>✅ API 呼叫成功 (Status: ${response.status})</h3>
+                                <p><strong>回傳內容:</strong></p>
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    }
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ API 呼叫失敗 (Status: ${response.status})</h3>
+                            <p><strong>錯誤訊息:</strong></p>
+                            <pre>${errorText}</pre>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ 網路錯誤</h3>
+                        <p><strong>錯誤訊息:</strong> ${error.message}</p>
+                        <p>請檢查：</p>
+                        <ul>
+                            <li>Django 伺服器是否正在運行</li>
+                            <li>API 網址是否正確</li>
+                            <li>Token 是否有效</li>
+                            <li>CORS 設定是否正確</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+        
+        // 頁面載入時的提示
+        window.onload = function() {
+            console.log('ECPay API 測試工具已載入');
+            console.log('請確保 Django 伺服器正在運行：python manage.py runserver');
+        };
+    </script>
+</body>
+</html>

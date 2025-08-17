@@ -1,5 +1,5 @@
 from django.db import models
-
+from myapps.Authorization.models import User
 # Create your models here.
 
 # 綠界金流資料庫
@@ -18,8 +18,8 @@ class Order(models.Model):
     status = models.CharField(max_length=32, choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_paid = models.BooleanField(default=False)
-    payment_method = models.CharField(max_length=32, choices=[('credit_card', 'Credit Card'), ('bank_transfer', 'Bank Transfer')], default='credit_card')
+    # is_paid = models.BooleanField(default=False)
+    payment_method = models.CharField(max_length=32, choices=[('Credit', 'Credit'), ('Bank Transfer', 'Bank Transfer')], default='Credit')
 
     class Meta:
         db_table = "Order"
@@ -37,7 +37,7 @@ class UserSubscription(models.Model):
     user = models.ForeignKey("Authorization.User", on_delete=models.CASCADE)
     order = models.ForeignKey("Ecpay.Order", on_delete=models.CASCADE)
     plan = models.ForeignKey("Ecpay.PaymentPlan", on_delete=models.CASCADE)
-    start_date = models.DateTimeField(auto_now_add=True)
+    start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

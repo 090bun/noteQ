@@ -1,0 +1,44 @@
+HTTP/1.1 200 OK
+Date: Sun, 17 Aug 2025 12:36:33 GMT
+Server: WSGIServer/0.2 CPython/3.12.7
+Content-Type: text/html; charset=utf-8
+Vary: Accept, origin
+Allow: POST, OPTIONS
+X-Frame-Options: DENY
+Content-Length: 1566
+X-Content-Type-Options: nosniff
+Referrer-Policy: same-origin
+Cross-Origin-Opener-Policy: same-origin
+
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>正在跳轉到綠界金流...</title>
+        </head>
+        <body>
+            <form id="ecpayForm" method="post" action="https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5" accept-charset="utf-8">
+                <input type="hidden" name="MerchantID" value="3002607" />
+<input type="hidden" name="MerchantTradeNo" value="ORDER20250817123633" />
+<input type="hidden" name="MerchantTradeDate" value="2025/08/17 12:36:33" />
+<input type="hidden" name="PaymentType" value="aio" />
+<input type="hidden" name="TotalAmount" value="99" />
+<input type="hidden" name="TradeDesc" value="每月付款99NTD" />
+<input type="hidden" name="ItemName" value="月付99NTD" />
+<input type="hidden" name="ReturnURL" value="http://localhost:8000/ECpay-return/" />
+<input type="hidden" name="ClientBackURL" value="http://localhost:3000/payment/success" />
+<input type="hidden" name="OrderResultURL" value="http://localhost:3000/payment/success" />
+<input type="hidden" name="ChoosePayment" value="Credit" />
+<input type="hidden" name="EncryptType" value="1" />
+<input type="hidden" name="NeedExtraPaidInfo" value="Y" />
+<input type="hidden" name="CheckMacValue" value="680C3D0BFBAD102DF4DDF16EA03B2FA3BCBA85B28DC630B13F59925B5C834D9B" />
+
+            </form>
+            <script>
+                document.getElementById('ecpayForm').submit();
+            </script>
+            <p>正在跳轉到付款頁面，請稍候...</p>
+        </body>
+        </html>
+        
