@@ -88,12 +88,51 @@ export default function UserPage() {
     });
   };
 
-  // 升級到Plus方案
-  const handleUpgradeToPlus = () => {
-    window.location.href = "http://localhost:8000/ecpay/";
-    // setIsPlusSubscribed(true);
-    // localStorage.setItem("is_paid", "true");
-    // safeAlert("恭喜！您已成功升級到Plus方案");
+  // 升級到Plus方案（改版：接收 HTML 並渲染）
+  const handleUpgradeToPlus = async () => {
+    try {
+      // 1) 直接向後端索取 HTML（避免帶 Content-Type: application/json 造成預檢）
+      const res = await fetch("http://localhost:8000/ecpay/", {
+        method: "POST",
+        headers: {
+          // 接受 HTML；Authorization 視你的後端需求保留
+          Accept: "text/html",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        // 若後端有回 JSON 錯誤就解析，否則顯示通用錯誤
+        let msg = "無法取得付款頁面，請稍後再試。";
+        try {
+          const maybeJson = await res.clone().json();
+          msg = maybeJson?.message || maybeJson?.detail || msg;
+        } catch {}
+        safeAlert(msg);
+        return;
+      }
+
+      // 2) 取回 HTML 字串
+      const html = await res.text();
+      if (!html || !html.includes("<form") || !html.includes("</html>")) {
+        safeAlert("回傳內容不是有效的付款頁面。");
+        return;
+      }
+
+      // 3) 以「新分頁」方式寫入 HTML（最穩、避免污染當前 React DOM）
+      const win = window.open("", "_blank");
+      if (!win) {
+        safeAlert("被瀏覽器封鎖彈窗，請允許此網站開新視窗後再試。");
+        return;
+      }
+      win.document.open();
+      win.document.write(html); // 這段 HTML 內有 <script> 會自動 submit form
+      win.document.close();
+    } catch (err) {
+      console.error("ecpay error:", err);
+      safeAlert("發送付款請求失敗，請稍後再試。");
+    }
   };
 
   // 取消Plus訂閱
