@@ -163,7 +163,7 @@ def generate_questions_with_ai(topic, difficulty, count):
                 {"role": "user", "content": prompt}
             ],
             temperature=0.8,  # 適中溫度，保持創意性
-            max_tokens=3000   # 限制長度，提升生成速度
+            max_tokens=4000   # 限制長度，提升生成速度
         )
 
         ai_response = response.choices[0].message.content

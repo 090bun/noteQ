@@ -376,7 +376,7 @@ export default function UserPage() {
                     height={20}
                     loading="lazy"
                   />
-                  <span>單次生成十題題目</span>
+                  <span>單次生成五題題目</span>
                 </li>
                 <li className={styles.featureItem}>
                   <Image
@@ -430,7 +430,7 @@ export default function UserPage() {
                     height={20}
                     loading="lazy"
                   />
-                  <span>主題不限/單次題目生成三十題</span>
+                  <span>主題不限/單次題目生成十五題</span>
                 </li>
                 <li className={styles.featureItem}>
                   {isPlusSubscribed ? (
