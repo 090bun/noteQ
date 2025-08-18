@@ -17,6 +17,8 @@ export default function LoginPage() {
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [isSubmittingForgotPassword, setIsSubmittingForgotPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const splineViewerRef = useRef(null);
   const { navigateWithTransition } = usePageTransition();
 
@@ -74,6 +76,10 @@ export default function LoginPage() {
   // 登入功能
   const handleLogin = async (e) => {
     e.preventDefault();
+    
+    if (isLoggingIn) return; // 防止重複提交
+    
+    setIsLoggingIn(true);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/login/", {
@@ -99,12 +105,18 @@ export default function LoginPage() {
     } catch (err) {
       // 如果登入失敗，顯示錯誤訊息
       safeAlert("登入失敗，請確認帳號密碼");
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   // 註冊功能
   const handleSignup = async (e) => {
     e.preventDefault();
+    
+    if (isSigningUp) return; // 防止重複提交
+    
+    setIsSigningUp(true);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/register/", {
@@ -128,6 +140,8 @@ export default function LoginPage() {
       setIsLoginForm(true);
     } catch (err) {
       safeAlert("註冊失敗，請確認資料是否正確或已被註冊");
+    } finally {
+      setIsSigningUp(false);
     }
   };
 
@@ -263,8 +277,19 @@ export default function LoginPage() {
                 </a>
               </div>
 
-              <button type="submit" className={styles.authButton}>
-                LOGIN
+              <button 
+                type="submit" 
+                className={`${styles.authButton} ${isLoggingIn ? styles.loading : ''}`}
+                disabled={isLoggingIn}
+              >
+                {isLoggingIn ? (
+                  <>
+                    <span className={styles.loadingSpinner}></span>
+                    <span>登入中...</span>
+                  </>
+                ) : (
+                  "LOGIN"
+                )}
               </button>
               {message && (
                 <p style={{ marginTop: "10px", color: "red" }}>{message}</p>
@@ -383,8 +408,19 @@ export default function LoginPage() {
                 <div className={styles.inputUnderline}></div>
               </div>
 
-              <button type="submit" className={styles.authButton}>
-                SIGN UP
+              <button 
+                type="submit" 
+                className={`${styles.authButton} ${isSigningUp ? styles.loading : ''}`}
+                disabled={isSigningUp}
+              >
+                {isSigningUp ? (
+                  <>
+                    <span className={styles.loadingSpinner}></span>
+                    <span>註冊中...</span>
+                  </>
+                ) : (
+                  "SIGN UP"
+                )}
               </button>
               {signupMessage && (
                 <p style={{ marginTop: "10px", color: "red" }}>
