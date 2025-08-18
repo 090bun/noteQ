@@ -91,6 +91,7 @@ export default function UserPage() {
   // 升級到Plus方案（改版：接收 HTML 並渲染）
   const handleUpgradeToPlus = async () => {
     try {
+      let loadingAlert = safeAlert("正在前往付款頁面，請稍候...");
       // 1) 直接向後端索取 HTML（避免帶 Content-Type: application/json 造成預檢）
       const res = await fetch("http://localhost:8000/ecpay/", {
         method: "POST",
