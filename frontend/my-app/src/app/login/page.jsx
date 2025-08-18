@@ -127,13 +127,6 @@ export default function LoginPage() {
     
     // 開發環境下顯示性能指標
     if (process.env.NODE_ENV === 'development') {
-      console.log(`🚀 API 性能指標:`, {
-        totalRequests: metrics.totalRequests,
-        cachedRequests: metrics.cachedRequests,
-        cacheHitRate: `${((metrics.cachedRequests / metrics.totalRequests) * 100).toFixed(1)}%`,
-        averageResponseTime: `${metrics.averageResponseTime.toFixed(0)}ms`,
-        uptime: `${((Date.now() - metrics.startTime) / 1000).toFixed(1)}s`
-      });
     }
   }, []);
 

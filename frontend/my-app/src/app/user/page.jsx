@@ -95,18 +95,13 @@ export default function UserPage() {
       
       // 開發環境下顯示性能指標
       if (process.env.NODE_ENV === 'development') {
-        console.log(`🚀 用戶頁面數據載入完成:`, {
-          totalTime: `${totalTime}ms`,
-          userDataSuccess: userDataResult.status === 'fulfilled',
-          topicsSuccess: topicsResult.status === 'fulfilled',
-          cacheUsed: !!(cachedUserData && cachedTopics)
-        });
+        // 性能指標記錄已移除
       }
       
     } catch (error) {
-      console.error("並行數據獲取失敗:", error);
+      // 並行數據獲取失敗
     }
-  }, [getCachedData, setCachedData]);
+  }, []); // 移除依賴項以避免無限循環
 
   // 新增：智能重試機制
   const retryWithBackoff = useCallback(async (fn, maxRetries = 3, baseDelay = 100) => {
@@ -181,7 +176,6 @@ export default function UserPage() {
 
         safeAlert(data?.message || "密碼已更新成功！");
       } catch (err) {
-        console.error("reset-password 發生錯誤：", err);
         safeAlert("網路或伺服器異常，請稍後再試。");
       }
     });
@@ -292,7 +286,6 @@ export default function UserPage() {
     const userId = localStorage.getItem("userId");
 
     if (!token) {
-      console.error("找不到 token");
       return null;
     }
 
@@ -321,10 +314,8 @@ export default function UserPage() {
       return formattedData;
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log("用戶數據請求已取消");
         return null;
       }
-      console.error("取得使用者資料失敗:", error);
       return null;
     }
   };
@@ -335,7 +326,6 @@ export default function UserPage() {
       const userTopics = await getUserTopics();
       return Array.isArray(userTopics) ? userTopics : [];
     } catch (error) {
-      console.error("獲取用戶主題失敗:", error);
       return [];
     }
   };
@@ -350,7 +340,7 @@ export default function UserPage() {
     }
     
     await fetchAllDataInParallel();
-  }, [lastFetchTime, fetchAllDataInParallel]);
+  }, [lastFetchTime]); // 移除 fetchAllDataInParallel 依賴項
 
 
   // 初始化數據 - 優化版本
@@ -387,7 +377,7 @@ export default function UserPage() {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchAllDataInParallel]);
+  }, []); // 移除 fetchAllDataInParallel 依賴項以避免無限循環
 
   // 新增：定期刷新數據（可選）
   useEffect(() => {
