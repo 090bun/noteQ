@@ -39,7 +39,15 @@ export default function NotePage() {
   const [modalType, setModalType] = useState(""); // 'add', 'edit', 'view', 'move', 'addSubject', 'deleteSubject'
   const [editingNote, setEditingNote] = useState(null);
   const [movingNote, setMovingNote] = useState(null);
-  const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
+  // 初始化時直接從 localStorage 同步讀取，避免畫面先以 false 呈現造成閃屏
+  const [isPlusSubscribed, setIsPlusSubscribed] = useState(() => {
+    try {
+      const v = typeof window !== "undefined" ? localStorage.getItem("is_paid") : null;
+      return v === "true" ? true : null; // true / false / null(未知)
+    } catch (e) {
+      return null;
+    }
+  });
 
   // 初始化數據
   useEffect(() => {
@@ -89,8 +97,9 @@ export default function NotePage() {
   }, [subjects]);
 
   // 檢查是否為Plus用戶
+  // 明確回傳是否為已訂閱(true)，未訂閱回傳 false，未知回傳 false (保守處理)
   const checkPlusSubscription = () => {
-    return isPlusSubscribed;
+    return isPlusSubscribed === true;
   };
 
   // 顯示升級提示
@@ -1118,7 +1127,8 @@ export default function NotePage() {
             <button
               className={styles.addNoteButton}
               onClick={handleAddNote}
-              disabled={!isPlusSubscribed}
+              // 只有明確為 false 時才禁用，null(未知) 或 true 不會造成閃爍的預設畫面
+              disabled={isPlusSubscribed === false}
             >
               新增筆記
             </button>
@@ -1126,8 +1136,11 @@ export default function NotePage() {
         </div>
 
         <div className={styles.notesGrid}>
-          {!isPlusSubscribed ? (
-            <div className={styles.upgradeState}>
+          {isPlusSubscribed === null ? (
+            // 尚未取得訂閱狀態時不要顯示未訂閱畫面，維持空白以避免閃爍
+            <></>
+          ) : isPlusSubscribed === false ? (
+              <div className={styles.upgradeState}>
               <div className={styles.upgradeIcon}>
                 <Image
                   src="/img/Vector-41.png"
