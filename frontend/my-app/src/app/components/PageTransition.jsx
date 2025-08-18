@@ -25,12 +25,12 @@ export const usePageTransition = () => {
     
     // 如果是移動設備，直接跳轉，不使用動畫
     if (isMobile()) {
-      console.log('移動設備檢測到，直接跳轉');
+      
       router.push(path);
       return;
     }
     
-    console.log('桌面設備，使用動畫效果');
+    
     
     // 創建遮罩容器 
     const maskContainer = document.createElement('div');

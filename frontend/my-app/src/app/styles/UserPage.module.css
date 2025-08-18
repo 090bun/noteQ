@@ -204,7 +204,7 @@
 .topicsList {
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 10px;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
     max-height: 300px;
@@ -231,7 +231,7 @@
 .topicItem {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
     padding: 20px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -643,7 +643,7 @@
     }
 
     .topicsList {
-        gap: 20px;
+        gap: 10px;
     }
 
     .topicItem {
