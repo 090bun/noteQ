@@ -276,7 +276,7 @@ export default function UserPage() {
                   height={80}
                   style={{
                     objectFit: "contain",
-                    mixBlendMode: "difference",
+                    filter: "sepia(1) invert(1) brightness(1.1) "
                   }}
                 />
                 <h1
