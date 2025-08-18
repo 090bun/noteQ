@@ -189,7 +189,11 @@ export default function UserPage() {
 
   // 升級到Plus方案（改版：接收 HTML 並渲染）
   const handleUpgradeToPlus = async () => {
+    let loadingAlert = null;
     try {
+      // 顯示載入提示並保存引用
+      loadingAlert = safeAlert("正在前往付款頁面，請稍候...");
+      
       // 1) 直接向後端索取 HTML（避免帶 Content-Type: application/json 造成預檢）
       const res = await fetch("http://localhost:8000/ecpay/", {
         method: "POST",
@@ -208,6 +212,10 @@ export default function UserPage() {
           const maybeJson = await res.clone().json();
           msg = maybeJson?.message || maybeJson?.detail || msg;
         } catch {}
+        // 關閉載入提示並顯示錯誤
+        if (loadingAlert && typeof loadingAlert.close === 'function') {
+          loadingAlert.close();
+        }
         safeAlert(msg);
         return;
       }
@@ -215,6 +223,10 @@ export default function UserPage() {
       // 2) 取回 HTML 字串
       const html = await res.text();
       if (!html || !html.includes("<form") || !html.includes("</html>")) {
+        // 關閉載入提示並顯示錯誤
+        if (loadingAlert && typeof loadingAlert.close === 'function') {
+          loadingAlert.close();
+        }
         safeAlert("回傳內容不是有效的付款頁面。");
         return;
       }
@@ -222,14 +234,28 @@ export default function UserPage() {
       // 3) 以「新分頁」方式寫入 HTML（最穩、避免污染當前 React DOM）
       const win = window.open("", "_blank");
       if (!win) {
+        // 關閉載入提示並顯示錯誤
+        if (loadingAlert && typeof loadingAlert.close === 'function') {
+          loadingAlert.close();
+        }
         safeAlert("被瀏覽器封鎖彈窗，請允許此網站開新視窗後再試。");
         return;
       }
+      
+      // 4) 成功打開新分頁後，關閉載入提示
+      if (loadingAlert && typeof loadingAlert.close === 'function') {
+        loadingAlert.close();
+      }
+      
       win.document.open();
       win.document.write(html); // 這段 HTML 內有 <script> 會自動 submit form
       win.document.close();
     } catch (err) {
       console.error("ecpay error:", err);
+      // 關閉載入提示並顯示錯誤
+      if (loadingAlert && typeof loadingAlert.close === 'function') {
+        loadingAlert.close();
+      }
       safeAlert("發送付款請求失敗，請稍後再試。");
     }
   };
