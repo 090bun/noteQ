@@ -93,4 +93,6 @@ urlpatterns = [
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     # ReDoc 介面
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    # Ecpay 介面
+    path("", include("myapps.Ecpay.urls")),  # 包含 Ecpay app 的 URLs
 ]

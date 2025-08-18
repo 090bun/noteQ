@@ -16,7 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # 載入 .env 檔案 - 指定完整路徑
 load_dotenv(BASE_DIR / '.env')
@@ -26,13 +26,12 @@ load_dotenv(BASE_DIR / '.env')
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure--rarndj_*=u0#76x$01j3)sm@!vpdzy1s$u$^9=f&@nqyq934("
-
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', '0') == '1'
 
 # 所有連線
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 
 
@@ -128,9 +127,14 @@ PASSWORD_HASHERS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hant"
 
-TIME_ZONE = "UTC"
+# LANGUAGES = [
+#     ('en', _('English')),
+#     ('zh-hant', _('Traditional Chinese')),
+# ]
+
+TIME_ZONE = "Asia/Taipei"
 
 USE_I18N = True
 
@@ -169,7 +173,9 @@ CORS_ALLOW_ALL_ORIGINS = True  # 開發環境使用，生產環境應該設定�
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF 設置 - 對 API 端點豁免 CSRF 檢查
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
+
+CORS_ALLOWED_ORIGINS = os.getenv("NEXT_PUBLIC_ORIGIN", "").split(",")
+CSRF_TRUSTED_ORIGINS = os.getenv("NEXT_PUBLIC_ORIGIN", "").split(",")
 
 # 對 API 路徑豁免 CSRF
 CSRF_EXEMPT_URLS = [

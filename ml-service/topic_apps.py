@@ -2,19 +2,24 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 # 更新 OpenAI 導入方式
 from openai import OpenAI
-import os
+import os , requests
 import json
 from dotenv import load_dotenv  
-import requests
 import re
 import random
+from pathlib import Path
+
 
 # 載入 .env 檔案
-load_dotenv()  
-
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
+DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 app = Flask(__name__)
-CORS(app)  # 啟用cros
+socketio = SocketIO(app, cors_allowed_origins="*") 
 
+@app.route("/health", methods=["GET"])
+def health():
+    return {"status": "ok"}, 200
 
 
 def shuffle_options(q):
@@ -295,8 +300,8 @@ def get_quiz():
         
         # 這裡需要一個有效的 JWT token 來調用 Django API
         # 你可能需要根據實際情況調整認證方式
-        django_response = requests.get('http://localhost:8000/api/create_quiz/')
-        
+        django_response = requests.get(f'{DJANGO_BASE_URL}/api/create_quiz/')
+
         if django_response.status_code != 200:
             return jsonify({
                 "error": f"Django API error: {django_response.status_code}",
@@ -317,7 +322,7 @@ def get_quiz():
 def get_quiz_alt():
     # 重定向到 Django API
     try:
-        django_response = requests.get('http://localhost:8000/api/quiz/')
+        django_response = requests.get(f'{DJANGO_BASE_URL}/api/quiz/')
         
         if django_response.status_code != 200:
             return jsonify({
@@ -1050,10 +1055,5 @@ def extract_key_words(content):
     return [word for word, freq in sorted_words[:3]]
 
 if __name__ == '__main__':
-    # 移除 SocketIO 啟動方式，改為標準 Flask 啟動
-    app.run(debug=True, port=5000)
-
-# 移除 SocketIO 啟動方式
-# if __name__ == '__main__':
-#     socketio.run(app, debug=True, port=5000)
+    socketio.run(app, debug=True, port=5000 , host='0.0.0.0')  # 使用 SocketIO 啟動 Flask 應用
 
