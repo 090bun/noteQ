@@ -41,17 +41,50 @@ export async function getUserFamiliarityFromAPI() {
 
 }
 
+// 新增：緩存機制
+let familiarityCache = null;
+let lastFamiliarityFetch = 0;
+const FAMILIARITY_CACHE_DURATION = 30000; // 30秒緩存
+
 // =========================
-// 獲取用戶主題熟悉度（GET 包裝）
+// 獲取用戶主題熟悉度（GET 包裝）- 優化版本
 // =========================
 export async function getUserTopics() {
     try {
+        // 檢查緩存
+        const now = Date.now();
+        if (familiarityCache && (now - lastFamiliarityFetch) < FAMILIARITY_CACHE_DURATION) {
+            return familiarityCache;
+        }
+
+        // 獲取新數據
         const apiData = await getUserFamiliarityFromAPI();
+        
+        // 更新緩存
+        familiarityCache = apiData;
+        lastFamiliarityFetch = now;
+        
         return apiData;
     } catch (error) {
         console.error('獲取主題熟悉度失敗:', error);
+        // 如果獲取失敗但有緩存，返回緩存數據
+        if (familiarityCache) {
+            return familiarityCache;
+        }
         return [];
     }
+}
+
+// 新增：清除熟悉度緩存
+export function clearFamiliarityCache() {
+    familiarityCache = null;
+    lastFamiliarityFetch = 0;
+}
+
+// 新增：強制刷新熟悉度數據
+export async function refreshUserTopics() {
+    clearFamiliarityCache();
+    return await getUserTopics();
 }
 
 // =========================

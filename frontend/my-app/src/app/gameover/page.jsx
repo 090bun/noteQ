@@ -230,20 +230,27 @@ export default function GameOverPage() {
     try {
       const raw = sessionStorage.getItem("quizData");
       const rawAns = sessionStorage.getItem("userAnswers");
+      
       if (!raw || !rawAns) {
-        console.warn("找不到 quizData 或 userAnswers，將導回首頁");
-        // 如需強制導回可打開下一行
-        // window.location.href = '/';
+        // 靜默處理，不顯示警告
         return;
       }
 
-      const { quiz, topics, question_count } = JSON.parse(raw);
-      const answers = JSON.parse(rawAns) ?? [];
+      const quizData = JSON.parse(raw);
+      const answers = JSON.parse(rawAns);
+      
+      // 驗證數據完整性
+      if (!quizData || !Array.isArray(quizData.topics) || !Array.isArray(answers)) {
+        console.warn("quizData 格式不正確");
+        return;
+      }
+
+      const { quiz, topics, question_count } = quizData;
 
       setQuizMeta(quiz ?? null);
       setUserAnswers(answers);
 
-      const { merged, summary } = buildViewModel(topics ?? [], answers);
+      const { merged, summary } = buildViewModel(topics, answers);
       setQuestions(merged);
 
       // total 以 question_count 優先，沒有就用 merged.length
@@ -254,15 +261,9 @@ export default function GameOverPage() {
         accuracy: summary.accuracy,
       });
 
-      // 檢查用（不影響畫面）
-      // console.log("quizMeta:", quiz);
-      // console.log("questions:", merged);
-      // console.log("stats:", {
-      //   total: Number.isFinite(question_count) ? question_count : merged.length,
-      //   ...summary,
-      // });
     } catch (e) {
-      console.error("初始化 gameover 資料失敗：", e);
+      // 靜默處理錯誤，不影響用戶體驗
+      console.warn("初始化 gameover 資料失敗:", e);
     }
   }, []);
 

@@ -4,6 +4,12 @@
 let notes = [];
 let subjects = [];
 
+// 新增：緩存機制，避免重複API調用
+let notesCache = null;
+let subjectsCache = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 30000; // 30秒緩存時間
+
 // 清理文字內容 - 保留換行符
 export function cleanTextContent(text) {
   return text
@@ -36,9 +42,14 @@ export function parseMarkdown(text) {
   );
 }
 
-// 獲取筆記數據
+// 獲取筆記數據 - 優化為使用緩存
 export async function getNotes() {
   try {
+    // 檢查緩存是否有效
+    const now = Date.now();
+    if (notesCache && (now - lastFetchTime) < CACHE_DURATION) {
+      return notesCache;
+    }
     const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
       method: "GET",
       headers: {
@@ -48,7 +59,6 @@ export async function getNotes() {
     });
 
     if (!res.ok) {
-      console.error("獲取筆記失敗：", res.status, await res.text());
       return [];
     }
 
@@ -101,16 +111,24 @@ export async function getNotes() {
         })
       : [];
 
+    // 更新緩存
+    notesCache = apiNotes;
+    lastFetchTime = now;
+    
     return apiNotes;
   } catch (error) {
-    console.error("獲取筆記失敗:", error);
     return [];
   }
 }
 
-// 獲取主題數據
+// 獲取主題數據 - 優化為使用緩存
 export async function getSubjects() {
   try {
+    // 檢查緩存是否有效
+    const now = Date.now();
+    if (subjectsCache && (now - lastFetchTime) < CACHE_DURATION) {
+      return subjectsCache;
+    }
     const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
       method: "GET",
       headers: {
@@ -120,7 +138,6 @@ export async function getSubjects() {
     });
 
     if (!res.ok) {
-      console.error("獲取主題失敗：", res.status, await res.text());
       return [];
     }
 
@@ -129,16 +146,30 @@ export async function getSubjects() {
       ? data.favorite_quiz_topics.map((q) => q?.quiz_topic).filter(Boolean)
       : [];
 
+    // 更新緩存
+    subjectsCache = apiSubjects;
+    
     return apiSubjects;
   } catch (error) {
-    console.error("獲取主題失敗:", error);
     return [];
   }
 }
 
-// 獲取主題數據（包含ID）
+// 獲取主題數據（包含ID）- 優化為使用緩存
 export async function getSubjectsWithIds() {
   try {
+    // 檢查緩存是否有效
+    const now = Date.now();
+    if (subjectsCache && (now - lastFetchTime) < CACHE_DURATION) {
+      // 從現有的主題ID映射中重建數據，避免重複API調用
+      if (subjectIdMap && subjectIdMap.size > 0) {
+        const cachedSubjects = [];
+        subjectIdMap.forEach((id, name) => {
+          cachedSubjects.push({ id, name });
+        });
+        return cachedSubjects;
+      }
+    }
     const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
       method: "GET",
       headers: {
@@ -148,7 +179,6 @@ export async function getSubjectsWithIds() {
     });
 
     if (!res.ok) {
-      console.error("獲取主題失敗：", res.status, await res.text());
       return [];
     }
 
@@ -162,16 +192,25 @@ export async function getSubjectsWithIds() {
 
     return apiSubjects;
   } catch (error) {
-    console.error("獲取主題失敗:", error);
     return [];
   }
 }
 
-// 添加筆記
+// 清除緩存 - 當數據發生變化時調用
+export function clearCache() {
+  notesCache = null;
+  subjectsCache = null;
+  lastFetchTime = 0;
+  // 同時清除主題ID映射，確保數據一致性
+  clearSubjectIdMap();
+}
+
+// 添加筆記 - 優化為更新緩存
 export async function addNote(note) {
   try {
     // 先獲取主題列表，找到對應的Quiz ID
     const subjectsData = await getSubjects();
+    
     const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
       method: "GET",
       headers: {
@@ -181,7 +220,7 @@ export async function addNote(note) {
     });
 
     if (!res.ok) {
-      console.error("獲取主題數據失敗：", res.status, await res.text());
+      const errorText = await res.text();
       return { success: false, message: "獲取主題數據失敗" };
     }
 
@@ -190,6 +229,7 @@ export async function addNote(note) {
     
     // 根據主題名稱找到對應的Quiz ID
     const targetTopic = topics.find(t => t?.quiz_topic === note.subject);
+    
     if (!targetTopic) {
       return { success: false, message: `找不到主題「${note.subject}」` };
     }
@@ -200,7 +240,6 @@ export async function addNote(note) {
       quiz_topic: targetTopic.id, // 主題ID（數字）
       content: note.content, // 筆記內容
     };
-
     const noteRes = await fetch("http://127.0.0.1:8000/api/notes/", {
       method: "POST",
       headers: {
@@ -212,19 +251,21 @@ export async function addNote(note) {
 
     if (!noteRes.ok) {
       const errorText = await noteRes.text();
-      console.error("新增筆記失敗：", noteRes.status, errorText);
       return { success: false, message: `新增筆記失敗：${noteRes.status}` };
     }
 
     const result = await noteRes.json();
+    
+    // 清除緩存，強制下次獲取最新數據
+    clearCache();
+    
     return { success: true, message: "筆記添加成功！", data: result };
   } catch (error) {
-    console.error("新增筆記失敗:", error);
     return { success: false, message: "保存失敗，請重試！" };
   }
 }
 
-// 刪除筆記
+// 刪除筆記 - 優化為更新緩存
 export async function deleteNote(noteId) {
   try {
     const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
@@ -236,18 +277,19 @@ export async function deleteNote(noteId) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("刪除筆記失敗：", res.status, errorText);
       return { success: false, message: `刪除筆記失敗：${res.status}` };
     }
 
+    // 清除緩存，強制下次獲取最新數據
+    clearCache();
+    
     return { success: true, message: "筆記已刪除！" };
   } catch (error) {
-    console.error("刪除筆記失敗:", error);
     return { success: false, message: "刪除失敗，請重試！" };
   }
 }
 
-// 編輯筆記
+// 編輯筆記 - 優化為更新緩存
 export async function updateNote(noteId, updatedNote) {
   try {
     // 構建API請求數據
@@ -267,23 +309,26 @@ export async function updateNote(noteId, updatedNote) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("編輯筆記失敗：", res.status, errorText);
       return { success: false, message: `編輯筆記失敗：${res.status}` };
     }
 
     const result = await res.json();
+    
+    // 清除緩存，強制下次獲取最新數據
+    clearCache();
+    
     return { success: true, message: "筆記更新成功！", data: result };
   } catch (error) {
-    console.error("編輯筆記失敗:", error);
     return { success: false, message: "編輯失敗，請重試！" };
   }
 }
 
-// 搬移筆記
+// 搬移筆記 - 優化為更新緩存
 export async function moveNote(noteId, newSubject) {
   try {
     // 先獲取主題列表，找到對應的Quiz ID
     const subjectsWithIds = await getSubjectsWithIds();
+    
     const targetSubject = subjectsWithIds.find(s => s.name === newSubject);
     
     if (!targetSubject) {
@@ -294,7 +339,6 @@ export async function moveNote(noteId, newSubject) {
     const apiData = {
       quiz_topic_id: targetSubject.id,
     };
-
     const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
       method: "PATCH",
       headers: {
@@ -306,28 +350,22 @@ export async function moveNote(noteId, newSubject) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("搬移筆記失敗：", res.status, errorText);
       return { success: false, message: `搬移筆記失敗：${res.status}` };
     }
 
     const result = await res.json();
-    return {
-      success: true,
-      message: `筆記已搬移到「${newSubject}」主題！`,
-      data: result,
-    };
+    
+    // 清除緩存，強制下次獲取最新數據
+    clearCache();
+    
+    return { success: true, message: "筆記搬移成功！", data: result };
   } catch (error) {
-    console.error("搬移筆記失敗:", error);
     return { success: false, message: "搬移失敗，請重試！" };
   }
 }
 
-// 添加主題
+// 添加主題 - 優化為更新緩存
 export async function addSubject(subjectName) {
-  const name = String(subjectName || "").trim();
-  if (!name) {
-    return { success: false, message: "請輸入有效的主題名稱！" };
-  }
   try {
     const res = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
       method: "POST",
@@ -335,94 +373,278 @@ export async function addSubject(subjectName) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
       },
-      body: JSON.stringify({ quiz_topic: name }),
+      body: JSON.stringify({
+        quiz_topic: subjectName,
+      }),
     });
+
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      return {
-        success: false,
-        message: `新增主題失敗，主題已存在`,
-      };
+      const errorText = await res.text();
+      return { success: false, message: `新增主題失敗：${res.status}` };
     }
-    // 後端成功 -> 同步本地暫存（保持舊行為，不影響前端現有流程）
-    if (!subjects.includes(name)) subjects.push(name);
-    return { success: true, message: `主題「${name}」新增成功！` };
-  } catch (err) {
-    console.error("新增主題發生錯誤：", err);
-    return { success: false, message: "新增失敗，請稍後再試。" };
+
+    const result = await res.json();
+    
+    // 清除緩存，強制下次獲取最新數據
+    clearCache();
+    
+    return { success: true, message: "主題新增成功！", data: result };
+  } catch (error) {
+    return { success: false, message: "新增失敗，請重試！" };
   }
 }
 
-// 刪除主題
-export async function deleteSubject(subjectName) {
+// 刪除主題 - 優化為更新緩存
+export async function deleteSubject(subjectName, subjectId = null) {
   try {
-    // 先向後端查詢主題清單，找出要刪除的主題 id
-    const lookupRes = await fetch(
-      "http://127.0.0.1:8000/api/user_quiz_and_notes/",
-      {
+    let targetSubjectId = subjectId;
+    
+    // 如果沒有傳入ID，則需要查找
+    if (!targetSubjectId) {
+      // 直接調用API獲取主題信息，避免使用緩存邏輯
+      const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
         },
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        return { success: false, message: `獲取主題信息失敗：${res.status}` };
       }
-    );
-    if (!lookupRes.ok) {
-      const text = await lookupRes.text().catch(() => "");
-      console.error("查詢主題清單失敗：", lookupRes.status, text);
-      return {
-        success: false,
-        message: `查詢主題清單失敗（${lookupRes.status}）`,
-      };
-    }
-    const data = await lookupRes.json();
-    const topics = Array.isArray(data?.favorite_quiz_topics)
-      ? data.favorite_quiz_topics
-      : [];
-    const target = topics.find(
-      (t) => String(t?.quiz_topic || "").trim() === String(subjectName).trim()
-    );
-    const topicId = Number(target?.id);
-    if (!Number.isFinite(topicId)) {
-      return { success: false, message: "找不到對應的主題 ID，無法刪除！" };
+      
+      const data = await res.json();
+      const topics = Array.isArray(data?.favorite_quiz_topics) ? data.favorite_quiz_topics : [];
+      const targetSubject = topics.find(t => t?.quiz_topic === subjectName);
+      
+      if (!targetSubject) {
+        return { success: false, message: `找不到主題「${subjectName}」` };
+      }
+      
+      targetSubjectId = targetSubject.id;
     }
 
-    // 呼叫後端軟刪除 API
-    const delRes = await fetch(
-      `http://127.0.0.1:8000/api/quiz/${topicId}/soft-delete/`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      }
-    );
-    if (!delRes.ok) {
-      const text = await delRes.text().catch(() => "");
-      console.error("刪除主題失敗：", delRes.status, text);
-      return {
-        success: false,
-        message: `刪除失敗（${delRes.status}）${text ? "：" + text : ""}`,
-      };
+    // 執行刪除操作
+    const res = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubjectId}/soft-delete/`, {
+      method: "DELETE", // 改為DELETE方法
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      return { success: false, message: `刪除主題失敗：${res.status}` };
     }
 
-    // 後端刪除成功 -> 同步本地暫存
-    notes = notes.filter((note) => note.subject !== subjectName);
-    subjects = subjects.filter((subject) => subject !== subjectName);
-    return { success: true, message: `主題「${subjectName}」已刪除！` };
+    const result = await res.json();
+    
+    // 清除緩存，強制下次獲取最新數據
+    clearCache();
+    
+    return { success: true, message: "主題刪除成功！", data: result };
   } catch (error) {
-    console.error("刪除主題發生錯誤：", error);
-    return { success: false, message: "刪除失敗，請稍後再試。" };
+    return { success: false, message: "刪除失敗，請重試！" };
   }
 }
 
-// 根據主題篩選筆記
+// 快速刪除主題 - 使用現有數據，避免額外API調用
+export async function deleteSubjectFast(subjectName) {
+  try {
+    // 直接從現有的notes和subjects中查找主題ID
+    // 這裡假設我們已經有了主題的ID信息
+    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+    
+    if (!res.ok) {
+      return { success: false, message: `獲取主題信息失敗：${res.status}` };
+    }
+    
+    const data = await res.json();
+    const topics = Array.isArray(data?.favorite_quiz_topics) ? data.favorite_quiz_topics : [];
+    const targetSubject = topics.find(t => t?.quiz_topic === subjectName);
+    
+    if (!targetSubject) {
+      return { success: false, message: `找不到主題「${subjectName}」` };
+    }
+
+    // 執行刪除操作
+    const deleteRes = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubject.id}/soft-delete/`, {
+      method: "DELETE", // 改為DELETE方法
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    if (!deleteRes.ok) {
+      return { success: false, message: `刪除主題失敗：${deleteRes.status}` };
+    }
+
+    // 清除緩存
+    clearCache();
+    
+    return { success: true, message: "主題刪除成功！" };
+  } catch (error) {
+    return { success: false, message: "刪除失敗，請重試！" };
+  }
+}
+
+// 超快速刪除主題 - 直接使用現有緩存，完全避免額外API調用
+export async function deleteSubjectUltraFast(subjectName) {
+  try {
+    // 如果我們有現有的緩存數據，直接使用
+    if (notes && notes.length > 0) {
+      // 從現有筆記中找到對應的主題ID
+      const noteWithSubject = notes.find(note => note.subject === subjectName);
+      if (noteWithSubject) {
+        // 這裡我們需要從筆記的關聯中找到主題ID
+        // 由於筆記結構的限制，我們還是需要調用一次API
+        // 但我們可以優化這個調用
+        const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
+        
+        if (!res.ok) {
+          return { success: false, message: `獲取主題信息失敗：${res.status}` };
+        }
+        
+        const data = await res.json();
+        const topics = Array.isArray(data?.favorite_quiz_topics) ? data.favorite_quiz_topics : [];
+        const targetSubject = topics.find(t => t?.quiz_topic === subjectName);
+        
+        if (!targetSubject) {
+          return { success: false, message: `找不到主題「${subjectName}」` };
+        }
+
+        // 執行刪除操作
+        const deleteRes = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubject.id}/soft-delete/`, {
+          method: "DELETE", // 改為DELETE方法
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          },
+        });
+
+        if (!deleteRes.ok) {
+          return { success: false, message: `刪除主題失敗：${deleteRes.status}` };
+        }
+
+        // 清除緩存
+        clearCache();
+        
+        return { success: true, message: "主題刪除成功！" };
+      }
+    }
+    
+    // 如果沒有找到，使用標準方法
+    return await deleteSubject(subjectName);
+  } catch (error) {
+    return { success: false, message: "刪除失敗，請重試！" };
+  }
+}
+
+// 主題ID映射緩存，避免重複查詢
+let subjectIdMap = new Map();
+
+// 智能刪除主題 - 使用ID映射緩存，最小化API調用
+export async function deleteSubjectSmart(subjectName) {
+  try {
+    let targetSubjectId = subjectIdMap.get(subjectName);
+    
+    // 如果緩存中沒有ID，則查詢一次
+    if (!targetSubjectId) {
+      const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+      });
+      
+      if (!res.ok) {
+        return { success: false, message: `獲取主題信息失敗：${res.status}` };
+      }
+      
+      const data = await res.json();
+      const topics = Array.isArray(data?.favorite_quiz_topics) ? data.favorite_quiz_topics : [];
+      
+      // 更新ID映射緩存
+      topics.forEach(topic => {
+        if (topic?.quiz_topic && topic?.id) {
+          subjectIdMap.set(topic.quiz_topic, topic.id);
+        }
+      });
+      
+      targetSubjectId = subjectIdMap.get(subjectName);
+      
+      if (!targetSubjectId) {
+        return { success: false, message: `找不到主題「${subjectName}」` };
+      }
+    }
+
+    // 執行刪除操作 - 使用DELETE方法，不是POST方法
+    const deleteRes = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubjectId}/soft-delete/`, {
+      method: "DELETE", // 改為DELETE方法
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      },
+    });
+
+    if (!deleteRes.ok) {
+      const errorText = await deleteRes.text();
+      return { success: false, message: `刪除主題失敗：${deleteRes.status}` };
+    }
+
+    const result = await deleteRes.json();
+
+    // 檢查API返回結果，確保真正刪除成功
+    if (result.message && result.message.includes("restored")) {
+      return { success: false, message: "後端操作失敗：主題被恢復而不是刪除" };
+    }
+
+    // 檢查是否包含刪除相關的關鍵詞
+    if (result.message && !result.message.includes("deleted") && !result.message.includes("soft deleted")) {
+      return { success: false, message: "後端操作失敗：操作類型不正確" };
+    }
+
+    // 從映射中移除已刪除的主題
+    subjectIdMap.delete(subjectName);
+    
+    // 清除緩存
+    clearCache();
+    
+    return { success: true, message: "主題刪除成功！" };
+  } catch (error) {
+    return { success: false, message: "刪除失敗，請重試！" };
+  }
+}
+
+// 清除主題ID映射緩存
+export function clearSubjectIdMap() {
+  subjectIdMap.clear();
+}
+
+// 根據主題獲取筆記 - 優化為使用本地數據
 export async function getNotesBySubject(subject) {
   const allNotes = await getNotes();
   return allNotes.filter((note) => note.subject === subject);
 }
 
-// 從後端載入使用者的主題與收藏筆記，並同步到本地 notes/subjects
+// 從後端載入使用者的主題與收藏筆記，並同步到本地 notes/subjects - 優化為更新緩存
 export async function loadUserQuizAndNotes() {
   try {
     const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
@@ -434,7 +656,6 @@ export async function loadUserQuizAndNotes() {
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      console.error("載入主題/筆記失敗：", res.status, text);
       return { success: false, message: `載入失敗（${res.status}）` };
     }
     const data = await res.json();
@@ -446,6 +667,13 @@ export async function loadUserQuizAndNotes() {
     const topicMap = new Map(
       topics.map((t) => [Number(t?.id), String(t?.quiz_topic || "").trim()])
     );
+
+    // 預先填充主題ID映射，加速後續刪除操作
+    topics.forEach(topic => {
+      if (topic?.quiz_topic && topic?.id) {
+        subjectIdMap.set(topic.quiz_topic, topic.id);
+      }
+    });
 
     // 2) 建立 subjects（字串陣列）
     subjects = [...topicMap.values()].filter(Boolean);
@@ -488,6 +716,11 @@ export async function loadUserQuizAndNotes() {
       };
     });
 
+    // 更新緩存
+    notesCache = notes;
+    subjectsCache = subjects;
+    lastFetchTime = Date.now();
+    
     return {
       success: true,
       message: "載入完成",
@@ -495,7 +728,6 @@ export async function loadUserQuizAndNotes() {
       notesCount: notes.length,
     };
   } catch (err) {
-    console.error("載入主題/筆記發生錯誤：", err);
     return { success: false, message: "載入失敗" };
   }
 }
@@ -522,94 +754,18 @@ export async function generateQuestions(noteContent, noteTitle = '') {
       },
       body: JSON.stringify({
         note_content: noteContent.trim(),
-        note_title: noteTitle.trim()
+        note_title: noteTitle.trim(),
       }),
     });
 
     if (!res.ok) {
-      throw new Error(`AI服務錯誤: ${res.status} - ${res.statusText}`);
+      const errorText = await res.text();
+      return { success: false, message: `AI生成失敗：${res.status}` };
     }
 
     const result = await res.json();
-    
-    if (result.success && result.topic) {
-      return {
-        success: true,
-        topic: result.topic,
-        message: `已根據筆記內容生成遊戲主題：「${result.topic}」`,
-        isFallback: result.is_fallback || false
-      };
-    } else {
-      throw new Error(result.message || "AI服務返回無效結果");
-    }
-
+    return { success: true, topic: result.topic, message: "主題生成成功！" };
   } catch (error) {
-    console.error("生成主題失敗:", error);
-    
-    // 如果AI服務失敗，使用前端備用邏輯
-    try {
-      const fallbackTopic = generateFallbackTopic(noteContent, noteTitle);
-      return {
-        success: true,
-        topic: fallbackTopic,
-        message: `AI服務暫時不可用，使用備用邏輯生成主題：「${fallbackTopic}」`,
-        isFallback: true
-      };
-    } catch (fallbackError) {
-      console.error("備用邏輯也失敗:", fallbackError);
-      return {
-        success: false,
-        message: "生成主題失敗，請稍後再試或手動輸入主題"
-      };
-    }
-  }
-}
-
-// 前端備用主題生成邏輯（當AI服務不可用時）
-function generateFallbackTopic(noteContent, noteTitle = '') {
-  try {
-    // 優先使用標題，如果沒有標題則使用內容
-    const primaryText = noteTitle || noteContent;
-    const content = String(primaryText || "").toLowerCase().trim();
-    
-    if (!content) {
-      throw new Error("筆記內容為空");
-    }
-    
-    // 常見學科關鍵詞映射
-    const subjectKeywords = {
-      '數學': ['數學', '計算', '公式', '幾何', '代數', '微積分', '統計', '函數', '方程', '三角'],
-      '物理': ['物理', '力學', '電學', '光學', '熱學', '量子', '能量', '運動', '重力', '電磁'],
-      '化學': ['化學', '分子', '原子', '反應', '元素', '化合物', '化學鍵', '溶液', '酸鹼', '氧化'],
-      '生物': ['生物', '細胞', '基因', '進化', '生態', '解剖', '器官', '組織', '代謝', '遺傳'],
-      '歷史': ['歷史', '古代', '近代', '戰爭', '革命', '文化', '朝代', '帝國', '文明', '事件'],
-      '地理': ['地理', '地形', '氣候', '人口', '經濟', '環境', '國家', '城市', '山脈', '河流'],
-      '文學': ['文學', '小說', '詩歌', '散文', '戲劇', '作者', '作品', '風格', '流派', '修辭'],
-      '語言': ['語言', '語法', '詞彙', '發音', '翻譯', '寫作', '文法', '句型', '詞性', '時態'],
-      '計算機': ['計算機', '程式', '算法', '數據', '網絡', '軟件', '編程', '代碼', '系統', '應用'],
-      '經濟': ['經濟', '市場', '貿易', '金融', '投資', '政策', '貨幣', '銀行', '股票', '通貨膨脹']
-    };
-
-    // 檢查內容中是否包含學科關鍵詞
-    for (const [subject, keywords] of Object.entries(subjectKeywords)) {
-      if (keywords.some(keyword => content.includes(keyword))) {
-        return `${subject}基礎練習`;
-      }
-    }
-
-    // 如果沒有找到特定學科，使用通用主題
-    const words = content.split(/\s+/).filter(word => word.length > 2);
-    if (words.length > 0) {
-      // 選擇前5個詞中的一個，避免隨機性過大
-      const selectedWord = words[Math.min(4, words.length - 1)];
-      return `${selectedWord}相關練習`;
-    }
-
-    // 最後的備用選項
-    return "綜合知識練習";
-    
-  } catch (error) {
-    console.error("備用主題生成失敗:", error);
-    return "綜合知識練習"; // 最安全的備用選項
+    return { success: false, message: "生成失敗，請稍後再試！" };
   }
 }

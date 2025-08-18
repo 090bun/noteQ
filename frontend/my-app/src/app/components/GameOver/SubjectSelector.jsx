@@ -78,7 +78,7 @@ export default function SubjectSelector({
   };
 
   const handleAddNewSubject = () => {
-    onShowCustomPrompt('請輸入新主題名稱：', (newSubject) => {
+    onShowCustomPrompt('請輸入新主題名稱：', async (newSubject) => {
       if (newSubject && newSubject.trim()) {
         const trimmedSubject = newSubject.trim();
         
@@ -87,14 +87,19 @@ export default function SubjectSelector({
           return;
         }
         
-        // 使用 noteUtils 的 addSubject 函數來添加新主題
+        // 樂觀更新：立即更新UI和選擇新主題
+        onSubjectChange(trimmedSubject);
+        onShowCustomAlert(`主題「${trimmedSubject}」新增成功！`);
+        
+        // 後台靜默同步到服務器
         try {
-          addSubject(trimmedSubject);
-          onSubjectChange(trimmedSubject);
-          onShowCustomAlert(`主題「${trimmedSubject}」新增成功！`);
+          const result = await addSubject(trimmedSubject);
+          if (!result.success) {
+            console.warn('主題同步失敗:', result.message);
+          }
         } catch (error) {
-          console.error('添加主題失敗:', error);
-          onShowCustomAlert('添加主題失敗，請重試！');
+          // 靜默處理錯誤，不影響用戶體驗
+          console.warn('主題同步失敗:', error);
         }
       }
     });

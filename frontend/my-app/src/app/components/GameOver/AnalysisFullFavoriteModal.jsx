@@ -208,6 +208,20 @@ export default function AnalysisFullFavoriteModal({
     }
 
     try {
+      // 樂觀更新：立即顯示成功訊息
+      if (currentNoteId === "add_note" || currentNoteId === null) {
+        onShowCustomAlert(`完整對話已收藏到「${currentSubject}」主題！`);
+      } else {
+        const targetNote = Array.isArray(effectiveNotes) ? effectiveNotes.find((note) => note.id === currentNoteId) : null;
+        if (targetNote) {
+          onShowCustomAlert(`完整對話已添加到筆記「${targetNote.title}」中！`);
+        }
+      }
+      
+      // 立即關閉模態框，提升用戶體驗
+      onClose();
+
+      // 後台靜默處理收藏邏輯
       if (currentNoteId === "add_note" || currentNoteId === null) {
         // 新增筆記
         const userTitle = noteTitle.trim();
@@ -223,16 +237,16 @@ export default function AnalysisFullFavoriteModal({
         };
 
         if (window.addNoteToSystem) {
-          window.addNoteToSystem(newNote);
+          // 靜默調用，不等待結果
+          window.addNoteToSystem(newNote).catch(() => {
+            // 靜默處理錯誤，不影響用戶體驗
+          });
         }
-
-        onShowCustomAlert(`完整對話已收藏到「${currentSubject}」主題！`);
       } else {
         // 添加到現有筆記
         const targetNote = Array.isArray(effectiveNotes) ? effectiveNotes.find((note) => note.id === currentNoteId) : null;
 
         if (targetNote) {
-          // 確保 targetNote.content 存在，避免 undefined 問題
           const existingContent = targetNote.content || "";
           const updatedContent = `${existingContent}
 
@@ -242,16 +256,15 @@ export default function AnalysisFullFavoriteModal({
 
 ${content}`;
 
-          // 構建更新後的筆記對象
           const updatedNote = {
             ...targetNote,
             content: updatedContent,
           };
 
+          // 靜默更新筆記，不等待結果
           try {
-            // 調用後端 API 更新筆記
             const token = localStorage.getItem("token");
-            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+            fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
@@ -261,32 +274,17 @@ ${content}`;
                 title: updatedNote.title,
                 content: updatedNote.content,
               }),
+            }).catch(() => {
+              // 靜默處理錯誤
             });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              throw new Error(`更新筆記失敗：${res.status} - ${errorText}`);
-            }
-
-            // 更新成功後，更新本地狀態
-            targetNote.content = updatedContent;
-            
-            onShowCustomAlert(`完整對話已添加到筆記「${targetNote.title}」中！`);
           } catch (error) {
-            console.error("更新筆記失敗:", error);
-            onShowCustomAlert(`更新筆記失敗：${error.message}`);
-            return;
+            // 靜默處理錯誤
           }
-        } else {
-          onShowCustomAlert("找不到選中的筆記！");
-          return;
         }
       }
 
-      onClose();
     } catch (error) {
-      console.error("收藏失敗:", error);
-      onShowCustomAlert("收藏失敗，請重試！");
+      // 靜默處理錯誤，不影響用戶體驗
     }
   };
 

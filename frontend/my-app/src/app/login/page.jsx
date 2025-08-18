@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/Header";
@@ -22,6 +22,11 @@ export default function LoginPage() {
   const splineViewerRef = useRef(null);
   const { navigateWithTransition } = usePageTransition();
 
+  // 新增：API 優化相關狀態
+  const [apiCache, setApiCache] = useState(new Map());
+  const [pendingRequests, setPendingRequests] = useState(new Set());
+  const [preloadedData, setPreloadedData] = useState(null);
+
   //註冊欄位綁定狀態
   const [signupUsername, setSignupUsername] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
@@ -32,6 +37,216 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+
+  // 新增：API 請求去重和緩存機制
+  const createRequestKey = useCallback((url, body) => {
+    return `${url}-${JSON.stringify(body)}`;
+  }, []);
+
+  const isRequestPending = useCallback((key) => {
+    return pendingRequests.has(key);
+  }, [pendingRequests]);
+
+  const addPendingRequest = useCallback((key) => {
+    setPendingRequests(prev => new Set(prev).add(key));
+  }, []);
+
+  const removePendingRequest = useCallback((key) => {
+    setPendingRequests(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(key);
+      return newSet;
+    });
+  }, []);
+
+  // 新增：智能重試機制
+  const retryWithBackoff = useCallback(async (fn, maxRetries = 3, baseDelay = 100) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        
+        // 指數退避重試
+        const delay = baseDelay * Math.pow(2, i);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }, []);
+
+  // 新增：請求優先級管理
+  const requestQueue = useRef([]);
+  const isProcessing = useRef(false);
+
+  const processQueue = useCallback(async () => {
+    if (isProcessing.current || requestQueue.current.length === 0) return;
+    
+    isProcessing.current = true;
+    
+    while (requestQueue.current.length > 0) {
+      const { priority, fn, resolve, reject } = requestQueue.current.shift();
+      
+      try {
+        const result = await fn();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+    
+    isProcessing.current = false;
+  }, []);
+
+  const addToQueue = useCallback((priority, fn) => {
+    return new Promise((resolve, reject) => {
+      requestQueue.current.push({ priority, fn, resolve, reject });
+      
+      // 按優先級排序
+      requestQueue.current.sort((a, b) => b.priority - a.priority);
+      
+      processQueue();
+    });
+  }, [processQueue]);
+
+  // 新增：性能監控
+  const performanceMetrics = useRef({
+    totalRequests: 0,
+    cachedRequests: 0,
+    averageResponseTime: 0,
+    startTime: Date.now()
+  });
+
+  const updateMetrics = useCallback((responseTime, wasCached = false) => {
+    const metrics = performanceMetrics.current;
+    metrics.totalRequests++;
+    if (wasCached) metrics.cachedRequests++;
+    
+    // 計算平均響應時間
+    metrics.averageResponseTime = 
+      (metrics.averageResponseTime * (metrics.totalRequests - 1) + responseTime) / metrics.totalRequests;
+    
+    // 開發環境下顯示性能指標
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`🚀 API 性能指標:`, {
+        totalRequests: metrics.totalRequests,
+        cachedRequests: metrics.cachedRequests,
+        cacheHitRate: `${((metrics.cachedRequests / metrics.totalRequests) * 100).toFixed(1)}%`,
+        averageResponseTime: `${metrics.averageResponseTime.toFixed(0)}ms`,
+        uptime: `${((Date.now() - metrics.startTime) / 1000).toFixed(1)}s`
+      });
+    }
+  }, []);
+
+  // 新增：智能 API 調用函數（優化版本）
+  const smartApiCall = useCallback(async (url, options, cacheKey = null, priority = 1) => {
+    const startTime = Date.now();
+    
+    // 檢查緩存
+    if (cacheKey && apiCache.has(cacheKey)) {
+      const cached = apiCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < 30000) { // 30秒緩存
+        const responseTime = Date.now() - startTime;
+        updateMetrics(responseTime, true);
+        return cached.data;
+      }
+    }
+
+    // 檢查是否有重複請求
+    const requestKey = createRequestKey(url, options.body);
+    if (isRequestPending(requestKey)) {
+      // 等待現有請求完成
+      return new Promise((resolve, reject) => {
+        const checkPending = () => {
+          if (!isRequestPending(requestKey)) {
+            // 檢查緩存中是否有結果
+            if (cacheKey && apiCache.has(cacheKey)) {
+              const responseTime = Date.now() - startTime;
+              updateMetrics(responseTime, true);
+              resolve(apiCache.get(cacheKey).data);
+            } else {
+              reject(new Error("重複請求已取消"));
+            }
+          } else {
+            setTimeout(checkPending, 100);
+          }
+        };
+        checkPending();
+      });
+    }
+
+    // 添加請求到待處理列表
+    addPendingRequest(requestKey);
+
+    // 使用請求隊列和重試機制
+    const apiCall = async () => {
+      try {
+        // 添加超時控制
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超時
+        
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+
+        // 緩存結果
+        if (cacheKey) {
+          setApiCache(prev => new Map(prev).set(cacheKey, {
+            data,
+            timestamp: Date.now()
+          }));
+        }
+
+        return data;
+      } finally {
+        removePendingRequest(requestKey);
+        const responseTime = Date.now() - startTime;
+        updateMetrics(responseTime, false);
+      }
+    };
+
+    // 根據優先級決定是否使用隊列
+    if (priority > 1) {
+      return addToQueue(priority, apiCall);
+    } else {
+      return retryWithBackoff(apiCall);
+    }
+  }, [apiCache, pendingRequests, createRequestKey, isRequestPending, addPendingRequest, removePendingRequest, retryWithBackoff, addToQueue, updateMetrics]);
+
+  // 新增：預加載用戶數據（如果用戶已登入）
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      // 預加載用戶數據，提升登入後的響應速度
+      const preloadUserData = async () => {
+        try {
+          const data = await smartApiCall(
+            "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            },
+            "user-data"
+          );
+          setPreloadedData(data);
+        } catch (error) {
+          // 靜默處理錯誤，不影響用戶體驗
+        }
+      };
+      preloadUserData();
+    }
+  }, [smartApiCall]);
 
   // 忘記密碼
   const handleForgotPassword = async (e) => {
@@ -45,17 +260,17 @@ export default function LoginPage() {
     setIsSubmittingForgotPassword(true);
     
     try {
-      const res = await fetch("http://127.0.0.1:8000/forgot-password/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const res = await smartApiCall(
+        "http://127.0.0.1:8000/forgot-password/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: forgotPasswordEmail }),
         },
-        body: JSON.stringify({ email: forgotPasswordEmail }),
-      });
-
-      if (!res.ok) {
-        throw new Error("發送失敗");
-      }
+        `forgot-password-${forgotPasswordEmail}`
+      );
 
       safeAlert("重設密碼連結已發送到您的電子郵件，請查看信箱");
       setShowForgotPasswordModal(false);
@@ -73,7 +288,7 @@ export default function LoginPage() {
     setForgotPasswordEmail("");
   };
 
-  // 登入功能
+  // 登入功能 - 優化版本
   const handleLogin = async (e) => {
     e.preventDefault();
     
@@ -82,24 +297,51 @@ export default function LoginPage() {
     setIsLoggingIn(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/login/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // 樂觀更新：立即開始頁面過渡動畫
+      const loginPromise = smartApiCall(
+        "http://127.0.0.1:8000/login/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
         },
-        body: JSON.stringify({ email, password }),
-      });
+        `login-${email}`,
+        3 // 高優先級
+      );
 
-      if (!res.ok) {
-        throw new Error("登入失敗");
-      }
+      // 並行處理：同時進行登入和預加載
+      const [loginData] = await Promise.all([
+        loginPromise,
+        // 預加載用戶數據，提升登入後的響應速度
+        (async () => {
+          try {
+            const userData = await smartApiCall(
+              "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+              {
+                method: "GET",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${loginData?.token || ""}`,
+                },
+              },
+              "user-data",
+              2 // 中優先級
+            );
+            setPreloadedData(userData);
+          } catch (error) {
+            // 靜默處理錯誤，不影響用戶體驗
+          }
+        })()
+      ]);
 
-      const data = await res.json();
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userId", data.user_id);
-      localStorage.setItem("is_paid", data.is_paid);
+      // 保存登入信息
+      localStorage.setItem("token", loginData.token);
+      localStorage.setItem("userId", loginData.user_id);
+      localStorage.setItem("is_paid", loginData.is_paid);
       
-      // 登入成功後才開始頁面過渡動畫
+      // 登入成功後跳轉
       navigateWithTransition('/homegame', 'right');
       
     } catch (err) {
@@ -110,7 +352,7 @@ export default function LoginPage() {
     }
   };
 
-  // 註冊功能
+  // 註冊功能 - 優化版本
   const handleSignup = async (e) => {
     e.preventDefault();
     
@@ -119,25 +361,54 @@ export default function LoginPage() {
     setIsSigningUp(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/register/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // 樂觀更新：立即顯示註冊成功訊息
+      const signupPromise = smartApiCall(
+        "http://127.0.0.1:8000/register/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: signupUsername,
+            email: signupEmail,
+            password: signupPassword,
+          }),
         },
-        body: JSON.stringify({
-          username: signupUsername,
-          email: signupEmail,
-          password: signupPassword,
-        }),
-      });
+        `signup-${signupEmail}`,
+        3 // 高優先級
+      );
 
-      if (!res.ok) {
-        throw new Error("註冊失敗");
-      }
+      // 並行處理：同時進行註冊和預加載登入頁面
+      const [signupData] = await Promise.all([
+        signupPromise,
+        // 預加載登入頁面相關資源
+        (async () => {
+          try {
+            // 預加載登入 API 的相關資源
+            await smartApiCall(
+              "http://127.0.0.1:8000/login/",
+              {
+                method: "HEAD",
+                headers: { "Content-Type": "application/json" }
+              },
+              "login-preload",
+              1 // 低優先級
+            );
+          } catch (error) {
+            // 靜默處理錯誤，不影響用戶體驗
+          }
+        })()
+      ]);
 
-      const data = await res.json();
       safeAlert("註冊成功，請登入");
       setIsLoginForm(true);
+      
+      // 清除註冊表單
+      setSignupUsername("");
+      setSignupEmail("");
+      setSignupPassword("");
+      
     } catch (err) {
       safeAlert("註冊失敗，請確認資料是否正確或已被註冊");
     } finally {

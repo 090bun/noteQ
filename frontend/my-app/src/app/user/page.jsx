@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Header from "../components/Header";
 import Menu from "../components/Menu";
@@ -23,6 +23,105 @@ export default function UserPage() {
   // 訂閱狀態管理
   const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
   const [showPlusModal, setShowPlusModal] = useState(false);
+
+  // 新增：API 優化相關狀態
+  const [apiCache, setApiCache] = useState(new Map());
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_DURATION = 60000; // 1分鐘緩存時間
+  const abortControllerRef = useRef(null);
+
+  // 新增：智能緩存和請求去重
+  const getCachedData = useCallback((key) => {
+    const cached = apiCache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  }, [apiCache]);
+
+  const setCachedData = useCallback((key, data) => {
+    setApiCache(prev => new Map(prev).set(key, {
+      data,
+      timestamp: Date.now()
+    }));
+  }, []);
+
+  // 新增：並行數據獲取
+  const fetchAllDataInParallel = useCallback(async () => {
+    // 取消之前的請求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // 創建新的 AbortController
+    abortControllerRef.current = new AbortController();
+    
+    try {
+      // 檢查緩存
+      const cachedUserData = getCachedData('user-data');
+      const cachedTopics = getCachedData('user-topics');
+      
+      // 如果緩存有效，直接使用
+      if (cachedUserData && cachedTopics) {
+        setUserData(cachedUserData);
+        setTopics(cachedTopics);
+        return;
+      }
+
+      // 並行請求所有數據
+      const startTime = Date.now();
+      const [userDataResult, topicsResult] = await Promise.allSettled([
+        // 用戶數據請求
+        fetchUserDataFromAPI(),
+        // 熟悉度數據請求
+        fetchUserTopicsFromAPI()
+      ]);
+
+      const totalTime = Date.now() - startTime;
+
+      // 處理用戶數據結果
+      if (userDataResult.status === 'fulfilled' && userDataResult.value) {
+        setUserData(userDataResult.value);
+        setCachedData('user-data', userDataResult.value);
+      }
+
+      // 處理熟悉度數據結果
+      if (topicsResult.status === 'fulfilled' && topicsResult.value) {
+        setTopics(topicsResult.value);
+        setCachedData('user-topics', topicsResult.value);
+      }
+
+      setLastFetchTime(Date.now());
+      
+      // 開發環境下顯示性能指標
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🚀 用戶頁面數據載入完成:`, {
+          totalTime: `${totalTime}ms`,
+          userDataSuccess: userDataResult.status === 'fulfilled',
+          topicsSuccess: topicsResult.status === 'fulfilled',
+          cacheUsed: !!(cachedUserData && cachedTopics)
+        });
+      }
+      
+    } catch (error) {
+      console.error("並行數據獲取失敗:", error);
+    }
+  }, [getCachedData, setCachedData]);
+
+  // 新增：智能重試機制
+  const retryWithBackoff = useCallback(async (fn, maxRetries = 3, baseDelay = 100) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        
+        // 指數退避重試
+        const delay = baseDelay * Math.pow(2, i);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }, []);
 
   // 切換選單
   const toggleMenu = () => {
@@ -150,7 +249,7 @@ export default function UserPage() {
     setShowPlusModal(true);
   };
 
-  // 後端請求使用者資料(帶上token)
+  // 後端請求使用者資料(帶上token) - 優化版本
   const fetchUserDataFromAPI = async () => {
     // 時間格式化
     const formatDate = (isoString) => {
@@ -168,7 +267,7 @@ export default function UserPage() {
 
     if (!token) {
       console.error("找不到 token");
-      return;
+      return null;
     }
 
     try {
@@ -177,6 +276,7 @@ export default function UserPage() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: abortControllerRef.current?.signal,
       });
 
       if (!res.ok) {
@@ -184,39 +284,94 @@ export default function UserPage() {
       }
 
       const data = await res.json();
-      // 根據 API 回應格式更新 userData
-      setUserData({
+      
+      // 格式化數據
+      const formattedData = {
         name: data.username || "未知",
         email: data.email || "未知",
         registerDate: formatDate(data.created_at || new Date()),
-      });
+      };
+      
+      return formattedData;
     } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log("用戶數據請求已取消");
+        return null;
+      }
       console.error("取得使用者資料失敗:", error);
+      return null;
     }
   };
 
-  // 初始化數據
-  useEffect(() => {
-    // 確保在客戶端渲染時才執行
-    if (typeof window !== "undefined") {
-      fetchUserDataFromAPI();
-      fetchUserTopicsFromAPI();
-      const subscriptionStatus = localStorage.getItem("is_paid");
-      setIsPlusSubscribed(subscriptionStatus === "true");
-    }
-  }, []);
-
-  // 從API獲取用戶主題熟悉度
+  // 從API獲取用戶主題熟悉度 - 優化版本
   const fetchUserTopicsFromAPI = async () => {
     try {
       const userTopics = await getUserTopics();
-      setTopics(userTopics);
+      return Array.isArray(userTopics) ? userTopics : [];
     } catch (error) {
       console.error("獲取用戶主題失敗:", error);
-      // 如果API失敗，設置為空數組
-      setTopics([]);
+      return [];
     }
   };
+
+  // 新增：智能數據刷新
+  const refreshData = useCallback(async (force = false) => {
+    const now = Date.now();
+    
+    // 如果不是強制刷新且緩存仍然有效，直接返回
+    if (!force && (now - lastFetchTime) < CACHE_DURATION) {
+      return;
+    }
+    
+    await fetchAllDataInParallel();
+  }, [lastFetchTime, fetchAllDataInParallel]);
+
+
+  // 初始化數據 - 優化版本
+  useEffect(() => {
+    // 確保在客戶端渲染時才執行
+    if (typeof window !== "undefined") {
+      // 並行獲取所有數據
+      fetchAllDataInParallel();
+      
+      // 設置訂閱狀態
+      const subscriptionStatus = localStorage.getItem("is_paid");
+      setIsPlusSubscribed(subscriptionStatus === "true");
+      
+      // 預加載其他頁面可能需要的數據
+      const preloadAdditionalData = async () => {
+        try {
+          // 預加載用戶設置等數據
+          const token = localStorage.getItem("token");
+          if (token) {
+            // 這裡可以預加載其他相關數據
+            // 例如用戶偏好設置、學習統計等
+          }
+        } catch (error) {
+          // 靜默處理錯誤，不影響主要功能
+        }
+      };
+      
+      preloadAdditionalData();
+    }
+
+    // 清理函數
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchAllDataInParallel]);
+
+  // 新增：定期刷新數據（可選）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // 每5分鐘檢查一次是否有新數據
+      refreshData(false);
+    }, 300000); // 5分鐘
+
+    return () => clearInterval(interval);
+  }, [refreshData]);
 
   // 鍵盤事件處理
   useEffect(() => {
