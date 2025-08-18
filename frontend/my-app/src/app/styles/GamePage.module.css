@@ -189,7 +189,39 @@
     transform: translateY(0) scale(1);
 }
 
+/* 解密動畫覆蓋層樣式 */
+.decryptionOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--color-card-bg, rgba(0, 0, 0, 0.95)), var(--color-card-bg, rgba(0, 0, 0, 0.9)));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(20px);
+}
 
+.decryptionContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+}
+
+.decryptionText {
+    margin: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* 響應式設計 */
 @media (max-width: 768px) {
     .gameMain {
         padding: 5vh 5vw;
@@ -246,5 +278,11 @@
         padding: 18px;
         font-size: 16px;
         min-width: 150px;
+    }
+
+    .decryptionContainer {
+        width: 100%;
+        height: 100%;
+        padding: 0;
     }
 }
