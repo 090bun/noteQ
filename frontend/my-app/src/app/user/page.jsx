@@ -90,9 +90,10 @@ export default function UserPage() {
 
   // 升級到Plus方案
   const handleUpgradeToPlus = () => {
-    setIsPlusSubscribed(true);
-    localStorage.setItem("is_paid", "true");
-    safeAlert("恭喜！您已成功升級到Plus方案");
+    window.location.href = "http://localhost:8000/ecpay/";
+    // setIsPlusSubscribed(true);
+    // localStorage.setItem("is_paid", "true");
+    // safeAlert("恭喜！您已成功升級到Plus方案");
   };
 
   // 取消Plus訂閱
