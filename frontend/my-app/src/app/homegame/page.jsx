@@ -382,7 +382,7 @@ export default function HomeGamePage() {
               onComplete={handleDecryptionComplete}
               speed={80}
               className={styles.decryptionText}
-              key="decryption-text" // 固定key，避免重新创建组件
+              key="decryption-text" 
             />
           </div>
         </div>

@@ -64,7 +64,7 @@ export default function NotePage() {
         const subscriptionStatus = localStorage.getItem("is_paid");
         setNotes(notesData);
         setSubjects(subjectsData);
-        //setIsPlusSubscribed(subscriptionStatus === "true");
+        setIsPlusSubscribed(subscriptionStatus === "true");
 
         if (subjectsData.length > 0) {
           if (!subjectsData.includes(currentSubject)) {
