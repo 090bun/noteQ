@@ -65,6 +65,21 @@ export default function NotePage() {
     } catch (e) {
       setIsPlusSubscribed(false);
     }
+    
+    // 修復滾動問題：確保頁面初始化時滾動正常
+    if (typeof document !== 'undefined') {
+      // 重置 body 的 overflow 設置
+      document.body.style.overflow = "auto";
+      // 確保選單狀態與滾動狀態同步
+      setIsMenuOpen(false);
+    }
+    
+    // 清理函數：確保頁面離開時滾動狀態正常
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = "auto";
+      }
+    };
   }, []);
 
   // 新增：監聽主題創建事件，實現即時同步
@@ -170,19 +185,23 @@ export default function NotePage() {
     safeAlert("此功能僅限Plus用戶使用，請升級到Plus方案！");
   }, []);
 
-  // 切換選單 - 使用 useCallback 優化
+  // 切換選單 - 使用 useCallback 優化 + 滾動修復
   const toggleMenu = useCallback(() => {
-    setIsMenuOpen(!isMenuOpen);
-    if (!isMenuOpen) {
+    const newMenuState = !isMenuOpen;
+    setIsMenuOpen(newMenuState);
+    
+    // 修復滾動問題：確保 overflow 設置與選單狀態同步
+    if (newMenuState) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
   }, [isMenuOpen]);
 
-  // 關閉選單 - 使用 useCallback 優化
+  // 關閉選單 - 使用 useCallback 優化 + 滾動修復
   const closeMenu = useCallback(() => {
     setIsMenuOpen(false);
+    // 修復滾動問題：確保滾動恢復
     document.body.style.overflow = "auto";
   }, []);
 
