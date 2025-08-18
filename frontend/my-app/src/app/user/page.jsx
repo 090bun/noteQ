@@ -91,7 +91,7 @@ export default function UserPage() {
   // 升級到Plus方案
   const handleUpgradeToPlus = () => {
     setIsPlusSubscribed(true);
-    localStorage.setItem("isPlusSubscribed", "true");
+    localStorage.setItem("is_paid", "true");
     safeAlert("恭喜！您已成功升級到Plus方案");
   };
 
@@ -99,7 +99,7 @@ export default function UserPage() {
   const handleCancelPlusSubscription = () => {
     safeConfirm("確定要取消Plus訂閱嗎？", () => {
       setIsPlusSubscribed(false);
-      localStorage.setItem("isPlusSubscribed", "false");
+      localStorage.setItem("is_paid", "false");
       setShowPlusModal(false);
       safeAlert("已取消Plus訂閱，回到免費方案");
     });
@@ -161,7 +161,7 @@ export default function UserPage() {
     if (typeof window !== "undefined") {
       fetchUserDataFromAPI();
       fetchUserTopicsFromAPI();
-      const subscriptionStatus = localStorage.getItem("isPlusSubscribed");
+      const subscriptionStatus = localStorage.getItem("is_paid");
       setIsPlusSubscribed(subscriptionStatus === "true");
     }
   }, []);
