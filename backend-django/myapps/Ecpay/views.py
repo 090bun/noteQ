@@ -20,7 +20,7 @@ from django.db import transaction
 # Create your views here.
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 REACT_BASE_URL = os.getenv("REACT_BASE_URL", "http://localhost:3000")
-
+NEXT_PUBLIC_API_ORIGIN = os.getenv("NEXT_PUBLIC_API_ORIGIN", "http://localhost:8000")
 class EcpayViewSet(APIView):
     permission_classes = [AllowAny]
     
@@ -61,36 +61,6 @@ class EcpayViewSet(APIView):
         # SHA256 加密並轉大寫
         sha256_hash = hashlib.sha256(encoded_string.encode('utf-8')).hexdigest()
         return sha256_hash.upper()
-    
-    # def get(self, request):
-    #     """提供瀏覽器直接進入的測試入口（GET）。
-    #     會產生一個自動提交到綠界的表單，方便你直接看到信用卡頁面。
-    #     可用 query 參數覆蓋，例如：/ecpay/?amount=100&item=測試商品&desc=說明
-    #     """
-    #     amount = int(request.GET.get('amount', 100))
-    #     item = request.GET.get('item', '測試商品')
-    #     desc = request.GET.get('desc', '測試訂單')
-
-    #     merchant_trade_no = f"ORDER{timezone.now().strftime('%Y%m%d%H%M%S')}"
-    #     api_params = {
-    #         "MerchantID": config.MERCHANT_ID,
-    #         "MerchantTradeNo": merchant_trade_no,
-    #         "MerchantTradeDate": timezone.now().strftime('%Y/%m/%d %H:%M:%S'),
-    #         "PaymentType": "aio",
-    #         "TotalAmount": amount,
-    #         "TradeDesc": desc,
-    #         "ItemName": item,
-    #         "ReturnURL": config.RETURN_URL,
-    #         "ClientBackURL": config.CLIENT_BACK_URL,
-    #         "OrderResultURL": config.CLIENT_BACK_URL,
-    #         "ChoosePayment": "Credit",
-    #         "EncryptType": 1,
-    #         "NeedExtraPaidInfo": "Y",
-    #     }
-    #     api_params["CheckMacValue"] = self.generate_check_mac_value(dict(api_params))
-    #     html_form = self.generate_html_form(config.ACTION_URL, api_params)
-    #     # 以 HttpResponse 回傳原始 HTML，避免被 DRF 當作字串轉義
-    #     return HttpResponse(html_form, content_type="text/html; charset=utf-8")
     
     def post(self, request):
         # 訂單產生(整理訂單內容)
@@ -134,7 +104,7 @@ class EcpayViewSet(APIView):
             "TradeDesc": payment_plan.description,
             "ItemName": payment_plan.name,
             # 伺服器接收付款結果（必要）：ECPay -> 後端
-            "ReturnURL":  "https://adb20c71b316.ngrok-free.app/ECpay-return/",
+            "ReturnURL":  f"{NEXT_PUBLIC_API_ORIGIN}/ECpay-return/",
             # 瀏覽器導回（可用 GET/POST），這裡讓它導到前端頁
             # "ClientBackURL": f"{REACT_BASE_URL}/payment/success",
             # 另一路徑（若設定為 POST）也導回，這裡暫導到同一個前端頁

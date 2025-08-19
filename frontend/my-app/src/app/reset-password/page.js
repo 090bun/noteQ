@@ -1,5 +1,5 @@
 'use client';
-
+import { ROOT_BASE } from "../../lib/api";
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/reset-password/', {
+      const response = await fetch(`${ROOT_BASE}/reset-password/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

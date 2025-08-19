@@ -1,5 +1,5 @@
 "use client";
-
+import { ROOT_BASE } from "../../lib/api";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -222,7 +222,7 @@ export default function LoginPage() {
       const preloadUserData = async () => {
         try {
           const data = await smartApiCall(
-            "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+            `${ROOT_BASE}/api/user_quiz_and_notes/`,
             {
               method: "GET",
               headers: {
@@ -254,7 +254,7 @@ export default function LoginPage() {
     
     try {
       const res = await smartApiCall(
-        "http://127.0.0.1:8000/forgot-password/",
+        `${ROOT_BASE}/forgot-password/`,
         {
           method: "POST",
           headers: {
@@ -292,7 +292,7 @@ export default function LoginPage() {
     try {
       // 樂觀更新：立即開始頁面過渡動畫
       const loginPromise = smartApiCall(
-        "http://127.0.0.1:8000/login/",
+        `${ROOT_BASE}/login/`,
         {
           method: "POST",
           headers: {
@@ -311,7 +311,7 @@ export default function LoginPage() {
         (async () => {
           try {
             const userData = await smartApiCall(
-              "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+              `${ROOT_BASE}/api/user_quiz_and_notes/`,
               {
                 method: "GET",
                 headers: {
@@ -356,7 +356,7 @@ export default function LoginPage() {
     try {
       // 樂觀更新：立即顯示註冊成功訊息
       const signupPromise = smartApiCall(
-        "http://127.0.0.1:8000/register/",
+        `${ROOT_BASE}/register/`,
         {
           method: "POST",
           headers: {
@@ -380,7 +380,7 @@ export default function LoginPage() {
           try {
             // 預加載登入 API 的相關資源
             await smartApiCall(
-              "http://127.0.0.1:8000/login/",
+              `${ROOT_BASE}/login/`,
               {
                 method: "HEAD",
                 headers: { "Content-Type": "application/json" }

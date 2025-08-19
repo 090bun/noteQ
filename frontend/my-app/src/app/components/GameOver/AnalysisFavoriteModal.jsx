@@ -1,6 +1,6 @@
 "use client";
 // 解析內容收藏模態框組件 - 允許用戶將 AI 解析內容收藏到筆記本中
-
+import { ROOT_BASE } from "../../lib/api";
 import { useState, useEffect } from "react";
 import SubjectSelector from "./SubjectSelector";
 import NoteSelector from "./NoteSelector";
@@ -164,7 +164,7 @@ export default function AnalysisFavoriteModal({
         setIsLoadingOptions(true);
         const token = localStorage.getItem("token");
         const res = await fetch(
-          "http://127.0.0.1:8000/api/user_quiz_and_notes/",
+          `${ROOT_BASE}/api/user_quiz_and_notes/`,
           {
             method: "GET",
             headers: {
@@ -263,7 +263,7 @@ ${content}`;
           // 靜默更新筆記，不等待結果
           try {
             const token = localStorage.getItem("token");
-            fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+            fetch(`${ROOT_BASE}/api/notes/${currentNoteId}/`, {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",

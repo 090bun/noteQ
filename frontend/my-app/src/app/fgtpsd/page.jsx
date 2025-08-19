@@ -1,5 +1,5 @@
 "use client";
-
+import { ROOT_BASE } from "../../lib/api";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
     const uid = urlParams.get("uid");
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/reset-password-from-email/",
+        `${ROOT_BASE}/reset-password-from-email/`,
         {
           method: "POST",
           headers: {

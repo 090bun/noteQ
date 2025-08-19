@@ -14,10 +14,12 @@ from django.contrib.auth.tokens import default_token_generator
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import api_view
-
+import os
 import jwt
 # Create your views here.
 
+
+REACT_BASE_URL = os.getenv("REACT_BASE_URL", "http://localhost:3000")
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -70,8 +72,8 @@ def forgot_password(request):
         # 生成重設密碼的
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-        reset_link = f"http://localhost:3000/fgtpsd?uid={uid}&token={token}"
-        
+        reset_link = f"{REACT_BASE_URL}/fgtpsd?uid={uid}&token={token}"
+
         # 嘗試發送郵件，並捕獲可能的錯誤
         try:
             send_mail(

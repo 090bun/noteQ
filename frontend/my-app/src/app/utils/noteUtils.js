@@ -1,5 +1,5 @@
 // 筆記系統工具函數
-
+import { ROOT_BASE } from "../../lib/api";
 // 模擬資料庫（保留用於向後兼容）
 let notes = [];
 let subjects = [];
@@ -50,7 +50,7 @@ export async function getNotes() {
     if (notesCache && (now - lastFetchTime) < CACHE_DURATION) {
       return notesCache;
     }
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -129,7 +129,7 @@ export async function getSubjects() {
     if (subjectsCache && (now - lastFetchTime) < CACHE_DURATION) {
       return subjectsCache;
     }
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -170,7 +170,7 @@ export async function getSubjectsWithIds() {
         return cachedSubjects;
       }
     }
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -210,8 +210,8 @@ export async function addNote(note) {
   try {
     // 先獲取主題列表，找到對應的Quiz ID
     const subjectsData = await getSubjects();
-    
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+
+    const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -240,7 +240,7 @@ export async function addNote(note) {
       quiz_topic: targetTopic.id, // 主題ID（數字）
       content: note.content, // 筆記內容
     };
-    const noteRes = await fetch("http://127.0.0.1:8000/api/notes/", {
+    const noteRes = await fetch(`${ROOT_BASE}/api/notes/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -268,7 +268,7 @@ export async function addNote(note) {
 // 刪除筆記 - 優化為更新緩存
 export async function deleteNote(noteId) {
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
+    const res = await fetch(`${ROOT_BASE}/api/notes/${noteId}/`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
@@ -298,7 +298,7 @@ export async function updateNote(noteId, updatedNote) {
       content: updatedNote.content,
     };
 
-    const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
+    const res = await fetch(`${ROOT_BASE}/api/notes/${noteId}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -339,7 +339,7 @@ export async function moveNote(noteId, newSubject) {
     const apiData = {
       quiz_topic_id: targetSubject.id,
     };
-    const res = await fetch(`http://127.0.0.1:8000/api/notes/${noteId}/`, {
+    const res = await fetch(`${ROOT_BASE}/api/notes/${noteId}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -367,7 +367,7 @@ export async function moveNote(noteId, newSubject) {
 // 添加主題 - 優化為更新緩存
 export async function addSubject(subjectName) {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+    const res = await fetch(`${ROOT_BASE}/api/create_quiz/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -402,7 +402,7 @@ export async function deleteSubject(subjectName, subjectId = null) {
     // 如果沒有傳入ID，則需要查找
     if (!targetSubjectId) {
       // 直接調用API獲取主題信息，避免使用緩存邏輯
-      const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -427,7 +427,7 @@ export async function deleteSubject(subjectName, subjectId = null) {
     }
 
     // 執行刪除操作
-    const res = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubjectId}/soft-delete/`, {
+    const res = await fetch(`${ROOT_BASE}/api/quiz/${targetSubjectId}/soft-delete/`, {
       method: "DELETE", // 改為DELETE方法
       headers: {
         "Content-Type": "application/json",
@@ -456,7 +456,7 @@ export async function deleteSubjectFast(subjectName) {
   try {
     // 直接從現有的notes和subjects中查找主題ID
     // 這裡假設我們已經有了主題的ID信息
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -477,7 +477,7 @@ export async function deleteSubjectFast(subjectName) {
     }
 
     // 執行刪除操作
-    const deleteRes = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubject.id}/soft-delete/`, {
+    const deleteRes = await fetch(`${ROOT_BASE}/api/quiz/${targetSubject.id}/soft-delete/`, {
       method: "DELETE", // 改為DELETE方法
       headers: {
         "Content-Type": "application/json",
@@ -509,7 +509,7 @@ export async function deleteSubjectUltraFast(subjectName) {
         // 這裡我們需要從筆記的關聯中找到主題ID
         // 由於筆記結構的限制，我們還是需要調用一次API
         // 但我們可以優化這個調用
-        const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+        const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -530,7 +530,7 @@ export async function deleteSubjectUltraFast(subjectName) {
         }
 
         // 執行刪除操作
-        const deleteRes = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubject.id}/soft-delete/`, {
+        const deleteRes = await fetch(`${ROOT_BASE}/api/quiz/${targetSubject.id}/soft-delete/`, {
           method: "DELETE", // 改為DELETE方法
           headers: {
             "Content-Type": "application/json",
@@ -566,7 +566,7 @@ export async function deleteSubjectSmart(subjectName) {
     
     // 如果緩存中沒有ID，則查詢一次
     if (!targetSubjectId) {
-      const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -596,7 +596,7 @@ export async function deleteSubjectSmart(subjectName) {
     }
 
     // 執行刪除操作 - 使用DELETE方法，不是POST方法
-    const deleteRes = await fetch(`http://127.0.0.1:8000/api/quiz/${targetSubjectId}/soft-delete/`, {
+    const deleteRes = await fetch(`${ROOT_BASE}/api/quiz/${targetSubjectId}/soft-delete/`, {
       method: "DELETE", // 改為DELETE方法
       headers: {
         "Content-Type": "application/json",
@@ -647,7 +647,7 @@ export async function getNotesBySubject(subject) {
 // 從後端載入使用者的主題與收藏筆記，並同步到本地 notes/subjects - 優化為更新緩存
 export async function loadUserQuizAndNotes() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+    const res = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

@@ -24,7 +24,7 @@ class ECPayConfig:
         # CLIENT_BACK_URL = f'{REACT_BASE_URL}/user'
 
     # 回傳網址（ECPay server -> your server）
-    RETURN_URL = 'http://localhost:8000/ECpay-return/'
+    RETURN_URL = f'{DJANGO_BASE_URL}/ECpay-return/'
 
 config = ECPayConfig()
 

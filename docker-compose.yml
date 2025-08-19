@@ -21,7 +21,7 @@ services:
     volumes:
       - ./backend-django:/app
     command: ["python","manage.py","runserver","0.0.0.0:8000"]
-
+    restart: always
   flask:
     build:
       context: ./ml-service
@@ -31,7 +31,7 @@ services:
       - "5000:5000"
     volumes:
       - ./ml-service:/topic_apps
-
+    restart: always
   web:
     build:
       context: ./frontend/my-app
@@ -43,7 +43,7 @@ services:
       - ./frontend/my-app:/app
       - /app/node_modules   # 讓容器內 node_modules 不被覆蓋
     command: ["npm","run","dev"]
-
+    restart: always
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
 # start the database before your application. The `db-data` volume persists the

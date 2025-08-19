@@ -1,6 +1,6 @@
 "use client";
 // 題目收藏模態框組件 - 允許用戶將題目收藏到指定的筆記本中
-
+import { ROOT_BASE } from "../../lib/api";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import SubjectSelector from "./SubjectSelector";
@@ -107,7 +107,7 @@ export default function FavoriteModal({
     // 獲取主題ID - 根據當前選擇的主題名稱找到對應的ID
     let topicId = null;
     try {
-      const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+      const subjectsRes = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -135,7 +135,7 @@ export default function FavoriteModal({
           throw new Error("主題名稱不能為空");
         }
 
-        const createRes = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+        const createRes = await fetch(`${ROOT_BASE}/api/create_quiz/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -181,7 +181,7 @@ export default function FavoriteModal({
       },
     };
 
-    const res = await fetch("http://127.0.0.1:8000/api/add-favorite/", {
+    const res = await fetch(`${ROOT_BASE}/api/add-favorite/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -249,7 +249,7 @@ ${questionContent}`;
           // 靜默更新筆記，不等待結果
           try {
             const token = localStorage.getItem("token");
-            fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+            fetch(`${ROOT_BASE}/api/notes/${currentNoteId}/`, {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",

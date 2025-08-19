@@ -1,5 +1,5 @@
 "use client";
-
+import { ROOT_BASE } from "../../lib/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -159,7 +159,7 @@ export default function HomeGamePage() {
       // 第一步：先創建Quiz主題（如果不存在）
       let quizTopicId = null;
       try {
-        const createQuizRes = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
+        const createQuizRes = await fetch(`${ROOT_BASE}/api/create_quiz/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -185,7 +185,7 @@ export default function HomeGamePage() {
           
         } else if (createQuizRes.status === 400) {
           // 主題已存在，獲取現有主題ID
-          const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
+          const subjectsRes = await fetch(`${ROOT_BASE}/api/user_quiz_and_notes/`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -208,7 +208,7 @@ export default function HomeGamePage() {
       }
 
       // 第二步：生成題目
-      const res = await fetch("http://127.0.0.1:8000/api/quiz/", {
+      const res = await fetch(`${ROOT_BASE}/api/quiz/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

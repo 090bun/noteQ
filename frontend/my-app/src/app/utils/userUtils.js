@@ -1,6 +1,7 @@
 // =========================
 // 從 API 獲取用戶熟悉度（GET）
 // =========================
+import { ROOT_BASE } from "../../lib/api";
 export async function getUserFamiliarityFromAPI() {
     try {
         const token = localStorage.getItem("token");
@@ -9,7 +10,7 @@ export async function getUserFamiliarityFromAPI() {
             return [];
         }
 
-        const res = await fetch("http://127.0.0.1:8000/api/familiarity/", {
+        const res = await fetch(`${ROOT_BASE}/api/familiarity/`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -98,7 +99,7 @@ export async function submitUserAnswers(updates) {
             return null;
         }
 
-        const res = await fetch("http://127.0.0.1:8000/api/submit_answer/", { // 更新 API URL
+        const res = await fetch(`${ROOT_BASE}/api/submit_answer/`, { // 更新 API URL
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
