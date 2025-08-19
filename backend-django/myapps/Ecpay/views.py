@@ -276,3 +276,22 @@ class EcpayURLRedirect(APIView):
         query = urlencode(dict(data)) if data else ""
         url = f"{base_url}?{query}" if query else base_url
         return redirect(url)
+    
+class PaymentStatus(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 取得使用者的訂單狀態
+        mt = request.query_params.get("merchant_trade_no")
+        if not mt:
+            return Response({"error":"missing merchant_trade_no"}, status=400)
+        try:
+            order = Order.objects.get(merchant_trade_no=mt)
+        except Order.DoesNotExist:
+            return Response({"status":"not_found"}, status=404)
+        return Response({
+            "merchant_trade_no": order.merchant_trade_no,
+            "status": order.status,
+            "paid_at": order.paid_at,
+            "amount": str(order.amount),
+        })
