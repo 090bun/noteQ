@@ -61,10 +61,10 @@ export default function NotePage() {
         //console.log("載入的筆記數據:", notesData);
         //console.log("載入的主題數據:", subjectsData);
         
-        const subscriptionStatus = localStorage.getItem("is_paid");
+  const subscriptionStatus = localStorage.getItem("is_paid");
         setNotes(notesData);
         setSubjects(subjectsData);
-        //setIsPlusSubscribed(subscriptionStatus === "true");
+  setIsPlusSubscribed(subscriptionStatus === "true");
 
         if (subjectsData.length > 0) {
           if (!subjectsData.includes(currentSubject)) {
