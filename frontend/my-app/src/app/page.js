@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "./components/Header";
@@ -15,6 +15,7 @@ export default function HomePage() {
   const orbRef = useRef(null);
   const typewriterInstanceRef = useRef(null);
   const { navigateWithTransition } = usePageTransition();
+  const [isAuthenticated, setIsAuthenticated] = useState(null); // null = 未檢查, true = 已登入, false = 未登入
 
   useEffect(() => {
     // 檢測是否為移動設備
@@ -62,12 +63,56 @@ export default function HomePage() {
     };
   }, []);
 
+  // 檢查認證狀態
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+      
+      if (token && userId) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+      }
+    };
+
+    // 頁面加載時檢查
+    checkAuthStatus();
+
+    // 監聽 localStorage 變化
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' || e.key === 'userId') {
+        checkAuthStatus();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  // 優化的 START 按鈕處理
   const handleStart = () => {
-    const token = localStorage.getItem("token");
-    if (token) {
+    if (isAuthenticated === true) {
+      // 已登入，直接跳轉
       navigateWithTransition("/homegame", "right");
-    } else {
+    } else if (isAuthenticated === false) {
+      // 未登入，跳轉到登入頁面
       navigateWithTransition("/login", "right");
+    } else {
+      // 狀態未確定，進行額外檢查
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId");
+      
+      if (token && userId) {
+        setIsAuthenticated(true);
+        navigateWithTransition("/homegame", "right");
+      } else {
+        setIsAuthenticated(false);
+        navigateWithTransition("/login", "right");
+      }
     }
   };
 

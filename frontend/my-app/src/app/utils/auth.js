@@ -4,11 +4,8 @@ import { safeConfirm } from './dialogs';
 export const safeLogout = () => {
   safeConfirm('確定要登出嗎？',
     () => {
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem('userData');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('isPlusSubscribed');
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = '/';
     },
     () => {

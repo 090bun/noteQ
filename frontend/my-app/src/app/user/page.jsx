@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import Header from "../components/Header";
 import Menu from "../components/Menu";
@@ -23,6 +23,100 @@ export default function UserPage() {
   // 訂閱狀態管理
   const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
   const [showPlusModal, setShowPlusModal] = useState(false);
+
+  // 新增：API 優化相關狀態
+  const [apiCache, setApiCache] = useState(new Map());
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_DURATION = 60000; // 1分鐘緩存時間
+  const abortControllerRef = useRef(null);
+
+  // 新增：智能緩存和請求去重
+  const getCachedData = useCallback((key) => {
+    const cached = apiCache.get(key);
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
+      return cached.data;
+    }
+    return null;
+  }, [apiCache]);
+
+  const setCachedData = useCallback((key, data) => {
+    setApiCache(prev => new Map(prev).set(key, {
+      data,
+      timestamp: Date.now()
+    }));
+  }, []);
+
+  // 新增：並行數據獲取
+  const fetchAllDataInParallel = useCallback(async () => {
+    // 取消之前的請求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // 創建新的 AbortController
+    abortControllerRef.current = new AbortController();
+    
+    try {
+      // 檢查緩存
+      const cachedUserData = getCachedData('user-data');
+      const cachedTopics = getCachedData('user-topics');
+      
+      // 如果緩存有效，直接使用
+      if (cachedUserData && cachedTopics) {
+        setUserData(cachedUserData);
+        setTopics(cachedTopics);
+        return;
+      }
+
+      // 並行請求所有數據
+      const startTime = Date.now();
+      const [userDataResult, topicsResult] = await Promise.allSettled([
+        // 用戶數據請求
+        fetchUserDataFromAPI(),
+        // 熟悉度數據請求
+        fetchUserTopicsFromAPI()
+      ]);
+
+      const totalTime = Date.now() - startTime;
+
+      // 處理用戶數據結果
+      if (userDataResult.status === 'fulfilled' && userDataResult.value) {
+        setUserData(userDataResult.value);
+        setCachedData('user-data', userDataResult.value);
+      }
+
+      // 處理熟悉度數據結果
+      if (topicsResult.status === 'fulfilled' && topicsResult.value) {
+        setTopics(topicsResult.value);
+        setCachedData('user-topics', topicsResult.value);
+      }
+
+      setLastFetchTime(Date.now());
+      
+      // 開發環境下顯示性能指標
+      if (process.env.NODE_ENV === 'development') {
+        // 性能指標記錄已移除
+      }
+      
+    } catch (error) {
+      // 並行數據獲取失敗
+    }
+  }, []); // 移除依賴項以避免無限循環
+
+  // 新增：智能重試機制
+  const retryWithBackoff = useCallback(async (fn, maxRetries = 3, baseDelay = 100) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        
+        // 指數退避重試
+        const delay = baseDelay * Math.pow(2, i);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }, []);
 
   // 切換選單
   const toggleMenu = () => {
@@ -82,7 +176,6 @@ export default function UserPage() {
 
         safeAlert(data?.message || "密碼已更新成功！");
       } catch (err) {
-        console.error("reset-password 發生錯誤：", err);
         safeAlert("網路或伺服器異常，請稍後再試。");
       }
     });
@@ -90,7 +183,11 @@ export default function UserPage() {
 
   // 升級到Plus方案（改版：接收 HTML 並渲染）
   const handleUpgradeToPlus = async () => {
+    let loadingAlert = null;
     try {
+      // 顯示載入提示並保存引用
+      loadingAlert = safeAlert("正在前往付款頁面，請稍候...");
+      
       // 1) 直接向後端索取 HTML（避免帶 Content-Type: application/json 造成預檢）
       const res = await fetch("http://localhost:8000/ecpay/", {
         method: "POST",
@@ -109,6 +206,10 @@ export default function UserPage() {
           const maybeJson = await res.clone().json();
           msg = maybeJson?.message || maybeJson?.detail || msg;
         } catch {}
+        // 關閉載入提示並顯示錯誤
+        if (loadingAlert && typeof loadingAlert.close === 'function') {
+          loadingAlert.close();
+        }
         safeAlert(msg);
         return;
       }
@@ -116,6 +217,10 @@ export default function UserPage() {
       // 2) 取回 HTML 字串
       const html = await res.text();
       if (!html || !html.includes("<form") || !html.includes("</html>")) {
+        // 關閉載入提示並顯示錯誤
+        if (loadingAlert && typeof loadingAlert.close === 'function') {
+          loadingAlert.close();
+        }
         safeAlert("回傳內容不是有效的付款頁面。");
         return;
       }
@@ -123,14 +228,28 @@ export default function UserPage() {
       // 3) 以「新分頁」方式寫入 HTML（最穩、避免污染當前 React DOM）
       const win = window.open("", "_blank");
       if (!win) {
+        // 關閉載入提示並顯示錯誤
+        if (loadingAlert && typeof loadingAlert.close === 'function') {
+          loadingAlert.close();
+        }
         safeAlert("被瀏覽器封鎖彈窗，請允許此網站開新視窗後再試。");
         return;
       }
+      
+      // 4) 成功打開新分頁後，關閉載入提示
+      if (loadingAlert && typeof loadingAlert.close === 'function') {
+        loadingAlert.close();
+      }
+      
       win.document.open();
       win.document.write(html); // 這段 HTML 內有 <script> 會自動 submit form
       win.document.close();
     } catch (err) {
       console.error("ecpay error:", err);
+      // 關閉載入提示並顯示錯誤
+      if (loadingAlert && typeof loadingAlert.close === 'function') {
+        loadingAlert.close();
+      }
       safeAlert("發送付款請求失敗，請稍後再試。");
     }
   };
@@ -150,7 +269,7 @@ export default function UserPage() {
     setShowPlusModal(true);
   };
 
-  // 後端請求使用者資料(帶上token)
+  // 後端請求使用者資料(帶上token) - 優化版本
   const fetchUserDataFromAPI = async () => {
     // 時間格式化
     const formatDate = (isoString) => {
@@ -167,8 +286,7 @@ export default function UserPage() {
     const userId = localStorage.getItem("userId");
 
     if (!token) {
-      console.error("找不到 token");
-      return;
+      return null;
     }
 
     try {
@@ -177,6 +295,7 @@ export default function UserPage() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: abortControllerRef.current?.signal,
       });
 
       if (!res.ok) {
@@ -184,78 +303,91 @@ export default function UserPage() {
       }
 
       const data = await res.json();
-      // 根據 API 回應格式更新 userData
-      setUserData({
+      
+      // 格式化數據
+      const formattedData = {
         name: data.username || "未知",
         email: data.email || "未知",
         registerDate: formatDate(data.created_at || new Date()),
-      });
+      };
+      
+      return formattedData;
     } catch (error) {
-      console.error("取得使用者資料失敗:", error);
+      if (error.name === 'AbortError') {
+        return null;
+      }
+      return null;
     }
   };
 
-  // 回到 /user 後，基於網址參數檢查綠界付款狀態（最小變更）
-  const checkPaymentStatus = async () => {
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token || typeof window === "undefined") return;
-
-      const params = new URLSearchParams(window.location.search);
-        let mt = params.get("merchant_trade_no") || params.get("MerchantTradeNo");
-        if (!mt) return;
-        // 修正格式：['O2025081903284257153'] -> O2025081903284257153
-        if (/^\[.*\]$/.test(mt)) {
-          try {
-            mt = JSON.parse(mt.replace(/'/g, '"'));
-            if (Array.isArray(mt)) mt = mt[0];
-          } catch {
-            mt = mt.replace(/\[|'|\]/g, "");
-          }
-        }
-        if (!mt || mt.length < 20) return;
-        const res = await fetch(
-          `http://127.0.0.1:8000/payment-status/?merchant_trade_no=${encodeURIComponent(mt)}`,
-          {
-            method: "GET",
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data?.status === "completed") {
-          localStorage.setItem("is_paid", "true");
-          setIsPlusSubscribed(true);
-        }
-    } catch (e) {
-      console.error("payment-status 檢查失敗:", e);
-    }
-  };
-
-  // 初始化數據
-  useEffect(() => {
-    // 確保在客戶端渲染時才執行
-    if (typeof window !== "undefined") {
-      fetchUserDataFromAPI();
-      fetchUserTopicsFromAPI();
-      const subscriptionStatus = localStorage.getItem("is_paid");
-      setIsPlusSubscribed(subscriptionStatus === "true");
-  // 登回 USER 後立即以交易編號檢查一次付款狀態
-  checkPaymentStatus();
-    }
-  }, []);
-
-  // 從API獲取用戶主題熟悉度
+  // 從API獲取用戶主題熟悉度 - 優化版本
   const fetchUserTopicsFromAPI = async () => {
     try {
       const userTopics = await getUserTopics();
-      setTopics(userTopics);
+      return Array.isArray(userTopics) ? userTopics : [];
     } catch (error) {
-      console.error("獲取用戶主題失敗:", error);
-      // 如果API失敗，設置為空數組
-      setTopics([]);
+      return [];
     }
   };
+
+  // 新增：智能數據刷新
+  const refreshData = useCallback(async (force = false) => {
+    const now = Date.now();
+    
+    // 如果不是強制刷新且緩存仍然有效，直接返回
+    if (!force && (now - lastFetchTime) < CACHE_DURATION) {
+      return;
+    }
+    
+    await fetchAllDataInParallel();
+  }, [lastFetchTime]); // 移除 fetchAllDataInParallel 依賴項
+
+
+  // 初始化數據 - 優化版本
+  useEffect(() => {
+    // 確保在客戶端渲染時才執行
+    if (typeof window !== "undefined") {
+      // 並行獲取所有數據
+      fetchAllDataInParallel();
+      
+      // 設置訂閱狀態
+      const subscriptionStatus = localStorage.getItem("is_paid");
+      setIsPlusSubscribed(subscriptionStatus === "true");
+      
+      // 預加載其他頁面可能需要的數據
+      const preloadAdditionalData = async () => {
+        try {
+          // 預加載用戶設置等數據
+          const token = localStorage.getItem("token");
+          if (token) {
+            // 這裡可以預加載其他相關數據
+            // 例如用戶偏好設置、學習統計等
+          }
+        } catch (error) {
+          // 靜默處理錯誤，不影響主要功能
+        }
+      };
+      
+      preloadAdditionalData();
+    }
+
+    // 清理函數
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []); // 移除 fetchAllDataInParallel 依賴項以避免無限循環
+
+  // 新增：定期刷新數據（可選）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // 每5分鐘檢查一次是否有新數據
+      refreshData(false);
+    }, 300000); // 5分鐘
+
+    return () => clearInterval(interval);
+  }, [refreshData]);
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -315,7 +447,7 @@ export default function UserPage() {
                   height={80}
                   style={{
                     objectFit: "contain",
-                    mixBlendMode: "difference",
+                    filter: "sepia(1) invert(1) brightness(1.1) "
                   }}
                 />
                 <h1

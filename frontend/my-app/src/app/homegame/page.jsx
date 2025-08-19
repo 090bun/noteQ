@@ -153,6 +153,9 @@ export default function HomeGamePage() {
     try {
       const token = localStorage.getItem("token");
       
+      // 樂觀更新：立即將主題添加到本地狀態，讓用戶立即看到
+      const newTopic = topic.trim();
+      
       // 第一步：先創建Quiz主題（如果不存在）
       let quizTopicId = null;
       try {
@@ -163,14 +166,23 @@ export default function HomeGamePage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ 
-            quiz_topic: topic.trim() 
+            quiz_topic: newTopic 
           }),
         });
 
         if (createQuizRes.ok) {
           const createResult = await createQuizRes.json();
           quizTopicId = createResult.quiz_topic_id;
-          console.log("✅ 成功創建Quiz主題:", topic.trim(), "ID:", quizTopicId);
+          
+          // 樂觀更新：立即將新主題添加到本地筆記系統
+          // 這裡可以觸發一個全局事件，通知筆記頁面更新主題列表
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            const event = new CustomEvent('topicCreated', {
+              detail: { topic: newTopic, id: quizTopicId }
+            });
+            window.dispatchEvent(event);
+          }
+          
         } else if (createQuizRes.status === 400) {
           // 主題已存在，獲取現有主題ID
           const subjectsRes = await fetch("http://127.0.0.1:8000/api/user_quiz_and_notes/", {
@@ -184,10 +196,9 @@ export default function HomeGamePage() {
           if (subjectsRes.ok) {
             const subjectsData = await subjectsRes.json();
             const topics = Array.isArray(subjectsData?.favorite_quiz_topics) ? subjectsData.favorite_quiz_topics : [];
-            const existingTopic = topics.find(t => t?.quiz_topic === topic.trim());
+            const existingTopic = topics.find(t => t?.quiz_topic === newTopic);
             if (existingTopic) {
               quizTopicId = existingTopic.id;
-              console.log("✅ 找到現有Quiz主題:", topic.trim(), "ID:", quizTopicId);
             }
           }
         }
@@ -205,24 +216,23 @@ export default function HomeGamePage() {
         },
         body: JSON.stringify({
           user_id: localStorage.getItem("userId"),
-          topic: topic.trim(),
+          topic: newTopic,
           difficulty: selectedDifficulty,
           question_count: parseInt(questionCount, 10),
         }),
       });
 
-      // if (!res.ok) {
-      //   throw new Error("後端回傳錯誤");
-      // }
-
       const result = await res.json();
-      // console.log("題目已送出，回傳結果:", result);
+      
+      // 將主題信息也存儲到 sessionStorage，供筆記頁面使用
       sessionStorage.setItem(
         "quizData",
         JSON.stringify({
           quiz: result.quiz, // 單題形式
           topics: result.topics || [], // 多題陣列形式
           question_count: parseInt(questionCount, 10), // 設定題數
+          created_topic: newTopic, // 新增：記錄創建的主題
+          topic_id: quizTopicId, // 新增：記錄主題ID
         })
       );
       
@@ -237,7 +247,6 @@ export default function HomeGamePage() {
       }, 1500);
       
     } catch (err) {
-      // console.error("發送題目失敗:", err);
       safeAlert("題目發送失敗，請稍後再試");
       setShowDecryption(false);
       setIsGenerating(false);
@@ -382,7 +391,7 @@ export default function HomeGamePage() {
               onComplete={handleDecryptionComplete}
               speed={80}
               className={styles.decryptionText}
-              key="decryption-text" // 固定key，避免重新创建组件
+              key="decryption-text" 
             />
           </div>
         </div>

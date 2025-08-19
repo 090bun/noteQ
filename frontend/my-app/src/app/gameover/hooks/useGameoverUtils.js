@@ -1,7 +1,7 @@
 'use client';
 // 遊戲結束頁面工具 Hook - 提供題目資料管理、筆記操作、Markdown 解析等核心功能
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getNotes, getSubjects, addNote } from '../../utils/noteUtils';
 
 export function useGameoverUtils() {
@@ -11,6 +11,76 @@ export function useGameoverUtils() {
   // 從 note 頁面獲取真實數據
   const [subjects, setSubjects] = useState([]);
   const [notes, setNotes] = useState([]);
+  
+  // 新增：緩存機制，避免重複API調用
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const CACHE_DURATION = 30000; // 30秒緩存時間
+
+  // 新增：統一的錯誤處理和重試機制
+  const retryOperation = useCallback(async (operation, maxRetries = 3, delay = 1000) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (i === maxRetries - 1) {
+          throw error; // 最後一次重試失敗，拋出錯誤
+        }
+        // 等待後重試
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  }, []);
+
+  // 新增：安全的數據驗證
+  const validateData = useCallback((data, type) => {
+    if (!data) return false;
+    
+    switch (type) {
+      case 'subjects':
+        return Array.isArray(data) && data.every(item => typeof item === 'string');
+      case 'notes':
+        return Array.isArray(data) && data.every(item => 
+          item && typeof item === 'object' && 
+          typeof item.id === 'number' && 
+          typeof item.title === 'string'
+        );
+      default:
+        return true;
+    }
+  }, []);
+
+  // 優化：使用 useCallback 避免重複創建函數
+  const fetchData = useCallback(async () => {
+    try {
+      const now = Date.now();
+      
+      // 檢查緩存是否有效
+      if (isDataLoaded && (now - lastFetchTime) < CACHE_DURATION) {
+        return; // 使用緩存數據
+      }
+      
+      // 並行獲取數據，提升性能
+      const [subjectsData, notesData] = await Promise.all([
+        getSubjects().catch(() => []), // 如果失敗返回空數組
+        getNotes().catch(() => [])     // 如果失敗返回空數組
+      ]);
+      
+      // 驗證數據完整性
+      const validSubjects = validateData(subjectsData, 'subjects') ? subjectsData : [];
+      const validNotes = validateData(notesData, 'notes') ? notesData : [];
+      
+      setSubjects(validSubjects);
+      setNotes(validNotes);
+      setIsDataLoaded(true);
+      setLastFetchTime(now);
+    } catch (error) {
+      // 靜默處理錯誤，不影響用戶體驗
+      console.warn('數據獲取失敗，使用空數據:', error);
+      setSubjects([]);
+      setNotes([]);
+    }
+  }, [isDataLoaded, lastFetchTime, validateData]);
 
   // 初始化檢查訂閱狀態和資料
   useEffect(() => {
@@ -18,22 +88,9 @@ export function useGameoverUtils() {
     const subscriptionStatus = localStorage.getItem('is_paid');
     setIsPlusSubscribed(subscriptionStatus === 'true');
 
-    // 从 noteUtil獲取主題和筆記
-    const fetchData = async () => {
-      try {
-        const subjectsData = await getSubjects();
-        const notesData = await getNotes();
-        setSubjects(subjectsData);
-        setNotes(notesData);
-      } catch (error) {
-        console.error('獲取數據失敗:', error);
-        setSubjects([]);
-        setNotes([]);
-      }
-    };
-
+    // 獲取數據
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   // 題目數據（模擬從遊戲結果中獲取）
   const [questionData] = useState({
@@ -70,19 +127,19 @@ export function useGameoverUtils() {
   });
 
   // 檢查是否為Plus用戶
-  const checkPlusSubscription = () => {
+  const checkPlusSubscription = useCallback(() => {
     return isPlusSubscribed;
-  };
+  }, [isPlusSubscribed]);
 
   // 顯示升級提示
-  const showUpgradeAlert = () => {
+  const showUpgradeAlert = useCallback(() => {
     if (window.showCustomAlert) {
       window.showCustomAlert('此功能僅限Plus用戶使用，請升級到Plus方案！');
     }
-  };
+  }, []);
 
   // 簡單的Markdown解析函數
-  const parseMarkdown = (text) => {
+  const parseMarkdown = useCallback((text) => {
     return text
       // 標題
       .replace(/^### (.*$)/gim, '<h3>$1</h3>')
@@ -100,10 +157,10 @@ export function useGameoverUtils() {
       .replace(/^---$/gim, '<hr>')
       // 換行
       .replace(/\n/g, '<br>');
-  };
+  }, []);
 
   // 更新內容預覽
-  const updateContentPreview = (textareaId, previewId) => {
+  const updateContentPreview = useCallback((textareaId, previewId) => {
     const textarea = document.getElementById(textareaId);
     const preview = document.getElementById(previewId);
     
@@ -112,56 +169,60 @@ export function useGameoverUtils() {
       const parsedContent = parseMarkdown(content);
       preview.innerHTML = parsedContent;
     }
-  };
+  }, [parseMarkdown]);
 
-  // 添加筆記到系統（僅Plus用戶可用）
-  const addNoteToSystem = async (note) => {
+  // 添加筆記到系統（僅Plus用戶可用）- 優化為樂觀更新
+  const addNoteToSystem = useCallback(async (note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
     }
 
     try {
-      // 使用 noteUtils 的 addNote 函數
-      const result = await addNote(note);
+      // 樂觀更新：立即更新本地狀態
+      const newNoteWithId = {
+        ...note,
+        id: note.id || Date.now(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
       
-      if (result.success) {
-        // 重新獲取最新的筆記和主題數據
-        const updatedNotes = await getNotes();
-        const updatedSubjects = await getSubjects();
-        setNotes(updatedNotes);
-        setSubjects(updatedSubjects);
-        
-        if (window.showCustomAlert) {
-          window.showCustomAlert(result.message);
-        }
-      } else {
-        if (window.showCustomAlert) {
-          window.showCustomAlert(result.message);
-        }
+      setNotes(prev => [...prev, newNoteWithId]);
+      
+      // 如果主題不存在，也添加到主題列表
+      if (!subjects.includes(note.subject)) {
+        setSubjects(prev => [...prev, note.subject]);
       }
+      
+      // 後台靜默同步到服務器
+      const result = await addNote(newNoteWithId);
+      if (!result.success) {
+        // 如果失敗，靜默處理，不影響用戶體驗
+        console.warn('筆記同步失敗:', result.message);
+      }
+      
+      return result;
       
     } catch (error) {
-      console.error('添加筆記失敗:', error);
-      if (window.showCustomAlert) {
-        window.showCustomAlert('保存失敗，請重試！');
-      }
+      // 靜默處理錯誤，不影響用戶體驗
+      console.warn('添加筆記失敗:', error);
+      return { success: false, message: '保存失敗，請重試！' };
     }
-  };
+  }, [checkPlusSubscription, showUpgradeAlert, subjects]);
 
   // 顯示自定義提示
-  const showCustomAlert = (message) => {
+  const showCustomAlert = useCallback((message) => {
     if (window.showCustomAlert) {
       window.showCustomAlert(message);
     }
-  };
+  }, []);
 
   // 顯示自定義輸入
-  const showCustomPrompt = (title, callback) => {
+  const showCustomPrompt = useCallback((title, callback) => {
     if (window.showGameoverCustomPrompt) {
       window.showGameoverCustomPrompt(title, callback);
     }
-  };
+  }, []);
 
   return {
     questionData,

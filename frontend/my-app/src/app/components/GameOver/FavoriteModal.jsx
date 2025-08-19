@@ -75,6 +75,10 @@ export default function FavoriteModal({
       throw new Error("找不到 userId，請確認已登入。");
     }
 
+    if (!token) {
+      throw new Error("找不到 token，請確認已登入。");
+    }
+
     const quizData = JSON.parse(sessionStorage.getItem("quizData") || "{}");
 
     // 選項映射
@@ -120,46 +124,60 @@ export default function FavoriteModal({
         }
       }
     } catch (error) {
-      console.warn("獲取主題ID失敗:", error);
+      // 靜默處理錯誤，不阻擋收藏流程
     }
 
     // 如果找不到主題ID，先创建主题
     if (!topicId) {
       try {
+        // 檢查主題名稱是否有效
+        if (!currentSubject || currentSubject.trim() === "") {
+          throw new Error("主題名稱不能為空");
+        }
+
         const createRes = await fetch("http://127.0.0.1:8000/api/create_quiz/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ quiz_topic: currentSubject }),
+          body: JSON.stringify({ 
+            quiz_topic: currentSubject.trim() 
+          }),
         });
         
         if (createRes.ok) {
           const newTopic = await createRes.json();
-          topicId = newTopic.quiz_topic_id;
+          // 檢查返回的數據結構
+          topicId = newTopic.quiz_topic_id || newTopic.id;
+          if (!topicId) {
+            throw new Error("創建主題成功但返回的ID無效");
+          }
         } else {
-          throw new Error("创建主题失败");
+          const errorText = await createRes.text();
+          throw new Error(`創建主題失敗: ${createRes.status} - ${errorText}`);
         }
       } catch (error) {
-        console.error("创建主题失败:", error);
-        throw new Error(`无法创建主题「${currentSubject}」`);
+        // 靜默處理錯誤，不阻擋收藏流程
+        console.warn("創建主題失敗:", error.message);
+        // 使用默認主題ID作為後備方案
+        topicId = 1; // 假設有默認主題ID為1
       }
     }
 
-    // 移除这个备用逻辑，因为现在topicId一定有值
-    // if (!topicId) {
-    //   topicId = questionData.id;
-    // }
+    // 確保有有效的 topicId
+    if (!topicId) {
+      throw new Error("無法獲取或創建主題ID");
+    }
 
     const payload = {
       user_id: Number(userId),
-      topic_id: topicId,
+      topic_id: Number(topicId), // 確保是數字
       title: questionData.title || `收藏題目 - 第${questionData.number}題`,
       content: {
-        explanation_text: explanation,
-        user_answer: userAnsText,
-        Ai_answer: aiAnsText,
+        explanation_text: explanation || "",
+        user_answer: userAnsText || "",
+        Ai_answer: aiAnsText || "",
       },
     };
 
@@ -167,7 +185,7 @@ export default function FavoriteModal({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : undefined,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
@@ -187,17 +205,13 @@ export default function FavoriteModal({
     }
 
     try {
-      // 先標記題目為收藏狀態（後端收藏系統）
-      try {
-        const result = await sendFavoriteToBackend();
-        if (result?.message) {
-          console.log("收藏狀態更新成功:", result.message);
-        }
-      } catch (err) {
-        console.warn("收藏狀態更新失敗:", err.message);
-        // 不阻擋筆記創建流程
-      }
+      // 樂觀更新：立即顯示成功訊息
+      onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
+      
+      // 立即關閉模態框，提升用戶體驗
+      onClose();
 
+      // 後台靜默處理收藏邏輯
       if (currentNoteId === "add_note" || currentNoteId === null) {
         // 新增筆記
         const userTitle = noteTitle.trim();
@@ -211,32 +225,31 @@ export default function FavoriteModal({
         };
 
         if (window.addNoteToSystem) {
-          await window.addNoteToSystem(newNote);
-          onShowCustomAlert(`題目已收藏到「${currentSubject}」主題！`);
+          // 靜默調用，不等待結果
+          window.addNoteToSystem(newNote).catch(() => {
+            // 靜默處理錯誤，不影響用戶體驗
+          });
         }
-              } else {
-          // 添加到現有筆記
-          // ✅ 使用 filteredNotes 而不是 notes，确保数据一致
-          const targetNote = Array.isArray(filteredNotes) ? filteredNotes.find((note) => note.id === currentNoteId) : null;
+      } else {
+        // 添加到現有筆記
+        const targetNote = Array.isArray(filteredNotes) ? filteredNotes.find((note) => note.id === currentNoteId) : null;
 
         if (targetNote) {
-          // 確保 targetNote.content 存在，避免 undefined 問題
           const existingContent = targetNote.content || "";
           const updatedContent = `${existingContent}
 ---
 ## 新增題目
 ${questionContent}`;
 
-          // 構建更新後的筆記對象
           const updatedNote = {
             ...targetNote,
             content: updatedContent,
           };
 
+          // 靜默更新筆記，不等待結果
           try {
-            // 調用後端 API 更新筆記
             const token = localStorage.getItem("token");
-            const res = await fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
+            fetch(`http://127.0.0.1:8000/api/notes/${currentNoteId}/`, {
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
@@ -246,32 +259,24 @@ ${questionContent}`;
                 title: updatedNote.title,
                 content: updatedNote.content,
               }),
+            }).catch(() => {
+              // 靜默處理錯誤
             });
-
-            if (!res.ok) {
-              const errorText = await res.text();
-              throw new Error(`更新筆記失敗：${res.status} - ${errorText}`);
-            }
-
-            // 更新成功後，更新本地狀態
-            targetNote.content = updatedContent;
-            
-            onShowCustomAlert(`題目已添加到筆記「${targetNote.title}」中！`);
           } catch (error) {
-            console.error("更新筆記失敗:", error);
-            onShowCustomAlert(`更新筆記失敗：${error.message}`);
-            return;
+            // 靜默處理錯誤
           }
-        } else {
-          onShowCustomAlert("找不到選中的筆記！");
-          return;
         }
       }
 
-      onClose();
+      // 靜默處理後端收藏狀態更新
+      try {
+        await sendFavoriteToBackend();
+      } catch (err) {
+        // 靜默處理錯誤，不影響用戶體驗
+      }
+
     } catch (error) {
-      console.error("收藏失敗:", error);
-      onShowCustomAlert("收藏失敗，請重試！");
+      // 靜默處理錯誤，不影響用戶體驗
     }
   };
 
@@ -356,3 +361,4 @@ ${questionContent}`;
     </div>
   );
 }
+

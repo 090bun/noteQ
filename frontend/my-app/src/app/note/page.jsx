@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Header from "../components/Header";
 import Menu from "../components/Menu";
@@ -14,11 +14,14 @@ import {
   moveNote,
   addSubject,
   deleteSubject,
+  deleteSubjectFast,
+  deleteSubjectSmart,
   getNotesBySubject,
   generateQuestions,
   cleanTextContent,
   parseMarkdown,
   loadUserQuizAndNotes,
+  clearCache,
 } from "../utils/noteUtils";
 import { safeAlert, safeConfirm } from "../utils/dialogs";
 import { safeLogout } from "../utils/auth";
@@ -39,32 +42,117 @@ export default function NotePage() {
   const [modalType, setModalType] = useState(""); // 'add', 'edit', 'view', 'move', 'addSubject', 'deleteSubject'
   const [editingNote, setEditingNote] = useState(null);
   const [movingNote, setMovingNote] = useState(null);
-  const [isPlusSubscribed, setIsPlusSubscribed] = useState(false);
+  const [isClient, setIsClient] = useState(false); // 新增：標記是否為客戶端
+  
+  // 初始化時直接從 localStorage 同步讀取，避免畫面先以 false 呈現造成閃屏
+  const [isPlusSubscribed, setIsPlusSubscribed] = useState(null); // 初始化為 null
 
-  // 初始化數據
+  // 使用 useMemo 優化當前主題筆記的計算，避免每次渲染都重新計算
+  const currentSubjectNotes = useMemo(() => {
+    return Array.isArray(notes)
+      ? notes.filter((note) => note.subject === currentSubject)
+      : [];
+  }, [notes, currentSubject]);
+
+  // 客戶端初始化
   useEffect(() => {
+    setIsClient(true);
+    
+    // 從 localStorage 讀取訂閱狀態
+    try {
+      const subscriptionStatus = localStorage.getItem("is_paid");
+      setIsPlusSubscribed(subscriptionStatus === "true" ? true : false);
+    } catch (e) {
+      setIsPlusSubscribed(false);
+    }
+    
+    // 修復滾動問題：確保頁面初始化時滾動正常
+    if (typeof document !== 'undefined') {
+      // 重置 body 的 overflow 設置
+      document.body.style.overflow = "auto";
+      // 確保選單狀態與滾動狀態同步
+      setIsMenuOpen(false);
+    }
+    
+    // 清理函數：確保頁面離開時滾動狀態正常
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = "auto";
+      }
+    };
+  }, []);
+
+  // 新增：監聽主題創建事件，實現即時同步
+  useEffect(() => {
+    if (!isClient) return;
+
+    const handleTopicCreated = (event) => {
+      const { topic, id } = event.detail;
+      
+      // 樂觀更新：立即將新主題添加到本地狀態
+      setSubjects(prev => {
+        // 避免重複添加
+        if (prev.includes(topic)) return prev;
+        return [...prev, topic];
+      });
+      
+
+      // 清除緩存，強制下次獲取最新數據
+      clearCache();
+    };
+
+    // 監聽主題創建事件
+    window.addEventListener('topicCreated', handleTopicCreated);
+    
+    // 監聽從 homegame 頁面傳來的數據
+    const handleStorageChange = (e) => {
+      if (e.key === 'quizData') {
+        try {
+          const quizData = JSON.parse(e.newValue || '{}');
+          if (quizData.created_topic && quizData.topic_id) {
+            // 觸發主題創建事件
+            window.dispatchEvent(new CustomEvent('topicCreated', {
+              detail: { 
+                topic: quizData.created_topic, 
+                id: quizData.topic_id 
+              }
+            }));
+          }
+        } catch (error) {
+          // 靜默處理錯誤
+        }
+      }
+    };
+
+    // 監聽 sessionStorage 變化
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('topicCreated', handleTopicCreated);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [isClient, currentSubject]);
+
+  // 初始化數據 - 優化為只調用一次API
+  useEffect(() => {
+    if (!isClient) return; // 確保只在客戶端執行
+    
     (async () => {
       try {
-        // 先從後端載入，回填到本地 noteUtils 的 notes/subjects
+        // 只調用一次 loadUserQuizAndNotes，避免重複API調用
         const loadResult = await loadUserQuizAndNotes();
         
         if (!loadResult.success) {
-          console.error("載入筆記失敗:", loadResult.message);
           safeAlert("載入筆記失敗，請重新整理頁面");
           return;
         }
 
-        // 從本地 noteUtils 獲取已處理的數據
+        // 從本地 noteUtils 獲取已處理的數據，不需要再次調用API
         const notesData = await getNotes();
         const subjectsData = await getSubjects();
         
-        //console.log("載入的筆記數據:", notesData);
-        //console.log("載入的主題數據:", subjectsData);
-        
-  const subscriptionStatus = localStorage.getItem("is_paid");
         setNotes(notesData);
         setSubjects(subjectsData);
-  setIsPlusSubscribed(subscriptionStatus === "true");
 
         if (subjectsData.length > 0) {
           if (!subjectsData.includes(currentSubject)) {
@@ -74,11 +162,10 @@ export default function NotePage() {
           setCurrentSubject(""); // 沒有主題時重置為空字符串
         }
       } catch (error) {
-        console.error("初始化數據失敗:", error);
         safeAlert("初始化數據失敗，請重新整理頁面");
       }
     })();
-  }, []);
+  }, [isClient, currentSubject]);
 
   // subjects 更新後，自動選定可用主題，避免初次進頁 currentSubject 為空而不渲染
   useEffect(() => {
@@ -88,53 +175,49 @@ export default function NotePage() {
     );
   }, [subjects]);
 
-  // 檢查是否為Plus用戶
-  const checkPlusSubscription = () => {
-    return isPlusSubscribed;
-  };
+  // 檢查是否為Plus用戶 - 使用 useCallback 優化
+  const checkPlusSubscription = useCallback(() => {
+    return isPlusSubscribed === true;
+  }, [isPlusSubscribed]);
 
-  // 顯示升級提示
-  const showUpgradeAlert = () => {
+  // 顯示升級提示 - 使用 useCallback 優化
+  const showUpgradeAlert = useCallback(() => {
     safeAlert("此功能僅限Plus用戶使用，請升級到Plus方案！");
-  };
+  }, []);
 
-  // 切換選單
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-    if (!isMenuOpen) {
+  // 切換選單 - 使用 useCallback 優化 + 滾動修復
+  const toggleMenu = useCallback(() => {
+    const newMenuState = !isMenuOpen;
+    setIsMenuOpen(newMenuState);
+    
+    // 修復滾動問題：確保 overflow 設置與選單狀態同步
+    if (newMenuState) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
     }
-  };
+  }, [isMenuOpen]);
 
-  // 關閉選單
-  const closeMenu = () => {
+  // 關閉選單 - 使用 useCallback 優化 + 滾動修復
+  const closeMenu = useCallback(() => {
     setIsMenuOpen(false);
+    // 修復滾動問題：確保滾動恢復
     document.body.style.overflow = "auto";
-  };
+  }, []);
 
-  // 獲取當前主題的筆記
-  const getCurrentSubjectNotes = () => {
-    // 直接從當前notes state中篩選，避免異步調用
-    return Array.isArray(notes)
-      ? notes.filter((note) => note.subject === currentSubject)
-      : [];
-  };
-
-  // 切換下拉選單
-  const toggleDropdown = () => {
+  // 切換下拉選單 - 使用 useCallback 優化
+  const toggleDropdown = useCallback(() => {
     setIsDropdownOpen(!isDropdownOpen);
-  };
+  }, [isDropdownOpen]);
 
-  // 選擇主題
-  const selectSubject = (subject) => {
+  // 選擇主題 - 使用 useCallback 優化
+  const selectSubject = useCallback((subject) => {
     setCurrentSubject(subject);
     setIsDropdownOpen(false);
-  };
+  }, []);
 
-  // 新增主題
-  const handleAddSubject = () => {
+  // 新增主題 - 使用 useCallback 優化
+  const handleAddSubject = useCallback(() => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -142,32 +225,44 @@ export default function NotePage() {
     setModalType("addSubject");
     setModalContent("");
     setShowModal(true);
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  // 確認新增主題
-  const confirmAddSubject = async () => {
+  // 確認新增主題 - 優化為樂觀更新
+  const confirmAddSubject = useCallback(async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
     }
     if (modalContent.trim()) {
-      const result = await addSubject(modalContent.trim());
-      if (result.success) {
-        // 重新從後端拉最新主題
-        const updatedSubjects = await getSubjects();
-        setSubjects(updatedSubjects);
-        setCurrentSubject(modalContent.trim());
-        setShowModal(false);
-        setModalContent("");
-        safeAlert(result.message);
-      } else {
-        safeAlert(result.message);
+      const newSubject = modalContent.trim();
+      
+      // 樂觀更新：立即更新UI
+      setSubjects(prev => [...prev, newSubject]);
+      setCurrentSubject(newSubject);
+      setShowModal(false);
+      setModalContent("");
+      
+      // 立即顯示成功訊息，提升用戶體驗
+      safeAlert("主題新增成功！");
+      
+      // 後台同步到服務器（靜默處理）
+      try {
+        const result = await addSubject(newSubject);
+        if (!result.success) {
+          // 如果失敗，回滾UI
+          setSubjects(prev => prev.filter(s => s !== newSubject));
+          // 靜默處理失敗，不顯示額外訊息
+        }
+      } catch (error) {
+        // 靜默處理錯誤，不顯示額外訊息
+        // 回滾UI
+        setSubjects(prev => prev.filter(s => s !== newSubject));
       }
     }
-  };
+  }, [modalContent, checkPlusSubscription, showUpgradeAlert]);
 
-  // 刪除主題
-  const handleDeleteSubject = (subject, event) => {
+  // 刪除主題 - 使用 useCallback 優化
+  const handleDeleteSubject = useCallback((subject, event) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -176,51 +271,57 @@ export default function NotePage() {
     setModalType("deleteSubject");
     setModalContent(subject);
     setShowModal(true);
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  /// 確認刪除主題 (軟刪除)
-  const confirmDeleteSubject = async () => {
+  // 確認刪除主題 (軟刪除) - 優化為樂觀更新
+  const confirmDeleteSubject = useCallback(async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
     }
 
-    // 先把要刪的主題從 state 拿掉，提升即時體感
-    setSubjects((prev) => prev.filter((s) => s !== modalContent));
-    if (currentSubject === modalContent) {
+    const subjectToDelete = modalContent;
+    
+    // 樂觀更新：立即從UI移除
+    setSubjects((prev) => prev.filter((s) => s !== subjectToDelete));
+    if (currentSubject === subjectToDelete) {
       setCurrentSubject((prev) => {
-        // 找一個還存在的主題當作新 current，沒有就設空字串
-        const next = subjects.find((s) => s !== modalContent) || "";
+        const next = subjects.find((s) => s !== subjectToDelete) || "";
         return next;
       });
     }
 
-    // 先等後端軟刪除完成
-    const result = await deleteSubject(modalContent);
-    if (!result?.success) {
-      safeAlert(result?.message || "刪除失敗，請稍後再試。");
-      return;
-    }
-
-    // 重新從數據庫加載筆記和主題
-    const updatedSubjects = await getSubjects();
-    const updatedNotes = await getNotes();
-    setSubjects(updatedSubjects);
-    setNotes(updatedNotes);
-    if (currentSubject === modalContent) {
-      if (updatedSubjects.length > 0) {
-        setCurrentSubject(updatedSubjects[0]);
-      } else {
-        setCurrentSubject(""); // 重置為空字符串
-      }
-    }
+    // 關閉模態框，立即給用戶反饋
     setShowModal(false);
     setModalContent("");
-    safeAlert(result.message || "主題刪除成功！");
-  };
+    
+    // 立即顯示成功訊息，提升用戶體驗
+    safeAlert("主題刪除成功！");
 
-  // 新增筆記
-  const handleAddNote = () => {
+    // 後台同步到服務器（靜默處理）
+    try {
+      const result = await deleteSubjectSmart(subjectToDelete);
+      
+      if (!result?.success) {
+        // 如果失敗，回滾UI
+        setSubjects((prev) => [...prev, subjectToDelete]);
+        if (currentSubject === subjectToDelete) {
+          setCurrentSubject(subjectToDelete);
+        }
+        // 靜默處理失敗，不顯示額外訊息
+      }
+    } catch (error) {
+      // 靜默處理錯誤，不顯示額外訊息
+      // 回滾UI
+      setSubjects((prev) => [...prev, subjectToDelete]);
+      if (currentSubject === subjectToDelete) {
+        setCurrentSubject(subjectToDelete);
+      }
+    }
+  }, [modalContent, currentSubject, subjects, checkPlusSubscription, showUpgradeAlert]);
+
+  // 新增筆記 - 使用 useCallback 優化
+  const handleAddNote = useCallback(() => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -233,9 +334,10 @@ export default function NotePage() {
     setModalContent(null);
     setModalTextContent(""); // 初始化為空字符串，格式為 "標題\n---\n內容"
     setShowModal(true);
-  };
+  }, [subjects.length, checkPlusSubscription, showUpgradeAlert]);
 
-  const confirmAddNote = async () => {
+  // 確認新增筆記 - 優化為樂觀更新
+  const confirmAddNote = useCallback(async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -257,7 +359,7 @@ export default function NotePage() {
     }
 
     const newNote = {
-      id: Date.now(),
+      id: Date.now() + Math.random(), // 臨時ID
       title: title.trim(),
       content: content.trim(),
       subject: currentSubject,
@@ -265,24 +367,24 @@ export default function NotePage() {
       updatedAt: new Date().toISOString(),
     };
 
-    const result = await addNote(newNote);
-    if (result.success) {
-      // 重新從數據庫加載筆記和主題
-      const updatedNotes = await getNotes();
-      const updatedSubjects = await getSubjects();
-      setNotes(updatedNotes);
-      setSubjects(updatedSubjects);
-      setShowModal(false);
-      setModalContent(null);
-      setModalTextContent("");
-      safeAlert(result.message);
-    } else {
-      safeAlert(result.message);
-    }
-  };
+    // 樂觀更新：立即更新UI
+    setNotes(prev => [...prev, newNote]);
+    setShowModal(false);
+    setModalContent(null);
+    setModalTextContent("");
+    safeAlert("筆記新增成功！");
 
-  // 編輯筆記
-  const handleEditNote = (note) => {
+    // 後台同步到服務器
+    const result = await addNote(newNote);
+    if (!result.success) {
+      // 如果失敗，回滾UI
+      setNotes(prev => prev.filter(n => n.id !== newNote.id));
+      safeAlert(result.message || "保存失敗，請重試！");
+    }
+  }, [modalTextContent, currentSubject, checkPlusSubscription, showUpgradeAlert]);
+
+  // 編輯筆記 - 使用 useCallback 優化
+  const handleEditNote = useCallback((note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -293,9 +395,10 @@ export default function NotePage() {
     setModalTextContent(`${note.title}\n---\n${note.content}`);
     setEditingNote(note);
     setShowModal(true);
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  const confirmEditNote = async () => {
+  // 確認編輯筆記 - 優化為樂觀更新
+  const confirmEditNote = useCallback(async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -318,26 +421,28 @@ export default function NotePage() {
         updatedAt: new Date().toISOString(),
       };
 
+      // 樂觀更新：立即更新UI
+      setNotes(prev => prev.map(n => n.id === editingNote.id ? updatedNote : n));
+      setShowModal(false);
+      setModalContent(null);
+      setModalTextContent("");
+      setEditingNote(null);
+      safeAlert("筆記更新成功！");
+
+      // 後台同步到服務器
       const result = await updateNote(editingNote.id, updatedNote);
-      if (result.success) {
-        // 重新從數據庫加載筆記
-        const updatedNotes = await getNotes();
-        setNotes(updatedNotes);
-        setShowModal(false);
-        setModalContent(null);
-        setModalTextContent("");
-        setEditingNote(null);
-        safeAlert("筆記更新成功！");
-      } else {
+      if (!result.success) {
+        // 如果失敗，回滾UI
+        setNotes(prev => prev.map(n => n.id === editingNote.id ? editingNote : n));
         safeAlert(result.message || "筆記更新失敗！");
       }
     } else {
       safeAlert("請輸入筆記內容！");
     }
-  };
+  }, [modalTextContent, editingNote, checkPlusSubscription, showUpgradeAlert]);
 
-  // 查看筆記
-  const handleViewNote = (note) => {
+  // 查看筆記 - 使用 useCallback 優化
+  const handleViewNote = useCallback((note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -346,10 +451,10 @@ export default function NotePage() {
     setModalContent(note);
     setModalTextContent(note.content);
     setShowModal(true);
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  // 刪除筆記
-  const handleDeleteNote = (note) => {
+  // 刪除筆記 - 優化為樂觀更新
+  const handleDeleteNote = useCallback((note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -357,22 +462,24 @@ export default function NotePage() {
     safeConfirm(
       "確定要刪除這則筆記嗎？",
       async () => {
+        // 樂觀更新：立即從UI移除
+        setNotes(prev => prev.filter(n => n.id !== note.id));
+        safeAlert("筆記刪除成功！");
+
+        // 後台同步到服務器
         const result = await deleteNote(note.id);
-        if (result.success) {
-          // 重新從數據庫加載筆記
-          const updatedNotes = await getNotes();
-          setNotes(updatedNotes);
-          safeAlert("筆記刪除成功！");
-        } else {
+        if (!result.success) {
+          // 如果失敗，回滾UI
+          setNotes(prev => [...prev, note]);
           safeAlert(result.message || "筆記刪除失敗！");
         }
       },
       () => {}
     );
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  // 搬移筆記
-  const handleMoveNote = (note) => {
+  // 搬移筆記 - 使用 useCallback 優化
+  const handleMoveNote = useCallback((note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -386,9 +493,10 @@ export default function NotePage() {
     // 確保下拉選單是關閉的
     setIsMoveDropdownOpen(false);
     setShowModal(true);
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  const confirmMoveNote = async () => {
+  // 確認搬移筆記 - 優化為樂觀更新
+  const confirmMoveNote = useCallback(async () => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -412,36 +520,49 @@ export default function NotePage() {
       return;
     }
 
-    // 如果是新主題，先創建主題
-    if (newSubjectName && newSubjectName.trim() !== "") {
-      const createSubjectResult = await addSubject(targetSubject);
-      if (!createSubjectResult.success) {
-        safeAlert(createSubjectResult.message);
-        return;
+    const originalNote = movingNote;
+    const originalSubject = currentSubject;
+
+    // 樂觀更新：立即更新UI
+    setNotes(prev => prev.map(n => 
+      n.id === movingNote.id 
+        ? { ...n, subject: targetSubject }
+        : n
+    ));
+    setShowModal(false);
+    setMovingNote(null);
+    setSelectedMoveSubject("");
+    setNewSubjectName("");
+    safeAlert("筆記搬移成功！");
+
+    // 後台同步到服務器
+    try {
+      // 如果是新主題，先創建主題
+      if (newSubjectName && newSubjectName.trim() !== "") {
+        const createSubjectResult = await addSubject(targetSubject);
+        if (!createSubjectResult.success) {
+          throw new Error(createSubjectResult.message);
+        }
       }
+
+      // 調用 moveNote 函數
+      const result = await moveNote(movingNote.id, targetSubject);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      // 如果失敗，回滾UI
+      setNotes(prev => prev.map(n => 
+        n.id === originalNote.id 
+          ? { ...n, subject: originalSubject }
+          : n
+      ));
+      safeAlert(`搬移失敗：${error.message}`);
     }
+  }, [selectedMoveSubject, newSubjectName, currentSubject, movingNote, checkPlusSubscription, showUpgradeAlert]);
 
-    // 調用 moveNote 函數，傳遞 noteId 和 newSubject
-    const result = await moveNote(movingNote.id, targetSubject);
-
-    if (result.success) {
-      // 重新從數據庫加載筆記和主題
-      const updatedNotes = await getNotes();
-      const updatedSubjects = await getSubjects();
-      setNotes(updatedNotes);
-      setSubjects(updatedSubjects);
-      setShowModal(false);
-      setMovingNote(null);
-      setSelectedMoveSubject("");
-      setNewSubjectName("");
-      safeAlert(result.message);
-    } else {
-      safeAlert(result.message);
-    }
-  };
-
-  // 生成題目
-  const handleGenerateQuestions = async (note) => {
+  // 生成題目 - 使用 useCallback 優化
+  const handleGenerateQuestions = useCallback(async (note) => {
     if (!checkPlusSubscription()) {
       showUpgradeAlert();
       return;
@@ -468,23 +589,22 @@ export default function NotePage() {
       }
       
     } catch (error) {
-      console.error("生成主題時發生錯誤:", error);
       safeAlert("❌ 生成主題失敗，請稍後再試");
     }
-  };
+  }, [checkPlusSubscription, showUpgradeAlert]);
 
-  // 切換動作欄
-  const toggleActionBar = (noteId) => {
+  // 切換動作欄 - 使用 useCallback 優化
+  const toggleActionBar = useCallback((noteId) => {
     setActiveActionBar(activeActionBar === noteId ? null : noteId);
-  };
+  }, [activeActionBar]);
 
-  // 關閉所有動作欄
-  const closeAllActionBars = () => {
+  // 關閉所有動作欄 - 使用 useCallback 優化
+  const closeAllActionBars = useCallback(() => {
     setActiveActionBar(null);
-  };
+  }, []);
 
-  // 關閉模態框
-  const closeModal = () => {
+  // 關閉模態框 - 使用 useCallback 優化
+  const closeModal = useCallback(() => {
     setShowModal(false);
     setModalContent(null);
     setModalTextContent("");
@@ -493,8 +613,7 @@ export default function NotePage() {
     setMovingNote(null);
     setSelectedMoveSubject("");
     setNewSubjectName("");
-    setIsMoveDropdownOpen(false);
-  };
+  }, []);
 
   // 鍵盤事件處理
   useEffect(() => {
@@ -609,8 +728,6 @@ export default function NotePage() {
   // 渲染模態框
   const renderModal = () => {
     if (!showModal) return null;
-
-    const currentNotes = getCurrentSubjectNotes();
 
     return (
       <div className={styles.modal} onClick={closeModal}>
@@ -1118,7 +1235,8 @@ export default function NotePage() {
             <button
               className={styles.addNoteButton}
               onClick={handleAddNote}
-              disabled={!isPlusSubscribed}
+              // 確保服務器端和客戶端渲染一致
+              disabled={!isClient || isPlusSubscribed === false}
             >
               新增筆記
             </button>
@@ -1126,7 +1244,35 @@ export default function NotePage() {
         </div>
 
         <div className={styles.notesGrid}>
-          {!isPlusSubscribed ? (
+          {!isClient ? (
+            // 服務器端渲染時顯示載入狀態，避免水合不匹配
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>
+                <Image
+                  src="/img/folder2.gif"
+                  alt="載入中"
+                  width={64}
+                  height={64}
+                />
+              </div>
+              <h3>載入中...</h3>
+              <p>正在載入您的筆記和主題...</p>
+            </div>
+          ) : isPlusSubscribed === null ? (
+            // 客戶端初始化中，顯示載入狀態
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>
+                <Image
+                  src="/img/folder2.gif"
+                  alt="載入中"
+                  width={64}
+                  height={64}
+                />
+              </div>
+              <h3>載入中...</h3>
+              <p>正在檢查您的訂閱狀態...</p>
+            </div>
+          ) : isPlusSubscribed === false ? (
             <div className={styles.upgradeState}>
               <div className={styles.upgradeIcon}>
                 <Image
@@ -1158,7 +1304,7 @@ export default function NotePage() {
               <h3>還沒有主題</h3>
               <p>點擊「新增主題」開始創建你的學習主題吧！</p>
             </div>
-          ) : getCurrentSubjectNotes().length === 0 ? (
+          ) : currentSubjectNotes.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>
                 <Image
@@ -1172,7 +1318,7 @@ export default function NotePage() {
               <p>點擊「新增筆記」開始記錄你的學習筆記吧！</p>
             </div>
           ) : (
-            getCurrentSubjectNotes().map(renderNoteCard)
+            currentSubjectNotes.map(renderNoteCard)
           )}
         </div>
       </main>

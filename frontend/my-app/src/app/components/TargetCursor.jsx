@@ -356,7 +356,6 @@ const TargetCursor = ({
         cleanupTarget(activeTarget);
       }
 
-      console.log("Cleaning up TargetCursor");
 
       spinTl.current?.kill();
       document.body.style.cursor = originalCursor;

@@ -15,7 +15,9 @@ ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 app = Flask(__name__)
-# socketio = SocketIO(app, cors_allowed_origins="*") 
+# 配置CORS，允許前端跨域調用
+CORS(app)
+
 
 @app.route("/health", methods=["GET"])
 def health():

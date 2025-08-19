@@ -77,10 +77,11 @@ export default function NoteSelector({
     const fetchNotesBySubject = async () => {
       if (currentSubject) {
         try {
-          const subjectNotes = await getNotesBySubject(currentSubject);
-          setFilteredNotes(Array.isArray(subjectNotes) ? subjectNotes : []);
+          // 使用傳入的 notes 參數，避免重複API調用
+          const subjectNotes = Array.isArray(notes) ? notes.filter(note => note.subject === currentSubject) : [];
+          setFilteredNotes(subjectNotes);
         } catch (error) {
-          console.error('獲取主題筆記失敗:', error);
+          // 靜默處理錯誤，不影響用戶體驗
           setFilteredNotes([]);
         }
       } else {
@@ -89,7 +90,7 @@ export default function NoteSelector({
     };
 
     fetchNotesBySubject();
-  }, [currentSubject]);
+  }, [currentSubject, notes]);
 
   useEffect(() => {
     if (Array.isArray(filteredNotes) && filteredNotes.length > 0 && currentNoteId === null) {
