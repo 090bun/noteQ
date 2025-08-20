@@ -59,8 +59,8 @@ AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
 
 
 MIDDLEWARE = [
-    "django_main.middleware.TimingMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # CORS 中介軟體，必須放在最前面
+    "django_main.middleware.TimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -186,6 +186,14 @@ CSRF_EXEMPT_URLS = [
     r'^/login',
     r'^/register',
 ]
+
+
+# 若 request 帶 Authorization / 自訂 header，要允許
+CORS_ALLOW_HEADERS = [
+    "authorization", "content-type", "x-csrftoken"
+]
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+
 
 # 郵件發送設定：Gmail SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
