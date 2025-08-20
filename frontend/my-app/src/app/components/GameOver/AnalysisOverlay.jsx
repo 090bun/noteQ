@@ -1,6 +1,6 @@
 "use client";
 // AI 解析側邊欄組件 - 提供題目解析對話介面，支援與 AI 互動討論
-import { ROOT_BASE } from "../../lib/api";
+import { ROOT_BASE } from "../../../lib/api";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 

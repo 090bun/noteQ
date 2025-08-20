@@ -1,6 +1,6 @@
 "use client";
 // 完整對話收藏模態框組件 - 允許用戶將整個 AI 對話記錄收藏到筆記本中
-import { ROOT_BASE } from "../../lib/api";
+import { ROOT_BASE } from "../../../lib/api";
 import { useState, useEffect } from "react";
 import SubjectSelector from "./SubjectSelector";
 import NoteSelector from "./NoteSelector";

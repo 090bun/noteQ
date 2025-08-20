@@ -1,6 +1,6 @@
 "use client";
 // 題目收藏模態框組件 - 允許用戶將題目收藏到指定的筆記本中
-import { ROOT_BASE } from "../../lib/api";
+import { ROOT_BASE } from "../../../lib/api";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import SubjectSelector from "./SubjectSelector";

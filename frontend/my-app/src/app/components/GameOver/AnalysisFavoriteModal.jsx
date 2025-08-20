@@ -1,6 +1,6 @@
 "use client";
 // 解析內容收藏模態框組件 - 允許用戶將 AI 解析內容收藏到筆記本中
-import { ROOT_BASE } from "../../lib/api";
+import { ROOT_BASE } from "../../../lib/api";
 import { useState, useEffect } from "react";
 import SubjectSelector from "./SubjectSelector";
 import NoteSelector from "./NoteSelector";

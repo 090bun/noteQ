@@ -155,7 +155,7 @@ export default function HomeGamePage() {
       
       // 樂觀更新：立即將主題添加到本地狀態，讓用戶立即看到
       const newTopic = topic.trim();
-      
+
       // 第一步：先創建Quiz主題（如果不存在）
       let quizTopicId = null;
       try {
