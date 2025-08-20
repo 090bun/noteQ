@@ -1,21 +1,16 @@
-// next.config.js  —— 單一版本（CommonJS）
-/** @type {import('next').NextConfig} */
-const backendOrigin = process.env.NEXT_PUBLIC_API_ORIGIN || 'http://django:8000';
+// next.config.js
+const backend = process.env.BACKEND_ORIGIN || 'http://django:8000';
 
 module.exports = {
+  // ★ 重要：不要把有斜線的 URL 自動改成沒斜線（避免 308）
+  skipTrailingSlashRedirect: true,
+
   async rewrites() {
     return [
-      // 讓 :3000/login 代理到後端
-      { source: '/login',  destination: `${backendOrigin}/login` },
-      { source: '/login/', destination: `${backendOrigin}/login/` }, // 避免 308 加斜線
-
-      // 後端 API
-      { source: '/api/:path*', destination: `${backendOrigin}/api/:path*` },
-
-      // 你原本的通用 proxy（如果還需要就保留）
-      { source: '/api-proxy/:path*', destination: `${backendOrigin}/:path*` },
+      { source: '/api/:path*', destination: `${backend}/api/:path*` },
+      // 若有 /login 的 API 也要代理可加：
+      // { source: '/login',  destination: `${backend}/login` },
+      // { source: '/login/', destination: `${backend}/login/` },
     ];
   },
-  // 可選：若常看到 308，可統一加斜線
-  // trailingSlash: true,
 };

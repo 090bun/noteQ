@@ -226,3 +226,6 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
 # 確保 TimingMiddleware 在最前（已在上方列表中指定 myapps.middleware.TimingMiddleware）
+
+# 後端關掉自動加斜線（不動前端）
+APPEND_SLASH = False
