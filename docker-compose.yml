@@ -63,6 +63,9 @@ services:
       - /app/node_modules   # 讓容器內 node_modules 不被覆蓋
     command: ["npm","run","dev"]
     restart: always
+    environment:
+      NEXT_PUBLIC_API_ORIGIN: "http://34.16.43.234"
+      
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
 # start the database before your application. The `db-data` volume persists the
