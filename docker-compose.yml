@@ -39,20 +39,25 @@ services:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
-    env_file: .env
     ports:
       - "5000:5000"
     volumes:
       - ./ml-service:/topic_apps
+    working_dir: /topic_apps
+    command: >
+      gunicorn wsgi:app
+      -k gthread -w 2 --threads 4
+      -b 0.0.0.0:5000
+      --keep-alive 5 --timeout 30 --backlog 1024
+      --access-logfile - --error-logfile -
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5000/healthz"]
       interval: 10s
-      timeout: 2s
-      retries: 3
-      start_period: 10s
-
-      
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+        
   web:
     build:
       context: ./frontend/my-app

@@ -60,7 +60,7 @@ AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # CORS 中介軟體，必須放在最前面
-    "myapps.middleware_slashes.CollapseLeadingSlashesMiddleware",
+    "myapps.middleware.CollapseLeadingSlashesMiddleware",
     "myapps.middleware.TimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
