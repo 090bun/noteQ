@@ -22,6 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -57,6 +59,7 @@ AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
 
 
 MIDDLEWARE = [
+    "django_main.middleware.TimingMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # CORS 中介軟體，必須放在最前面
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -194,3 +197,6 @@ EMAIL_USE_SSL = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+MIDDLEWARE.insert(0, "middleware.TimingMiddleware")
