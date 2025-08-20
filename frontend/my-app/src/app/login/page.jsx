@@ -1,5 +1,5 @@
 "use client";
-import { ROOT_BASE } from "../../lib/api";
+import { ROOT_BASE } from "../../lib/api.ts";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
