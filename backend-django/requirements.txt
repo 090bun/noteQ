@@ -86,3 +86,5 @@ urllib3==2.5.0
     # via
     #   requests
     #   types-requests
+gunicorn>=21
+uvicorn[standard]>=0.30
