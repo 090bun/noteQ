@@ -254,7 +254,7 @@ export default function LoginPage() {
     
     try {
       const res = await smartApiCall(
-        `${ROOT_BASE}/forgot-password/`,
+        `${ROOT_BASE}/api/forgot-password/`,
         {
           method: "POST",
           headers: {
@@ -292,7 +292,7 @@ export default function LoginPage() {
     try {
       // 樂觀更新：立即開始頁面過渡動畫
       const loginPromise = smartApiCall(
-        `${ROOT_BASE}/login/`,
+        `${ROOT_BASE}/api/login/`,
         {
           method: "POST",
           headers: {
@@ -380,7 +380,7 @@ export default function LoginPage() {
           try {
             // 預加載登入 API 的相關資源
             await smartApiCall(
-              `${ROOT_BASE}/login/`,
+              `${ROOT_BASE}/api/login/`,
               {
                 method: "HEAD",
                 headers: { "Content-Type": "application/json" }

@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
     setError('');
 
     try {
-      const response = await fetch(`${ROOT_BASE}/reset-password/`, {
+  const response = await fetch(`${ROOT_BASE}/api/reset-password/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

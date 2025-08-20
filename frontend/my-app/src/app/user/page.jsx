@@ -152,7 +152,7 @@ export default function UserPage() {
       }
 
       try {
-        const res = await fetch(`${ROOT_BASE}/reset-password/`, {
+    const res = await fetch(`${ROOT_BASE}/api/reset-password/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
