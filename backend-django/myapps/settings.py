@@ -60,7 +60,7 @@ AUTH_USER_MODEL = "Authorization.User"  # 使用自定義的使用者模型
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",  # CORS 中介軟體，必須放在最前面
-    "django_main.middleware.TimingMiddleware",
+    "myapps.middleware.TimingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -171,14 +171,27 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # 設定刷新令牌的有效期為7天
 }
 
-# CORS 設置 - 允許跨域請求
-CORS_ALLOW_ALL_ORIGINS = True  # 開發環境使用，生產環境應該設定特定的 origins
+"""CORS 設定
+說明：
+- 當需要攜帶 Cookie 或憑證時（CORS_ALLOW_CREDENTIALS=True），不可以搭配萬用字元 *。
+- 因此改為明確列出允許的前端來源（使用環境變數或預設常見本機來源）。
+"""
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
-# CSRF 設置 - 對 API 端點豁免 CSRF 檢查
+# 從環境變數載入允許的前端來源（以逗號分隔）。
+_frontend_origins_env = os.getenv("FRONTEND_ORIGINS") or os.getenv("NEXT_PUBLIC_ORIGIN", "")
+_frontend_origins = [o.strip() for o in _frontend_origins_env.split(",") if o.strip()]
 
-CORS_ALLOWED_ORIGINS = os.getenv("NEXT_PUBLIC_ORIGIN", "").split(",")
-CSRF_TRUSTED_ORIGINS = os.getenv("NEXT_PUBLIC_ORIGIN", "").split(",")
+# 預設允許本機前端
+if not _frontend_origins:
+    _frontend_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+CORS_ALLOWED_ORIGINS = _frontend_origins
+CSRF_TRUSTED_ORIGINS = _frontend_origins
 
 # 對 API 路徑豁免 CSRF
 CSRF_EXEMPT_URLS = [
@@ -207,4 +220,4 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
-MIDDLEWARE.insert(0, "middleware.TimingMiddleware")
+# 確保 TimingMiddleware 在最前（已在上方列表中指定 myapps.middleware.TimingMiddleware）

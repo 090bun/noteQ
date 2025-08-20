@@ -1,4 +1,14 @@
-const ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8000";
+// Resolve API origin
+let ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "";
+// In browser, if not provided, try to infer from current location or common backend port
+if (!ORIGIN && typeof window !== "undefined") {
+  const { protocol, hostname } = window.location;
+  // If frontend runs on port 3000 and backend on 8000, default to :8000 on same host
+  const defaultBackend = `${protocol}//${hostname}:8000`;
+  ORIGIN = defaultBackend;
+}
+// Final fallback for build time
+if (!ORIGIN) ORIGIN = "http://localhost:8000";
 // const PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "/api";
 
 // export const API_BASE = `${ORIGIN}${PREFIX}`; // 例: http://.../api
@@ -21,7 +31,7 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const url = endpoint.startsWith("/") ? `${ROOT_BASE}${endpoint}` : `${ROOT_BASE}/${endpoint}`;
   const res = await fetch(url, {
     ...options,
-    credentials: "include",
+  credentials: "include",
   });
   if (!res.ok) throw new Error(`API Error: ${res.status}`);
   return res.json();
