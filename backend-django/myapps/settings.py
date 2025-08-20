@@ -186,10 +186,12 @@ _frontend_origins = [o.strip() for o in _frontend_origins_env.split(",") if o.st
 # 預設允許本機前端
 if not _frontend_origins:
     _frontend_origins = [
-        "http://34.16.43.234:3000",
-        "http://34.16.43.234",          # 之後前端若也走 80 可留下
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://django:8000",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://react:3000"
     ]
 
 CORS_ALLOWED_ORIGINS = _frontend_origins
