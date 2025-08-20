@@ -12,7 +12,8 @@ if (!ORIGIN) ORIGIN = "http://localhost:8000";
 // const PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "/api";
 
 // export const API_BASE = `${ORIGIN}${PREFIX}`; // 例: http://.../api
-export const ROOT_BASE = `${ORIGIN}`;         // 例: http://.../
+// export const ROOT_BASE = `${ORIGIN}`;         // 例: http://.../
+export const ROOT_BASE = ``; // 相對路徑 → 會被 rewrites 代理到 django
 
 import axios from "axios";
 
