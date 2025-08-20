@@ -21,6 +21,7 @@ from django.views.decorators.csrf import csrf_exempt
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
+from . import views_health
 
 schema_view = get_schema_view(
     openapi.Info(title="API 文件", default_version='v1'),
@@ -95,4 +96,6 @@ urlpatterns = [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     # Ecpay 介面
     path("", include("myapps.Ecpay.urls")),  # 包含 Ecpay app 的 URLs
+    path("healthz", views_health.healthz),
+    path("readyz", views_health.readyz),
 ]

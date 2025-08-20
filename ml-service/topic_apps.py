@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 # 更新 OpenAI 導入方式
 from openai import OpenAI
-import os , requests
+import os , requests ,socket, time, datetime as dt
 import json
 from dotenv import load_dotenv  
 import re
@@ -14,14 +14,46 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
+# 初始化 Flask 應用
 app = Flask(__name__)
 # 配置CORS，允許前端跨域調用
 CORS(app)
+START_TS = time.time()
+# ---- timing header ----
+@app.before_request
+def _t0():
+    request._t0 = time.perf_counter()
 
 
-@app.route("/health", methods=["GET"])
-def health():
-    return {"status": "ok"}, 200
+@app.after_request
+def _t1(resp):
+    t0 = getattr(request, "_t0", None)
+    if t0 is not None:
+        dt_ms = (time.perf_counter() - t0) * 1000
+        resp.headers["X-Process-Time-ms"] = f"{dt_ms:.1f}"
+    return resp
+
+def _base_payload():
+        return {
+        "status": "ok",
+        "service": os.getenv("SERVICE_NAME", "flask"),
+        "host": socket.gethostname(),
+        "uptime_sec": round(time.time() - START_TS, 1),
+        "version": os.getenv("GIT_SHA", "dev"),
+        "now": dt.datetime.utcnow().isoformat() + "Z",
+    }
+
+@app.route("/healthz")
+def healthz():
+    return (jsonify(_base_payload()), 200)
+
+@app.get("/readyz")
+def readyz():
+    payload = _base_payload()
+    checks, ok = {}, True
+
+
+# ---- timing header ----
 
 
 def shuffle_options(q):

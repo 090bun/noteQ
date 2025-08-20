@@ -22,6 +22,14 @@ services:
       - ./backend-django:/app
     command: ["python","manage.py","runserver","0.0.0.0:8000"]
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+
   flask:
     build:
       context: ./ml-service
@@ -32,6 +40,14 @@ services:
     volumes:
       - ./ml-service:/topic_apps
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/healthz"]
+      interval: 10s
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+      
   web:
     build:
       context: ./frontend/my-app
