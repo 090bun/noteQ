@@ -4,6 +4,70 @@ import { ROOT_BASE } from "../../../lib/api";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 
+// 新增：輕量 Markdown 解析器（支援標題、粗體、斜體、行內程式碼、程式碼區塊、無序清單、換行）
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function parseMarkdown(markdown) {
+  if (!markdown) return "";
+  // 保留原始並先 escape
+  let text = String(markdown);
+
+  // 處理程式碼區塊 ``` ```
+  text = text.replace(/```([\s\S]*?)```/g, (m, code) => {
+    return `<pre><code>${escapeHtml(code)}</code></pre>`;
+  });
+
+  // 處理行內程式碼 `code`
+  text = text.replace(/`([^`]+)`/g, (m, code) => {
+    return `<code>${escapeHtml(code)}</code>`;
+  });
+
+  // 處理標題 ###, ##, #
+  text = text.replace(/^###\s?(.*)$/gm, "<h3>$1</h3>");
+  text = text.replace(/^##\s?(.*)$/gm, "<h2>$1</h2>");
+  text = text.replace(/^#\s?(.*)$/gm, "<h1>$1</h1>");
+
+  // 處理粗體 **text**
+  text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+  // 處理斜體 *text*
+  text = text.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+  // 處理無序清單 - item
+  // 先把連續的 list lines 包成一個 <ul>
+  text = text.replace(
+    /(^|-\n)((?:[ \t]*[-\*]\s.*\n?)+)/g,
+    (m, p1, listBlock) => {
+      const items = listBlock
+        .split(/\n/)
+        .filter(Boolean)
+        .map((line) => line.replace(/^[ \t]*[-\*]\s*/, ""));
+      return `<ul>${items.map((it) => `<li>${it}</li>`).join("")}</ul>`;
+    }
+  );
+
+  // 換行處理：兩個以上的換行視為段落
+  text = text.replace(/\n{2,}/g, "</p><p>");
+  // 單一換行轉 <br>
+  text = text.replace(/\n/g, "<br />");
+
+  // 最後把沒有包裹的文字包成 <p>
+  // 如果已經包含 <h[1-3]> 或 <ul> 或 <pre>，就不再包裹該段
+  if (!/^\s*<\/(?:p|h1|h2|h3|ul|pre)>/.test(text)) {
+    text = `<p>${text}</p>`;
+  }
+
+  return text;
+}
+
 export default function AnalysisOverlay({
   isOpen,
   onClose,
@@ -56,7 +120,7 @@ export default function AnalysisOverlay({
 
     // 獲取當前題目的聊天記錄
     const currentMessages = getCurrentChatRoom();
-    
+
     // 先把使用者訊息丟進對話
     const newMessages = [...currentMessages, { role: "user", content: text }];
     updateCurrentChatRoom(newMessages);
@@ -94,12 +158,16 @@ export default function AnalysisOverlay({
         "（沒有收到 AI 內容）";
 
       // 更新當前題目的聊天記錄
+
       const updatedMessages = [...newMessages, { role: "ai", content: aiText }];
       updateCurrentChatRoom(updatedMessages);
     } catch (err) {
       console.error("AI 對話錯誤：", err);
       // 更新當前題目的聊天記錄
-      const updatedMessages = [...newMessages, { role: "ai", content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" }];
+      const updatedMessages = [
+        ...newMessages,
+        { role: "ai", content: "抱歉，伺服器忙碌或發生錯誤，稍後再試。" },
+      ];
       updateCurrentChatRoom(updatedMessages);
     } finally {
       setIsLoading(false);
@@ -190,13 +258,14 @@ export default function AnalysisOverlay({
         <div className={styles["analysis-content"]}>
           <div className={styles["chat-messages"]}>
             <div className={`${styles.message} ${styles.ai}`}>
-              {/* <div
-                className={styles["placeholder-icon"]}
-                onClick={onOpenAnalysisFavoriteModal}
-              >
-                +
-              </div> */}
-              <span>{currentTopic?.explanation_text || "正在載入解析..."}</span>
+              {/* 將題目解析內容以 Markdown 解析後顯示 */}
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: parseMarkdown(
+                    currentTopic?.explanation_text || "正在載入解析..."
+                  ),
+                }}
+              />
             </div>
             <div className={`${styles.message} ${styles.ai}`}>
               {"對於題目：" + (currentTopic?.title || "") + "還有什麼問題嗎？"}{" "}
@@ -205,18 +274,7 @@ export default function AnalysisOverlay({
               const currentMessages = getCurrentChatRoom();
               return currentMessages.length === 0 ? (
                 <>
-                  <div className={`${styles.message} ${styles.user}`}>
-                    你打的問題會在這裡
-                  </div>
-                  <div className={`${styles.message} ${styles.placeholder}`}>
-                    <div
-                      className={styles["placeholder-icon"]}
-                      onClick={onOpenAnalysisFavoriteModal}
-                    >
-                      +
-                    </div>
-                    AI的回答在這裡
-                  </div>
+                  {/* 預設狀態改為隱藏，不顯示任何文字佔位 */}
                 </>
               ) : (
                 <>
@@ -235,7 +293,16 @@ export default function AnalysisOverlay({
                           +
                         </div>
                       )}
-                      <span>{m.content}</span>
+                      {/* AI 訊息支援 Markdown */}
+                      {m.role === "ai" ? (
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: parseMarkdown(m.content || ""),
+                          }}
+                        />
+                      ) : (
+                        <span>{m.content}</span>
+                      )}
                     </div>
                   ))}
 

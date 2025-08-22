@@ -15,6 +15,7 @@ import TargetCursor from "../components/TargetCursor";
 export default function HomeGamePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [topic, setTopic] = useState("");
+  const [topicPlaceholder, setTopicPlaceholder] = useState("例：19世紀歐洲歷史");
   const [questionCount, setQuestionCount] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDecryption, setShowDecryption] = useState(false);
@@ -317,9 +318,13 @@ export default function HomeGamePage() {
                       <input
               type="text"
               className={`${styles.topicInput} cursor-target`}
-              placeholder="輸入主題"
+              placeholder={topicPlaceholder}
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
+              onFocus={() => setTopicPlaceholder("")}
+              onBlur={() => {
+                if (!topic.trim()) setTopicPlaceholder("例：19世紀歐洲歷史");
+              }}
             />
 
           <div className={styles.difficultyHub}>
