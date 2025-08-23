@@ -23,10 +23,15 @@ from drf_yasg import openapi
 from rest_framework import permissions
 
 schema_view = get_schema_view(
-    openapi.Info(title="API 文件", default_version='v1'),
+    openapi.Info(
+        title="API 文件",
+        default_version='v1',
+        description="API 文檔"
+    ),
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
+
 
 
 # 簡單的 JWT 路由，直接使用類視圖

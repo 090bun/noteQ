@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from .models import Quiz, Topic, Note
+from drf_yasg.utils import swagger_auto_schema
 
 # 軟刪除管理視圖
 class SoftDeleteManagementViewSet(APIView):

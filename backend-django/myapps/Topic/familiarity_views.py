@@ -4,36 +4,27 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .services import update_familiarity_weighted_average
 from .models import DifficultyLevels , UserFamiliarity , Quiz
-from .serializers import UserFamiliaritySerializer ,QuizSimplifiedSerializer ,QuizSerializer
+from .serializers import SubmitAttemptSerializer,SubmitAnswerSerializer,QuizSimplifiedSerializer ,QuizSerializer 
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from drf_yasg.utils import swagger_auto_schema
 
 class SubmitAttemptView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_description="提交作答結果，計算熟悉度",
+        request_body=SubmitAttemptSerializer,
+        responses={200: "Quiz attempt submitted successfully", 400: "Invalid request"}
+    )
     def post(self, request):
-        """
-        body 範例（兩種格式）：
-        格式1：{
-          "quiz_topic_id": 123,
-          "difficulty_level_id": 1,  // 或 "difficulty_level": "beginner"
-          "total_questions": 5,
-          "correct_answers": 4
-        }
-        格式2：{
-          "topic_id": 123,
-          "difficulty": "advanced",
-          "accuracy": 0.8
-        }
-        """
         #檢查使用者
         quiz_user = request.user
         if not quiz_user.is_authenticated:
             return Response({"error": "User is not authenticated"}, status=403)
 
         # 判斷總題數 和 對錯
-        
-      # 判斷總題數 和 對錯
+
         
 
         # 支援兩種格式
@@ -100,7 +91,10 @@ class SubmitAttemptView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
         
-
+    @swagger_auto_schema(
+        operation_description="用JWT獲取用戶資訊，並且取得所有熟悉度記錄",
+        responses={200: "回傳成功", 403: "User is not authenticated", 500: "取得熟悉度記錄時發生錯誤"}
+    )
     # 取得用戶所有熟悉度記錄
     def get(self, request):
         user = request.user

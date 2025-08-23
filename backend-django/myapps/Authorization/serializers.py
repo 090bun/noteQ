@@ -76,3 +76,22 @@ class FeedbackSerializer(serializers.ModelSerializer):
             'level': {'required': True},
             'content': {'required': False}
         }
+
+# API 文件
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(help_text="使用者電子郵件")
+
+class RegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150, help_text="使用者名稱")
+    email = serializers.EmailField(help_text="使用者電子郵件")
+    password = serializers.CharField(write_only=True, help_text="使用者密碼")
+    is_staff = serializers.BooleanField(default=False, help_text="是否為管理員")
+    is_paid = serializers.BooleanField(default=False, help_text="是否為付費使用者")
+
+class ResetPasswordFromEmailSerializer(serializers.Serializer):
+    old_password=serializers.CharField(write_only=True, help_text="舊密碼"),
+    new_password=serializers.CharField(write_only=True, help_text="新密碼")
+
+class ResetPasswordSerializer(serializers.Serializer):
+    uid = serializers.CharField(help_text="使用者ID")
+    new_password = serializers.CharField(write_only=True, help_text="新密碼")

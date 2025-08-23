@@ -3,11 +3,11 @@ from django.views.decorators.csrf import csrf_exempt
 # 第三方套件
 from rest_framework.routers import DefaultRouter
 # app
-from myapps.Authorization.auth_views import UserViewSet, AuthTokenViewSet, RegisterView ,forgot_password, reset_password , reset_password_from_email
+from myapps.Authorization.auth_views import RegisterView ,ForgotPasswordView,ResetPassword , ResetPasswordFromEmail
 from myapps.Authorization.feedback_views import FeedbackViewSet
 router = DefaultRouter()
-router.register(r'users', UserViewSet, basename='user')
-router.register(r'token', AuthTokenViewSet, basename='auth-token')
+# router.register(r'users', UserViewSet, basename='user')
+# router.register(r'token', AuthTokenViewSet, basename='auth-token')
 
 # 自定義 JWT 登入視圖
 @csrf_exempt
@@ -74,9 +74,9 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),  # 手動註冊路徑
     path('login/', custom_jwt_login, name='login'),  # 自定義 JWT 登入路徑
     path('', include(router.urls)),  # 加入 DefaultRouter 的路徑
-    path('forgot-password/', forgot_password),
-    path('reset-password/', reset_password),
-    path('reset-password-from-email/', reset_password_from_email),
+    path('forgot-password/', ForgotPasswordView.as_view(),name='forgotpassword'),
+    path('reset-password/', ResetPassword.as_view(),name='resetpassword'),
+    path('reset-password-from-email/', ResetPasswordFromEmail.as_view(),name='resetpasswordfromemail'),
     path('feedback/', FeedbackViewSet.as_view(), name='feedback'),
 
 ]

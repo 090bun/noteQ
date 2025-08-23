@@ -1,7 +1,7 @@
 
 from django.shortcuts import render , get_object_or_404
 from django.http import JsonResponse
-from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer, UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer , AddFavoriteTopicSerializer
+from .serializers import UserFavoriteSerializer, TopicSerializer,  NoteSerializer, ChatSerializer, AiPromptSerializer ,AiInteractionSerializer ,QuizSerializer, UserFamiliaritySerializer, DifficultyLevelsSerializer , QuizSimplifiedSerializer ,UserFamiliaritySimplifiedSerializer , NoteSimplifiedSerializer , TopicSimplifiedSerializer , AddFavoriteTopicSerializer , SubmitAnswerSerializer ,SubmitAttemptSerializer ,ChatAPISerializer , NoteAPISerializer , NoteAddAPISerializer ,NoteEditQuizTopicSerializer ,RetestSerializer , ParseAnswerSerializer , CreateQuizTopicSerializer
 from .models import UserFavorite, Topic,  Note, Chat, AiPrompt,AiInteraction , Quiz , UserFamiliarity, DifficultyLevels
 from myapps.Authorization.serializers import UserSerializer
 from myapps.Authorization.models import User
@@ -13,6 +13,7 @@ from django.utils import timezone
 from rest_framework.response import Response
 from django.db import transaction
 import os , requests
+from drf_yasg.utils import swagger_auto_schema
 
 FLASK_BASE_URL = os.getenv("FLASK_BASE_URL", "http://localhost:5000")
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
@@ -22,7 +23,12 @@ DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
 # 產生題目和取得題目
 class QuizViewSet(APIView):
     permission_classes = [IsAuthenticated]
-    
+
+    @swagger_auto_schema(
+        operation_description="flask微服務-題目生成",
+        request_body=QuizSerializer,
+        responses={200: "成功", 400: "請求錯誤", 500: "伺服器錯誤"}
+    )
     def post(self, request):
         try:
             # 傳給 Flask 做處理
@@ -140,7 +146,12 @@ class QuizViewSet(APIView):
             return Response({
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
+
     
+    @swagger_auto_schema(
+        operation_description="透過JWT取得用戶，找出所有Quiz和Topic",
+        responses={200: "成功", 400: "請求錯誤", 500: "伺服器錯誤"}
+    )
     def get(self, request):
         # 直接從 Django 資料庫獲取資料，不調用 Flask
         try:
@@ -232,7 +243,10 @@ class TopicDetailViewSet(APIView):
 # 根據Quiz ID獲取該Quiz下的所有題目
 class QuizTopicsViewSet(APIView):
     permission_classes = [IsAuthenticated]
-    
+    @swagger_auto_schema(
+        operation_description="根據Quiz ID獲取該Quiz下的所有題目",
+        responses={200: "成功", 404: "找不到Quiz", 500: "伺服器錯誤"}
+    )
     def get(self, request, quiz_id):
         """根據Quiz ID獲取該Quiz下的所有題目"""
         try:
@@ -280,6 +294,11 @@ class QuizTopicsViewSet(APIView):
             return Response({
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
+
+    @swagger_auto_schema(
+        operation_description="更新Quiz主題",
+        responses={200: "成功", 404: "找不到Quiz", 500: "伺服器錯誤"}
+    )
     def patch(self, request , quiz_id):
 
         new_quiz_topic = request.data.get('new_quiz_topic')
@@ -299,6 +318,11 @@ class QuizTopicsViewSet(APIView):
 # 前端回傳要收藏的題目 加入到 userfavorites 和 note
 class AddFavoriteViewSet(APIView):
     permission_classes = [IsAuthenticated]
+    @swagger_auto_schema(
+        operation_description="Flask微服務-將題目加入收藏",
+        request_body=AddFavoriteTopicSerializer,
+        responses={201: "成功", 400: "請求錯誤", 404: "找不到題目", 500: "伺服器錯誤"}
+    )
     def post(self, request):
         try:
             user = request.data.get('user_id')  # 從請求中獲取當前使用者
@@ -365,9 +389,11 @@ class AddFavoriteViewSet(APIView):
 
 class ChatViewSet(APIView):
     permission_classes = [IsAuthenticated]
-
+    @swagger_auto_schema(
+        operation_description="獲取聊天記錄",
+        responses={200: "成功", 404: "找不到主題", 500: "伺服器錯誤"}
+    )
     def get(self, request):
-        """獲取聊天記錄"""
         try:
             topic_id = request.GET.get('topic_id')
             user_id = request.GET.get('user_id')
@@ -396,8 +422,12 @@ class ChatViewSet(APIView):
                 'error': f'Internal server error: {str(e)}'
             }, status=500)
 
+    @swagger_auto_schema(
+        operation_description="處理聊天訊息",
+        request_body=ChatAPISerializer,
+        responses={200: "成功", 400: "請求錯誤", 404: "找不到主題", 500: "伺服器錯誤"}
+    )
     def post(self, request):
-        """處理聊天訊息"""
         try:
             print(f"~~~~~ Django 收到的請求資料: {request.data} ~~~~~")
             
@@ -572,6 +602,11 @@ class ChatContentToNoteView(APIView):
 # 編輯筆記內容
 class NoteEdit(APIView):
     permission_classes = [IsAuthenticated]
+    @swagger_auto_schema(
+        operation_description="編輯筆記內容或搬移筆記",
+        request_body=NoteAPISerializer,
+        responses={200: "成功", 400: "請求錯誤", 404: "找不到筆記", 500: "伺服器錯誤"}
+    )
     def patch(self, request, note_id):
         """編輯筆記內容或搬移筆記"""
         try:
@@ -641,6 +676,10 @@ class NoteEdit(APIView):
             return Response({'error': f'Internal server error: {str(e)}'}, status=500)
         
     # 軟刪除
+    @swagger_auto_schema(
+        operation_description="軟刪除筆記",
+        responses={204: "成功", 404: "找不到筆記", 500: "伺服器錯誤"}
+    )
     def delete(self , request, note_id):
         try:
             note_instance = Note.objects.get(
@@ -656,7 +695,10 @@ class NoteEdit(APIView):
 
 class NoteListView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @swagger_auto_schema(
+        operation_description="獲取使用者的所有筆記",
+        responses={200: "成功", 404: "找不到筆記", 500: "伺服器錯誤"}
+    )
     def get(self, request):
         """獲取使用者的所有筆記"""
         try:
@@ -687,6 +729,11 @@ class NoteListView(APIView):
             }, status=500)
     
     # 手動新增空白筆記
+    @swagger_auto_schema(
+        operation_description="手動新增空白筆記",
+        request_body=NoteAddAPISerializer,
+        responses={201: "成功", 400: "請求錯誤", 404: "找不到題目", 500: "伺服器錯誤"}
+    )
     def post(self, request):
         try:
             title = request.data.get('title')
@@ -719,7 +766,11 @@ class NoteListView(APIView):
 
 class CreateQuizTopicView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @swagger_auto_schema(
+        operation_description="創建新的 QuizTopic",
+        request_body=CreateQuizTopicSerializer,
+        responses={201: "成功", 400: "請求錯誤", 404: "找不到題目", 500: "伺服器錯誤"}
+    )
     def post(self, request):
         # 創建新的 QuizTopic (自創筆記的部分)
         try:
@@ -752,6 +803,10 @@ class CreateQuizTopicView(APIView):
 
 class UserQuizView(APIView):
     permission_classes = [IsAuthenticated]
+    @swagger_auto_schema(
+        operation_description="取得用戶的所有測驗主題",
+        responses={200: "成功", 404: "找不到用戶", 500: "伺服器錯誤"}
+    )
     # 取得所有 有在收藏的Quiz 
     def get(self, request):
         favorites = UserFavorite.objects.filter(user=request.user)
@@ -765,6 +820,11 @@ class UserQuizView(APIView):
 class RetestView(APIView):
     permission_classes = [IsAuthenticated]
     # 在下重新測驗後 筆記內容傳至flask  GPT處理整理筆記內容 再由用戶選擇難度 題數重新測驗
+    @swagger_auto_schema(
+        operation_description="重新測驗筆記內容",
+        request_body=RetestSerializer,
+        responses={200: "成功", 400: "請求錯誤", 404: "找不到筆記", 500: "伺服器錯誤"}
+    )
     def post(self, request):
         note_id = request.data.get("note_id")
         if not note_id:
@@ -824,6 +884,11 @@ class RetestView(APIView):
 # -----------------------------------
 class ParseAnswerView(APIView):
     permission_classes = [IsAuthenticated]
+    @swagger_auto_schema(
+        operation_description="GPT解析題目與答案",
+        request_body=ParseAnswerSerializer,
+        responses={200: "成功", 400: "請求錯誤", 404: "找不到題目", 500: "伺服器錯誤"}
+    )
     # 輸入要解析的題目&答案
     def post(self, request):
         topic_id = request.data.get("topic_id")
@@ -876,7 +941,10 @@ class ParseAnswerView(APIView):
 # 取得用戶的所有quiz 和 note
 class UsersQuizAndNote(APIView):
     permission_classes = [IsAuthenticated]
-
+    @swagger_auto_schema(
+        operation_description="取得用戶的所有測驗主題和筆記",
+        responses={200: "成功", 404: "找不到用戶", 500: "伺服器錯誤"}
+    )
     def get(self, request):
         user = request.user
         # 取得該用戶所有有效收藏
@@ -907,6 +975,11 @@ class UsersQuizAndNote(APIView):
 # 前端回傳 用戶答案
 class SubmitAnswerView(APIView):
     permission_classes = [IsAuthenticated]
+    @swagger_auto_schema(
+        operation_description="提交用戶的測驗嘗試以更新熟悉度",
+        request_body=SubmitAnswerSerializer,
+        responses={200: "Quiz attempt submitted successfully", 400: "Invalid request"}
+    )
     def post(self, request):
         from django.db import transaction
         
@@ -1119,7 +1192,11 @@ class SubmitAnswerView(APIView):
 
 class NoteEditQuizTopicView(APIView):
     permission_classes = [IsAuthenticated]
-
+    @swagger_auto_schema(
+        operation_description="編輯筆記的題目主題",
+        request_body=NoteEditQuizTopicSerializer,
+        responses={200: "成功", 400: "請求錯誤", 404: "找不到筆記", 500: "伺服器錯誤"}
+    )
     def patch(self, request, note_id):
         try:
             # 從請求中獲取新的 quiz_topic ID

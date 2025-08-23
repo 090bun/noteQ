@@ -117,3 +117,54 @@ class NoteSimplifiedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Note
         fields = ['id', 'title','content','quiz_topic_id']
+
+
+# API 文件 --------------------------
+class SubmitAnswerSerializer(serializers.Serializer):
+    is_test = serializers.BooleanField(help_text="是否為測試模式")
+    updates = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="使用者每一題的作答紀錄"
+    )
+
+class SubmitAttemptSerializer(serializers.Serializer):
+    quiz_topic_id = serializers.IntegerField(help_text="題目 ID")
+    difficulty = serializers.CharField(help_text="題目難度")
+    total_questions = serializers.FloatField(help_text="總題數")
+    correct_answers = serializers.FloatField(help_text="正確回答數")
+
+class QuizSerializer(serializers.Serializer):
+    user_id= serializers.IntegerField(help_text="使用者ID")
+    topic = serializers.CharField(help_text="題目主題")
+    difficulty = serializers.CharField(help_text="題目難度")
+    question_count = serializers.IntegerField(help_text="題目數量")
+
+class AddFavoriteTopicSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(help_text="使用者ID")
+    topic_id = serializers.CharField(help_text="題目ID")
+    content = serializers.CharField(help_text="儲存內容")
+
+class ChatAPISerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(help_text="使用者ID")
+    topic_id = serializers.CharField(help_text="主題ID")
+    sender = serializers.CharField(help_text="發送者USER")
+    message = serializers.CharField(help_text="傳送內容")
+
+class NoteAPISerializer(serializers.Serializer):
+    quiz_topic_id = serializers.IntegerField(help_text="題目ID")
+
+class NoteAddAPISerializer(serializers.Serializer):
+    quiz_topic = serializers.IntegerField(help_text="題目ID")
+    content = serializers.CharField(help_text="筆記內容")
+
+class NoteEditQuizTopicSerializer(serializers.Serializer):
+    quiz_topic = serializers.IntegerField(help_text="題目ID")
+
+class RetestSerializer(serializers.Serializer):
+    note_id = serializers.IntegerField(help_text="筆記ID")
+
+class ParseAnswerSerializer(serializers.Serializer):
+    topic_id = serializers.IntegerField(help_text="題目ID")
+
+class CreateQuizTopicSerializer(serializers.Serializer):
+    quiz_topic = serializers.IntegerField(help_text="新增主題名稱")

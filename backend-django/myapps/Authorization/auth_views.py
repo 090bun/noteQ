@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets, status, serializers
 from django.conf import settings
 from .models import User, AuthToken
-from .serializers import UserSerializer, AuthTokenSerializer, RegisterInputSerializer, UserTokenSerializer
+from .serializers import UserSerializer, AuthTokenSerializer, RegisterInputSerializer, UserTokenSerializer,ForgotPasswordSerializer ,RegisterSerializer , ResetPasswordSerializer,ResetPasswordFromEmailSerializer
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
 from django.core.mail import send_mail
@@ -14,30 +14,36 @@ from django.contrib.auth.tokens import default_token_generator
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import api_view
+from drf_yasg.utils import swagger_auto_schema
 import os
 import jwt
 # Create your views here.
 
 
 REACT_BASE_URL = os.getenv("REACT_BASE_URL", "http://localhost:3000")
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]  # 僅允許已認證的使用者訪問
+# class UserViewSet(viewsets.ModelViewSet):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+#     permission_classes = [IsAuthenticated]  # 僅允許已認證的使用者訪問
 
-class AuthTokenViewSet(viewsets.ModelViewSet):
-    queryset = AuthToken.objects.all()
-    serializer_class = AuthTokenSerializer
+# class AuthTokenViewSet(viewsets.ModelViewSet):
+#     queryset = AuthToken.objects.all()
+#     serializer_class = AuthTokenSerializer
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+#     def perform_create(self, serializer):
+#         serializer.save(user=self.request.user)
 
 # 註冊帳號
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
     permission_classes = [AllowAny]  # 允許未認證的使用者
+    @swagger_auto_schema(
+        operation_description="註冊帳號",
+        request_body=RegisterSerializer,
+        responses={201: "註冊成功"}
+    )
     def post(self, request, *args, **kwargs):
-        serializer = RegisterInputSerializer(data=request.data)
+        serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = User.objects.create_user(
                 username=serializer.validated_data['username'],
@@ -57,72 +63,91 @@ class RegisterView(APIView):
 
 
 # 忘記密碼 API：發送重設連結
-@api_view(['POST'])
-def forgot_password(request):
-    try:
-        email = request.data.get('email')
-        if not email:
-            return Response({"error": "請提供電子郵件地址"}, status=status.HTTP_400_BAD_REQUEST)
-        
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_description="忘記密碼",
+        request_body=ForgotPasswordSerializer,
+        responses={200: "成功發送重設密碼郵件", 400: "請提供有效的電子郵件地址"}
+    )
+    def post(self,request):
         try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({"error": "使用者不存在"}, status=status.HTTP_404_NOT_FOUND)
-        
-        # 生成重設密碼的
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = default_token_generator.make_token(user)
-        reset_link = f"{REACT_BASE_URL}/fgtpsd?uid={uid}&token={token}"
-
-        # 嘗試發送郵件，並捕獲可能的錯誤
-        try:
-            send_mail(
-                subject="重設密碼",
-                message=f"請點擊以下連結重設您的密碼：{reset_link}",
-                from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[email],
-                fail_silently=False
-            )
-            return Response({"message": "重設密碼郵件已發送"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": f"郵件發送失敗: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            email = request.data.get('email')
+            if not email:
+                return Response({"error": "請提供電子郵件地址"}, status=status.HTTP_400_BAD_REQUEST)
             
-    except Exception as e:
-        return Response({"error": f"伺服器錯誤: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({"error": "使用者不存在"}, status=status.HTTP_404_NOT_FOUND)
+            
+            # 生成重設密碼的
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_link = f"{REACT_BASE_URL}/fgtpsd?uid={uid}&token={token}"
+
+            # 嘗試發送郵件，並捕獲可能的錯誤
+            try:
+                send_mail(
+                    subject="重設密碼",
+                    message=f"請點擊以下連結重設您的密碼：{reset_link}",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[email],
+                    fail_silently=False
+                )
+                return Response({"message": "重設密碼郵件已發送"}, status=status.HTTP_200_OK)
+            except Exception as e:
+                return Response({"error": f"郵件發送失敗: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            return Response({"error": f"伺服器錯誤: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
-@api_view(['POST'])
+
 # 從忘記密碼進入的重設密碼 API
-def reset_password_from_email(request):
-    uidb64 = request.data.get('uid')
-    print(f"Received uidb64: {uidb64}")
-    uid = force_str(urlsafe_base64_decode(uidb64))
-    new_password = request.data.get('new_password')
+class ResetPasswordFromEmail(APIView):
+    permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_description="忘記密碼的重設密碼",
+        request_body=ResetPasswordFromEmailSerializer,
+        responses={200: "密碼重設成功", 400: "連結無效"}
 
-    try:
-        user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return Response({'error': '連結無效'}, status=400)
+    )
+    def post(self , request):
+        uidb64 = request.data.get('uid')
+        print(f"Received uidb64: {uidb64}")
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        new_password = request.data.get('new_password')
 
-    user.set_password(new_password)
-    user.save()
-    return Response({'message': '密碼重設成功'}, status=200)
+        try:
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({'error': '連結無效'}, status=400)
 
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': '密碼重設成功'}, status=200)
 
-@api_view(['POST'])
 # 使用者登入後重設密碼 API
-def reset_password(request):
-    user = request.user
-    old_password = request.data.get('old_password')
-    new_password = request.data.get('new_password')
-    try:
-        user = User.objects.filter(id=user.id).first()
-        if user.check_password(old_password):
-            user.set_password(new_password)
-            user.save()
-            return Response({'message': '密碼重設成功'}, status=200)
-        else:
-            return Response({'error': '舊密碼錯誤'}, status=401)
-    except Exception as e:
-        return Response({'error': f'伺服器錯誤: {str(e)}'}, status=500)
+class ResetPassword(APIView):
+    permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_description="使用者登入後重設密碼",
+        request_body=ResetPasswordSerializer,
+        responses={200: "密碼重設成功", 400: "請提供有效的參數"}
+    )
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+        try:
+            user = User.objects.filter(id=user.id).first()
+            if user.check_password(old_password):
+                user.set_password(new_password)
+                user.save()
+                return Response({'message': '密碼重設成功'}, status=200)
+            else:
+                return Response({'error': '舊密碼錯誤'}, status=401)
+        except Exception as e:
+            return Response({'error': f'伺服器錯誤: {str(e)}'}, status=500)

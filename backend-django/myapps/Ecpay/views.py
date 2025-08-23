@@ -1,5 +1,5 @@
 from django.shortcuts import render , redirect
-from .serializers import UserSubscriptionSerializer, OrderSerializer, EcpayLogsSerializer 
+from .serializers import UserSubscriptionSerializer, OrderSerializer, EcpayLogsSerializer ,EcpayReturnSerializer ,EcpayURLRedirectSerializer,PaymentStatusSerializer ,EcpaySerializer
 from .models import UserSubscription, Order, EcpayLogs , PaymentPlan
 from myapps.Authorization.models import User
 from myapps.Authorization.serializers import UserSimplifiedSerializer
@@ -16,6 +16,7 @@ import time
 from datetime import datetime
 from .config import config
 from django.db import transaction
+from drf_yasg.utils import swagger_auto_schema
 
 # Create your views here.
 DJANGO_BASE_URL = os.getenv("DJANGO_BASE_URL", "http://localhost:8000")
@@ -61,7 +62,12 @@ class EcpayViewSet(APIView):
         # SHA256 加密並轉大寫
         sha256_hash = hashlib.sha256(encoded_string.encode('utf-8')).hexdigest()
         return sha256_hash.upper()
-    
+
+    @swagger_auto_schema(
+        operation_description="產生訂單",
+        request_body=EcpaySerializer,
+        responses={200: "HTML form for ECPay redirection", 400: "Invalid request"}
+    )
     def post(self, request):
         # 訂單產生(整理訂單內容)
         payment_plan = PaymentPlan.objects.order_by('-created_at').first()
@@ -145,9 +151,15 @@ class EcpayViewSet(APIView):
         </html>
         """
         return html
+
+
 class EcpayReturnView(APIView):
     permission_classes = [AllowAny]
-
+    @swagger_auto_schema(
+        operation_description="處理 ECPay 付款結果回調",
+        request_body=EcpayReturnSerializer,
+        responses={200: "成功", 400: "失敗"}
+    )
     @transaction.atomic
     def post(self, request):
         data = request.data  # <QueryDict ...>
@@ -228,7 +240,10 @@ class EcpayReturnView(APIView):
 
 class EcpayURLRedirect(APIView):
     permission_classes = [AllowAny]  # ECPay 回調不需要驗證
-
+    @swagger_auto_schema(
+        operation_description="ECPay 付款結果回調",
+        responses={200: "成功", 400: "失敗"}
+    )
     def get(self, request):
         # ECPay 多半用 GET 帶參數回來
         params = request.query_params
@@ -237,6 +252,12 @@ class EcpayURLRedirect(APIView):
         url = f"{base_url}?{query}" if query else base_url
         return redirect(url)
 
+
+    @swagger_auto_schema(
+        operation_description="ECPay 付款結果回調",
+        request_body=EcpayURLRedirectSerializer,
+        responses={200: "成功", 400: "失敗"}
+    )
     def post(self, request):
         # 接收 ECPay 回傳的參數，再導到前端成功頁
         data = request.data
@@ -249,7 +270,10 @@ class EcpayURLRedirect(APIView):
     
 class PaymentStatus(APIView):
     permission_classes = [IsAuthenticated]
-
+    @swagger_auto_schema(
+        operation_description="取得訂單狀態",
+        responses={200: "成功", 400: "失敗"}
+    )
     def get(self, request):
         # 取得使用者的訂單狀態
         mt = request.query_params.get("merchant_trade_no")
