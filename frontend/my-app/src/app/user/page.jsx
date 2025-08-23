@@ -189,7 +189,7 @@ export default function UserPage() {
       loadingAlert = safeAlert("正在前往付款頁面，請稍候...");
       
       // 1) 直接向後端索取 HTML（避免帶 Content-Type: application/json 造成預檢）
-      const res = await fetch(`${DJANGO}/ecpay/`, {
+      const res = await fetch(`${ROOT_BASE}/ecpay/`, {
         method: "POST",
         headers: {
           // 接受 HTML；Authorization 視你的後端需求保留

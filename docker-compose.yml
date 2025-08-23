@@ -17,7 +17,7 @@ services:
       DJANGO_SETTINGS_MODULE: myapps.settings
       DATABASE_URL: mysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
     ports:
-      - "8000:8000"
+      - "18000:8000"
     volumes:
       - ./backend-django:/app
     command: ["python","manage.py","runserver","0.0.0.0:8000"]
@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     ports:
-      - "5000:5000"
+      - "5000"
     volumes:
       - ./ml-service:/topic_apps
     restart: always
@@ -38,7 +38,7 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     ports:
-      - "3000:3000"
+      - "8080:3000"
     volumes:
       - ./frontend/my-app:/app
       - /app/node_modules   # 讓容器內 node_modules 不被覆蓋
