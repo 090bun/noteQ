@@ -43,31 +43,36 @@ docker-compose up --build
 
 2) 個別啟動（開發模式）
 
-	 - 後端（Django）
-  		- 進入資料夾 backend-django
+ - 後端（Django）
+	- 進入資料夾 backend-django
 
-```powershell
+```
 # 使用虛擬環境(uv)
 source .venv/Scripts/activate
 uv sync
 uv run python manage.py migrate
 uv run python manage.py runserver
+
 ```
 
-	 - 前端（React）
-		- 進入資料夾 frontend/my-app
-```powershell
+ - 前端（React）
+	- 進入資料夾 frontend/my-app
+  
+```
 npm install
 npm run dev
+
 ```
 
-	 - 機器學習服務（ml-service）
-		- 進入資料夾 ml-service
-```powershell
+ - 機器學習服務（ml-service）
+	- 進入資料夾 ml-service
+  
+```
 # 使用虛擬環境(uv)
 source .venv/Scripts/activate
 uv sync
 python topic_apps.py
+
 ```
 
 3) 瀏覽器介面
