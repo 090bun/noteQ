@@ -1,21 +1,19 @@
 # 專案簡介
-本專案為一個多服務架構的系統，包含 Django 和 Flask 兩套後端服務，以及獨立的機器學習微服務（ml-service）。
+本專案為一個多服務架構的系統，使用 Django 作為後端服務，以及Flask 的微服務（ml-service）。
 
 # 目錄結構
 ```
 /
 ├── frontend/ # React 前端
 │ └── README.md
-├── backend-django/ # Django 主系統（帳號、題庫、熟悉度）
+├── backend-django/ # Django 主系統（JWT驗證帳號、熟悉度計算、綠界串接、筆記系統）
 │ └── README.md
-├── ml-service/ # Flask 微服務（GPT 題目產生、模型處理）
+├── ml-service/ # Flask 微服務（GPT 題目產生、聊天處理）
 │ └── README.md
 ├── docker-compose.yml # 整合啟動所有服務
 ├── .gitignore
-└── README.md # 專案說明與分工紀錄
+└── README.md # 專案說明
 ```
-
-# ---------(陸續新增)-------
 
 ## 技術棧
 
@@ -30,7 +28,8 @@
 
 ## 啟動流程
 
-下面提供整個專案及各服務的本地開發啟動步驟。專案採多服務架構：前端（React）、後端（Django REST）、以及機器學習微服務（ml-service）。建議先透過 Docker Compose 一次啟動整個開發環境，或分別啟動各服務以利開發除錯。
+下面提供整個專案及各服務的本地開發啟動步驟。專案採多服務架構：前端（React）、後端（Django REST）、以及Flask作為微服務（ml-service）。
+建議先透過 Docker Compose 一次啟動整個開發環境，或分別啟動各服務以利開發除錯。
 
 1) 使用 docker-compose
 
@@ -44,31 +43,36 @@ docker-compose up --build
 
 2) 個別啟動（開發模式）
 
-	 - 後端（Django）
-  		- 進入資料夾 backend-django
+ - 後端（Django）
+	- 進入資料夾 backend-django
 
-```powershell
+```
 # 使用虛擬環境(uv)
 source .venv/Scripts/activate
 uv sync
 uv run python manage.py migrate
 uv run python manage.py runserver
+
 ```
 
-	 - 前端（React）
-		- 進入資料夾 frontend/my-app
-```powershell
+ - 前端（React）
+	- 進入資料夾 frontend/my-app
+  
+```
 npm install
 npm run dev
+
 ```
 
-	 - 機器學習服務（ml-service）
-		- 進入資料夾 ml-service
-```powershell
+ - 機器學習服務（ml-service）
+	- 進入資料夾 ml-service
+  
+```
 # 使用虛擬環境(uv)
 source .venv/Scripts/activate
 uv sync
 python topic_apps.py
+
 ```
 
 3) 瀏覽器介面
