@@ -90,7 +90,6 @@ WSGI_APPLICATION = "myapps.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# 開發環境使用 SQLite（暫時）
 DATABASES = {
     "default": {
         "ENGINE": os.getenv('DB_ENGINE', 'django.db.backends.sqlite3'),
@@ -99,9 +98,6 @@ DATABASES = {
         "PASSWORD": os.getenv('DB_PASSWORD', ''),
         "HOST": os.getenv('DB_HOST', ''),
         "PORT": os.getenv('DB_PORT', ''),
-        'OPTIONS': {
-            'MAX_CONNS': 20,
-        }
     }
 }
 

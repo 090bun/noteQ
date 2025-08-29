@@ -282,15 +282,32 @@ export default function UserPage() {
       return `${yyyy}/${mm}/${dd} ${hh}:${mi}`;
     };
 
-    const token = localStorage.getItem("token");
-    const userId = localStorage.getItem("userId");
+    const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+    let userId = typeof window !== 'undefined' ? localStorage.getItem("userId") : null;
 
-    if (!token) {
-      return null;
+    if (!token) return null;
+
+    // 若 localStorage 沒 userId，嘗試從 JWT token 解析
+    if (!userId) {
+      try {
+        const payload = token.split('.')[1];
+        if (payload) {
+          const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+          const json = decodeURIComponent(atob(b64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+          const obj = JSON.parse(json);
+          userId = obj.user_id || obj.user || obj.id || null;
+        }
+      } catch (e) {
+        // ignore
+      }
     }
 
+    if (!userId) return null;
+
+    const url = `/api/django/users/${userId}/`;
     try {
-      const res = await fetch(`${ROOT_BASE}/users/${userId}`, {
+      try { console.debug('[UserPage] fetch user', url, 'token?', !!token, 'userId', userId); } catch(e){}
+      const res = await fetch(url, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

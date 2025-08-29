@@ -139,12 +139,12 @@ export default function HomePage() {
           <button onClick={handleStart} className={styles.ctaButton}>
             <span className={styles.ctaText}>START</span>
             <span className={styles.arrowIconWrapper}>
-              <Image
-                src="/img/Vector-8.png"
-                alt="Arrow icon"
-                width={15}
-                height={15}
-              />
+            <Image
+              src="/img/Vector-8.png"
+              alt="Arrow icon"
+              width={15}
+              height={15}
+            />
             </span>
           </button>
         </div>

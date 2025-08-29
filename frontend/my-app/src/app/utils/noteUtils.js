@@ -746,7 +746,7 @@ export async function generateQuestions(noteContent, noteTitle = '') {
     }
 
     // 調用後端AI API生成主題
-    const res = await fetch("http://127.0.0.1:5000/api/generate_topic_from_note", {
+    const res = await fetch(`${ROOT_BASE}/api/generate_topic_from_note`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

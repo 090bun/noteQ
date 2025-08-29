@@ -39,7 +39,7 @@ COPY requirements.txt .
 
 # Install dependencies using pip
 RUN pip install --no-cache-dir -r requirements.txt
-
+RUN pip install gunicorn
 # Switch to the non-privileged user to run the application.
 USER appuser
 

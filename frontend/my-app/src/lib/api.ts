@@ -1,8 +1,10 @@
-const ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8000";
+// If NEXT_PUBLIC_API_ORIGIN isn't injected at build/runtime, default to the nginx proxy path
+// used in production so client fetches go through nginx to Django: /api/django
+const ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN || "/api/django";
 // const PREFIX = process.env.NEXT_PUBLIC_API_PREFIX || "/api";
 
 // export const API_BASE = `${ORIGIN}${PREFIX}`; // 例: http://.../api
-export const ROOT_BASE = `${ORIGIN}`;         // 例: http://.../
+export const ROOT_BASE = `${ORIGIN}`;         // 例: /api
 
 import axios from "axios";
 

@@ -1,6 +1,6 @@
 "use client";
 import { ROOT_BASE } from "../../lib/api";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Header from "../components/Header";
@@ -9,7 +9,9 @@ import { initSplineViewer, optimizeSplineLoading } from "../utils/spline";
 import { safeAlert } from "../utils/dialogs";
 import { usePageTransition } from "../components/PageTransition";
 
-export default function LoginPage() {
+
+function LoginContent() {
+  
   const searchParams = useSearchParams();
   const [isLoginForm, setIsLoginForm] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -767,5 +769,13 @@ export default function LoginPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
