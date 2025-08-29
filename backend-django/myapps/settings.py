@@ -28,7 +28,7 @@ load_dotenv(BASE_DIR / '.env')
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DJANGO_DEBUG', '0') == '1'
+DEBUG = os.getenv('DJANGO_DEBUG', 'Ture') == 'False'
 
 # 所有連線
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',')
@@ -99,6 +99,9 @@ DATABASES = {
         "PASSWORD": os.getenv('DB_PASSWORD', ''),
         "HOST": os.getenv('DB_HOST', ''),
         "PORT": os.getenv('DB_PORT', ''),
+        'OPTIONS': {
+            'MAX_CONNS': 20,
+        }
     }
 }
 

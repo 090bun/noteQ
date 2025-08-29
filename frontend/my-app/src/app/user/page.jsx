@@ -361,8 +361,6 @@ export default function UserPage() {
   useEffect(() => {
     // 確保在客戶端渲染時才執行
     if (typeof window !== "undefined") {
-      fetchUserDataFromAPI();
-      fetchUserTopicsFromAPI();
       const subscriptionStatus = localStorage.getItem("is_paid");
       setIsPlusSubscribed(subscriptionStatus === "true");
   // 登回 USER 後立即以交易編號檢查一次付款狀態
