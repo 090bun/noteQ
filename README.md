@@ -23,6 +23,7 @@
 - MySQL
 - Docker
 - React 
+- Nginx
 
 ---
 
@@ -36,7 +37,7 @@
 	 在專案根目錄執行：
 
 ```powershell
-docker-compose up --build
+docker-compose up --build -d
 ```
 
 	 會根據 `docker-compose.yml` 啟動或建立所需的服務（若有設定資料庫、redis 等會一併啟動）。
@@ -83,7 +84,7 @@ python topic_apps.py
 
 ## API 介面說明（摘要）
 
-以下為專案目前已實作的主要 API 端點與簡短說明，範例基於本機後端在 http://noteq.pair.tw/swagger/的假設。
+以下為專案目前已實作的主要 API 端點與簡短說明。
 
 - 認證與使用者
 

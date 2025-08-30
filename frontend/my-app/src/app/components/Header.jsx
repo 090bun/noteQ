@@ -10,6 +10,8 @@ export default function Header({
     showAuthNav = false,
     enableNoteQLink = false 
 }) {
+    // only show swagger/redoc links when explicitly enabled at build/runtime
+    const showSwagger = process.env.NEXT_PUBLIC_ENABLE_SWAGGER === '1';
     return (
         <section id="header">
             <header className="site-header">
@@ -26,6 +28,12 @@ export default function Header({
                         <nav className="auth-nav">
                             <Link href="/login?signup=1" className="btn-signup">Sign up</Link>
                             <Link href="/login" className="btn-login">Login</Link>
+                            {showSwagger && (
+                                <>
+                                    <Link href="/swagger/" className="btn-api">API</Link>
+                                    <Link href="/redoc/" className="btn-api">ReDoc</Link>
+                                </>
+                            )}
                         </nav>
                     )}
                     
